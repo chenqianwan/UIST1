@@ -1,6 +1,7 @@
 export type NodeKind = 'root' | 'main' | 'sub' | 'leaf';
 export type LinkKind = 'root-link' | 'smart-link' | 'child-link' | 'detail-link';
 export type RiskLevel = 'none' | 'low' | 'medium' | 'high';
+export type NodeActionType = 'delete' | 'revise' | 'add_clause';
 
 export interface TemplateDetailItem {
   label: string;
@@ -21,6 +22,11 @@ export interface TemplateItem {
   riskLevel: RiskLevel;
   content: string;
   satellites?: TemplateSubItem[];
+  actionType?: NodeActionType;
+  actionReason?: string;
+  suggestionText?: string;
+  supplementDraft?: string;
+  confidence?: number;
 }
 
 export interface GraphNode {
@@ -37,6 +43,11 @@ export interface GraphNode {
   riskLevel: RiskLevel;
   templateId?: string;
   parentId?: string;
+  actionType?: NodeActionType;
+  actionReason?: string;
+  suggestionText?: string;
+  supplementDraft?: string;
+  confidence?: number;
 }
 
 export interface GraphLink {

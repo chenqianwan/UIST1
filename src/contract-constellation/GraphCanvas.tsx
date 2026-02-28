@@ -51,6 +51,12 @@ export function GraphCanvas({
 }: GraphCanvasProps) {
   const width = CANVAS_WIDTH;
   const height = CANVAS_HEIGHT;
+  const actionBadge = (actionType?: GraphNode['actionType']) => {
+    if (actionType === 'delete') return { text: 'D', fill: '#ef4444' };
+    if (actionType === 'revise') return { text: 'R', fill: '#3b82f6' };
+    if (actionType === 'add_clause') return { text: 'A', fill: '#10b981' };
+    return null;
+  };
 
   return (
     <svg
@@ -214,6 +220,7 @@ export function GraphCanvas({
             ? !selectedNodeId || selected || isIncoming || (depth !== undefined && depth <= 1)
             : selected || (depth !== undefined && depth <= 1 && revealStage === 2);
         const isDragging = node.id === draggingNodeId;
+        const badge = actionBadge(node.actionType);
 
         return (
           <motion.g
@@ -285,6 +292,21 @@ export function GraphCanvas({
             })()}
             {isRoot && (
               <circle r={3.8} fill="#6b7280" fillOpacity={nodeTone} />
+            )}
+            {!isRoot && badge && (
+              <g transform={`translate(${node.r * 0.72}, ${-node.r * 0.72})`}>
+                <circle r={6.6} fill={badge.fill} stroke="#ffffff" strokeWidth={1.3} />
+                <text
+                  x={0}
+                  y={2.8}
+                  textAnchor="middle"
+                  fontSize={7.5}
+                  fill="#ffffff"
+                  className="pointer-events-none select-none font-bold"
+                >
+                  {badge.text}
+                </text>
+              </g>
             )}
             {shouldShowLabel && (
               <text

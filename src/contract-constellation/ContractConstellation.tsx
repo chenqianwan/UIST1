@@ -51,6 +51,7 @@ export default function ContractConstellation() {
     markNodeAsMitigated,
     updateNodePosition,
     removeNodeCascade,
+    addSupplementClause,
     setDraggingNode,
   } = useGalaxyEngine(
     width,
@@ -121,18 +122,6 @@ export default function ContractConstellation() {
     }
     return depthMap;
   }, [links, selectedNodeId]);
-
-  const riskHotspot = useMemo(() => {
-    const counts = { none: 0, low: 0, medium: 0, high: 0 };
-    semanticNodesForEmbedding.forEach((node) => {
-      counts[node.riskLevel] += 1;
-    });
-    const ordered: Array<keyof typeof counts> = ['high', 'medium', 'low', 'none'];
-    const top = ordered.find((level) => counts[level] > 0) ?? 'none';
-    const label =
-      top === 'high' ? 'High Risk' : top === 'medium' ? 'Medium Risk' : top === 'low' ? 'Low Risk' : 'No Risk';
-    return { level: top, label, count: counts[top] };
-  }, [semanticNodesForEmbedding]);
 
   const incomingNodeIds = useMemo(() => {
     if (!selectedNodeId) return new Set<string>();
@@ -328,6 +317,28 @@ export default function ContractConstellation() {
     [markNodeAsMitigated],
   );
 
+  const handleDeleteNodeAction = useCallback((nodeId: string) => {
+    const node = nodes.find((item) => item.id === nodeId);
+    if (!node || node.id === 'root') return;
+    removeNodeCascade(nodeId);
+    if (node.templateId) {
+      setUsedTemplateIds((prev) => prev.filter((id) => id !== node.templateId));
+    }
+    setSelectedNodeId(null);
+  }, [nodes, removeNodeCascade]);
+
+  const handleAddSupplementAction = useCallback((nodeId: string, draft?: string) => {
+    addSupplementClause(nodeId, draft);
+    const targetNode = nodes.find((node) => node.id === nodeId);
+    if (targetNode && targetNode.id !== 'root') {
+      const mergedContent = draft?.trim()
+        ? `${targetNode.content} ${draft.trim()}`
+        : targetNode.content;
+      markNodeAsMitigated(nodeId, mergedContent);
+    }
+    setLastAppliedNodeId(nodeId);
+  }, [addSupplementClause, markNodeAsMitigated, nodes]);
+
   return (
     <div className="flex h-full w-full overflow-hidden border border-slate-200 bg-[#F7F9FC]">
       <div className="relative flex-1 select-none border-r border-slate-200 bg-white">
@@ -360,64 +371,63 @@ export default function ContractConstellation() {
             High Risk
           </div>
         </div>
-        <div className="pointer-events-none absolute bottom-4 left-4 z-10 flex items-end gap-3">
+        <div className="pointer-events-none absolute bottom-4 left-4 z-10">
           <div
             ref={trashRef}
-            className={`w-48 rounded-xl border border-dashed bg-white p-3 text-center text-slate-600 shadow-sm transition ${
+            className={`flex h-[96px] w-48 flex-col justify-center rounded-xl border bg-white px-3 py-2 text-center text-slate-600 shadow-sm transition ${
               isOverTrash
-                ? 'border-red-400 bg-red-50 text-red-600'
+                ? 'border-red-300 bg-red-50/90 text-red-600'
                 : draggingNodeId
-                  ? 'border-red-300 bg-red-50 text-red-500'
-                  : 'border-slate-300'
+                  ? 'border-red-200 bg-red-50/70 text-red-500'
+                  : 'border-slate-200'
             }`}
+            style={{
+              borderStyle: isOverTrash || draggingNodeId ? 'solid' : 'dashed',
+            }}
           >
-            <div className="flex items-center justify-center gap-2 text-xs font-semibold">
+            <div className="flex items-center justify-center gap-2 text-sm font-semibold">
               <Trash2 size={14} />
               Drop Here
             </div>
-            <p className="mt-1 text-[11px] opacity-80">Sub-clause: Delete / Main clause: Remove reference</p>
+            <p className="mt-1 text-[11px] leading-tight opacity-80">Sub-clause: Delete / Main clause: Remove reference</p>
           </div>
-
-          <div className="flex flex-col gap-2">
-            <div className="pointer-events-auto w-[320px] rounded-lg border border-slate-200 bg-white/86 px-3 py-2 text-[11px] text-slate-700 shadow-sm backdrop-blur-sm">
-              <div className="mb-1 flex items-center justify-between">
-                <span className="font-semibold">Analysis Controls</span>
-                <span className="text-slate-500">S {Math.round(semanticBiasStrength * 100)}% / R {Math.round(riskBiasStrength * 100)}%</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <div className="mb-1 flex items-center justify-between text-[10px] text-slate-600">
-                    <span>Semantic Pull</span>
-                    <span>{Math.round(semanticBiasStrength * 100)}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    value={semanticBiasStrength}
-                    onChange={(event) => setSemanticBiasStrength(Number(event.target.value))}
-                    className="h-1.5 w-full accent-slate-500"
-                  />
+        </div>
+        <div className="pointer-events-none absolute bottom-4 right-4 z-10 flex h-[96px] flex-col justify-center gap-2">
+          <div className="pointer-events-auto w-[320px] rounded-xl border border-slate-200 bg-white/90 px-4 py-2 text-[11px] text-slate-700 shadow-sm backdrop-blur-sm">
+            <div className="mb-1.5 flex items-center justify-between">
+              <span className="font-semibold">Analysis Controls</span>
+              <span className="text-slate-500">S {Math.round(semanticBiasStrength * 100)}% / R {Math.round(riskBiasStrength * 100)}%</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <div className="mb-0.5 flex items-center justify-between text-[10px] text-slate-600">
+                  <span>Semantic Pull</span>
+                  <span>{Math.round(semanticBiasStrength * 100)}%</span>
                 </div>
-                <div>
-                  <div className="mb-1 flex items-center justify-between text-[10px] text-slate-600">
-                    <span>Risk Pull</span>
-                    <span>{Math.round(riskBiasStrength * 100)}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    value={riskBiasStrength}
-                    onChange={(event) => setRiskBiasStrength(Number(event.target.value))}
-                    className="h-1.5 w-full accent-rose-500"
-                  />
-                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={semanticBiasStrength}
+                  onChange={(event) => setSemanticBiasStrength(Number(event.target.value))}
+                  className="h-1.5 w-full accent-slate-500"
+                />
               </div>
-              <div className="mt-2 text-[10px] text-slate-600">
-                Current hotspot: <span className="font-semibold">{riskHotspot.label}</span> ({riskHotspot.count})
+              <div>
+                <div className="mb-0.5 flex items-center justify-between text-[10px] text-slate-600">
+                  <span>Risk Pull</span>
+                  <span>{Math.round(riskBiasStrength * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={riskBiasStrength}
+                  onChange={(event) => setRiskBiasStrength(Number(event.target.value))}
+                  className="h-1.5 w-full accent-rose-500"
+                />
               </div>
             </div>
           </div>
@@ -458,7 +468,9 @@ export default function ContractConstellation() {
         exportState={exportState}
         sidePanelBg={sidePanelBg}
         onDragStart={handleDragStart}
-        onApplySuggestion={handleApplySuggestion}
+        onReviseNode={handleApplySuggestion}
+        onDeleteNode={handleDeleteNodeAction}
+        onAddSupplement={handleAddSupplementAction}
         onExport={handleExportContract}
       />
     </div>

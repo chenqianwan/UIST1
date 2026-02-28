@@ -1,6 +1,25 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { GraphLink, GraphNode, TemplateItem } from './types';
-import { getRiskColor, distance } from './utils';
+import { getRiskColor, distance, seededRandom } from './utils';
+
+function getIndependentRiskLevel(seed: string): GraphNode['riskLevel'] {
+  const v = seededRandom(seed);
+  if (v < 0.25) return 'none';
+  if (v < 0.5) return 'low';
+  if (v < 0.78) return 'medium';
+  return 'high';
+}
+
+function getActionTypeByRisk(
+  riskLevel: GraphNode['riskLevel'],
+  seed: string,
+): GraphNode['actionType'] {
+  if (riskLevel === 'none') return undefined;
+  const u = seededRandom(seed);
+  if (riskLevel === 'low') return u < 0.5 ? 'add_clause' : 'revise';
+  if (riskLevel === 'medium') return u < 0.33 ? 'delete' : u < 0.66 ? 'revise' : 'add_clause';
+  return u < 0.55 ? 'revise' : 'delete';
+}
 
 export function useGalaxyEngine(
   width: number,
@@ -55,6 +74,11 @@ export function useGalaxyEngine(
         content: template.content,
         riskLevel: template.riskLevel,
         templateId: template.id,
+        actionType: template.riskLevel === 'none' ? undefined : template.actionType,
+        actionReason: template.riskLevel === 'none' ? undefined : template.actionReason,
+        suggestionText: template.riskLevel === 'none' ? undefined : template.suggestionText,
+        supplementDraft: template.riskLevel === 'none' ? undefined : template.supplementDraft,
+        confidence: template.riskLevel === 'none' ? undefined : template.confidence,
       };
 
       const existing = nodesRef.current;
@@ -68,20 +92,23 @@ export function useGalaxyEngine(
 
       const satellites = (template.satellites ?? []).map((item, index, arr) => {
         const angle = (index / Math.max(arr.length, 1)) * Math.PI * 2;
+        const riskLevel = getIndependentRiskLevel(`${template.id}::sat::${item.label}::${item.content}`);
+        const actionType = getActionTypeByRisk(riskLevel, `${template.id}::sat-action::${item.label}`);
         return {
           id: `sub_${id}_${index}`,
           label: item.label,
           type: 'sub' as const,
-          color: getRiskColor(template.riskLevel),
+          color: getRiskColor(riskLevel),
           x: x + Math.cos(angle) * 56,
           y: y + Math.sin(angle) * 56,
           vx: 0,
           vy: 0,
           r: 10,
           content: item.content,
-          riskLevel: template.riskLevel,
+          riskLevel,
           templateId: template.id,
           parentId: id,
+          actionType,
         };
       });
       const detailNodes = (template.satellites ?? []).flatMap((item, index, arr) => {
@@ -94,21 +121,26 @@ export function useGalaxyEngine(
         const ux = Math.cos(satAngle);
         const uy = Math.sin(satAngle);
 
-        return details.slice(0, 1).map((detail, detailIndex) => ({
-          id: `leaf_${id}_${index}_${detailIndex}`,
-          label: detail.label,
-          type: 'leaf' as const,
-          color: getRiskColor(template.riskLevel),
-          x: satX + ux * 34,
-          y: satY + uy * 34,
-          vx: 0,
-          vy: 0,
-          r: 7,
-          content: detail.content,
-          riskLevel: template.riskLevel,
-          templateId: template.id,
-          parentId: satId,
-        }));
+        return details.slice(0, 1).map((detail, detailIndex) => {
+          const riskLevel = getIndependentRiskLevel(`${template.id}::leaf::${detail.label}::${detail.content}`);
+          const actionType = getActionTypeByRisk(riskLevel, `${template.id}::leaf-action::${detail.label}`);
+          return {
+            id: `leaf_${id}_${index}_${detailIndex}`,
+            label: detail.label,
+            type: 'leaf' as const,
+            color: getRiskColor(riskLevel),
+            x: satX + ux * 34,
+            y: satY + uy * 34,
+            vx: 0,
+            vy: 0,
+            r: 7,
+            content: detail.content,
+            riskLevel,
+            templateId: template.id,
+            parentId: satId,
+            actionType,
+          };
+        });
       });
 
       const rootLink: GraphLink = { source: 'root', target: id, type: 'root-link' };
@@ -148,6 +180,11 @@ export function useGalaxyEngine(
             content,
             riskLevel: 'none' as const,
             color: safeColor,
+            actionType: undefined,
+            actionReason: undefined,
+            suggestionText: undefined,
+            supplementDraft: undefined,
+            confidence: undefined,
           }
         : node,
     );
@@ -182,6 +219,47 @@ export function useGalaxyEngine(
       (link) => !removeIds.has(link.source) && !removeIds.has(link.target),
     );
 
+    nodesRef.current = nextNodes;
+    linksRef.current = nextLinks;
+    setNodes(nextNodes);
+    setLinks(nextLinks);
+  }, []);
+
+  const addSupplementClause = useCallback((nodeId: string, draft?: string) => {
+    const parentNode = nodesRef.current.find((node) => node.id === nodeId);
+    if (!parentNode || parentNode.id === 'root') return;
+
+    const isParentMain = parentNode.type === 'main';
+    const childIndex = nodesRef.current.filter((node) => node.parentId === parentNode.id).length;
+    const angle = (childIndex % 6) * (Math.PI / 3);
+    const radius = isParentMain ? 62 : 38;
+    const newType: GraphNode['type'] = isParentMain ? 'sub' : 'leaf';
+    const newRadius = isParentMain ? 10 : 7;
+    const content = (draft && draft.trim()) || `Supplement for "${parentNode.label}".`;
+    const riskLevel: GraphNode['riskLevel'] = 'none';
+    const newId = `${newType}_${parentNode.id}_${Date.now()}`;
+    const newNode: GraphNode = {
+      id: newId,
+      label: isParentMain ? `Supplement ${childIndex + 1}` : `Detail ${childIndex + 1}`,
+      type: newType,
+      color: getRiskColor(riskLevel),
+      x: parentNode.x + Math.cos(angle) * radius,
+      y: parentNode.y + Math.sin(angle) * radius,
+      vx: 0,
+      vy: 0,
+      r: newRadius,
+      content,
+      riskLevel,
+      templateId: parentNode.templateId,
+      parentId: parentNode.id,
+    };
+    const newLink: GraphLink = {
+      source: parentNode.id,
+      target: newId,
+      type: isParentMain ? 'child-link' : 'detail-link',
+    };
+    const nextNodes = [...nodesRef.current, newNode];
+    const nextLinks = [...linksRef.current, newLink];
     nodesRef.current = nextNodes;
     linksRef.current = nextLinks;
     setNodes(nextNodes);
@@ -346,6 +424,7 @@ export function useGalaxyEngine(
     markNodeAsMitigated,
     updateNodePosition,
     removeNodeCascade,
+    addSupplementClause,
     setDraggingNode,
   };
 }

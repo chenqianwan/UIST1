@@ -1,4 +1,4 @@
-import { Box, DollarSign, Download, FileText, Link2, Shield, Sparkles } from 'lucide-react';
+import { Box, DollarSign, Download, FileText, Link2, PlusCircle, Shield, Sparkles, Trash2 } from 'lucide-react';
 import type { TemplateItem } from './types';
 import type { GraphNode } from './types';
 import type { AiSuggestion } from './types';
@@ -25,7 +25,9 @@ interface SidePanelProps {
   exportState: 'idle' | 'exporting' | 'success';
   sidePanelBg: string;
   onDragStart: (event: React.DragEvent<HTMLDivElement>, templateId: string) => void;
-  onApplySuggestion: (nodeId: string, replacement: string) => void;
+  onReviseNode: (nodeId: string, replacement: string) => void;
+  onDeleteNode: (nodeId: string) => void;
+  onAddSupplement: (nodeId: string, draft?: string) => void;
   onExport: () => void;
 }
 
@@ -37,9 +39,13 @@ export function SidePanel({
   exportState,
   sidePanelBg,
   onDragStart,
-  onApplySuggestion,
+  onReviseNode,
+  onDeleteNode,
+  onAddSupplement,
   onExport,
 }: SidePanelProps) {
+  const showActionAdvice = Boolean(selectedNode && selectedNode.id !== 'root' && selectedNode.riskLevel !== 'none');
+
   return (
     <div className="relative flex w-80 flex-col overflow-hidden border-l border-slate-200 bg-white">
       <div
@@ -133,28 +139,77 @@ export function SidePanel({
                 </span>
               </div>
               <p className="text-xs leading-relaxed text-slate-600">{selectedNode.content}</p>
+              {showActionAdvice && selectedNode.actionReason && (
+                <div className="rounded-lg border border-violet-200 bg-violet-50 px-2 py-1.5 text-[11px] leading-relaxed text-violet-700">
+                  Strategy reason: {selectedNode.actionReason}
+                  {typeof selectedNode.confidence === 'number' && (
+                    <span className="ml-1 text-violet-500">({Math.round(selectedNode.confidence * 100)}% confidence)</span>
+                  )}
+                </div>
+              )}
               {lastAppliedNodeId === selectedNode.id && selectedNode.riskLevel === 'none' && (
                 <p className="text-[11px] font-semibold text-emerald-600">AI update applied; node is now marked as no-risk.</p>
               )}
-              {aiSuggestion && (
+              {showActionAdvice && selectedNode.actionType === 'delete' && (
+                <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3">
+                  <div className="mb-1 flex items-center gap-1 border-l-4 border-red-500 pl-2 text-xs font-semibold text-red-700">
+                    <Trash2 size={12} />
+                    AI Action: Delete
+                  </div>
+                  <p className="text-xs leading-relaxed text-slate-600">
+                    This clause is considered unsafe in current form. Recommended action is to remove it and regenerate a safer alternative.
+                  </p>
+                  <button
+                    className="mt-2 w-full rounded border border-red-200 bg-red-50 px-2 py-1.5 text-xs font-semibold text-red-700 transition hover:border-red-300 hover:bg-red-100"
+                    onClick={() => onDeleteNode(selectedNode.id)}
+                  >
+                    Delete Clause
+                  </button>
+                </div>
+              )}
+              {showActionAdvice && (selectedNode.actionType === 'revise' || (!selectedNode.actionType && aiSuggestion)) && (
                 <div className="mt-3 rounded-lg border border-blue-200 bg-sky-50 p-3">
                   <div className="mb-1 flex items-center gap-1 border-l-4 border-blue-500 pl-2 text-xs font-semibold text-blue-700">
                     <Sparkles size={12} />
-                    AI Suggestion: {aiSuggestion.title}
+                    AI Action: Revise
                   </div>
-                  <p className="text-xs leading-relaxed text-slate-600">{aiSuggestion.reason}</p>
+                  <p className="text-xs leading-relaxed text-slate-600">
+                    {selectedNode.actionReason ?? aiSuggestion?.reason}
+                  </p>
                   <div className="mt-2 rounded border border-slate-200 bg-white p-2 text-xs leading-relaxed text-slate-700">
-                    {aiSuggestion.replacement}
+                    {selectedNode.suggestionText ?? aiSuggestion?.replacement}
                   </div>
                   <button
                     className="mt-2 w-full rounded border border-blue-200 bg-blue-50 px-2 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 hover:border-blue-300"
-                    onClick={() => onApplySuggestion(selectedNode.id, aiSuggestion.replacement)}
+                    onClick={() => onReviseNode(selectedNode.id, selectedNode.suggestionText ?? aiSuggestion?.replacement ?? selectedNode.content)}
                   >
-                    Apply AI Suggestion
+                    Apply Revision
                   </button>
                   {lastAppliedNodeId === selectedNode.id && (
                     <p className="mt-1 text-center text-[11px] text-emerald-600">AI suggestion applied successfully.</p>
                   )}
+                </div>
+              )}
+              {showActionAdvice && selectedNode.actionType === 'add_clause' && (
+                <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                  <div className="mb-1 flex items-center gap-1 border-l-4 border-emerald-500 pl-2 text-xs font-semibold text-emerald-700">
+                    <PlusCircle size={12} />
+                    AI Action: Add Supplement
+                  </div>
+                  <p className="text-xs leading-relaxed text-slate-600">
+                    Existing clause is acceptable, but adding a supplemental constraint can reduce future dispute risk.
+                  </p>
+                  {selectedNode.supplementDraft && (
+                    <div className="mt-2 rounded border border-slate-200 bg-white p-2 text-xs leading-relaxed text-slate-700">
+                      {selectedNode.supplementDraft}
+                    </div>
+                  )}
+                  <button
+                    className="mt-2 w-full rounded border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-xs font-semibold text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-100"
+                    onClick={() => onAddSupplement(selectedNode.id, selectedNode.supplementDraft)}
+                  >
+                    Add Supplement Clause
+                  </button>
                 </div>
               )}
             </div>

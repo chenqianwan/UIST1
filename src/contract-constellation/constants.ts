@@ -25,6 +25,12 @@ export const NODE_LIBRARY: TemplateItem[] = [
     type: 'asset',
     riskLevel: 'low',
     content: 'All deliverables and derivative outcomes of this project are owned by Party A.',
+    actionType: 'add_clause',
+    actionReason:
+      'Main ownership structure is acceptable, but a supplemental clause is needed to define open-source and third-party component attribution.',
+    supplementDraft:
+      'Supplement: Party B shall provide a component inventory (including open-source licenses and third-party restrictions) before final acceptance.',
+    confidence: 0.79,
     satellites: [
       {
         label: 'Background IP',
@@ -53,6 +59,12 @@ export const NODE_LIBRARY: TemplateItem[] = [
     type: 'obligation',
     riskLevel: 'medium',
     content: 'Party A shall conduct acceptance after delivery; specific criteria require joint confirmation.',
+    actionType: 'add_clause',
+    actionReason:
+      'Core acceptance process may remain, but adding a measurable KPI appendix clause will reduce downstream disagreement.',
+    supplementDraft:
+      'Supplement: Appendix A shall define objective KPIs, pass/fail thresholds, and evidence formats for each deliverable item.',
+    confidence: 0.83,
     satellites: [
       { label: 'Defect Remediation', content: 'Party B shall complete defect remediation within a reasonable timeframe.' },
       {
@@ -69,6 +81,10 @@ export const NODE_LIBRARY: TemplateItem[] = [
     type: 'risk',
     riskLevel: 'medium',
     content: 'Direct losses caused by Party B breach shall be compensated within the liability cap.',
+    actionType: 'delete',
+    actionReason:
+      'Current liability sentence partially conflicts with the master indemnity section and should be removed to avoid contradictory cap calculations.',
+    confidence: 0.75,
     satellites: [
       { label: 'Liability Cap', content: 'Compensation cap is based on total contract value.' },
       { label: 'Exemption Clause', content: 'Losses caused by force majeure may be partially exempted.' },
@@ -81,6 +97,12 @@ export const NODE_LIBRARY: TemplateItem[] = [
     type: 'risk',
     riskLevel: 'high',
     content: 'Either party may unilaterally terminate for material breach, but quantitative standards are undefined.',
+    actionType: 'revise',
+    actionReason:
+      'High risk here requires precise redrafting rather than deletion, because termination rights are mandatory for enforceability.',
+    suggestionText:
+      'Revision: "Material breach" means uncured breach lasting more than 15 business days after written notice; termination requires board-level written approval and settlement checklist completion.',
+    confidence: 0.9,
     satellites: [
       { label: 'Notice Period', content: 'A written notice must be issued at least 7 days before termination.' },
       {
