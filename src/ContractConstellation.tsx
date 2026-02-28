@@ -9,6 +9,8 @@ import {
 } from 'react';
 import { Box, DollarSign, Download, FileText, Link2, Shield, Sparkles, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import canvasBg from '../static/canvas_bg.png';
+import sidePanelBg from '../static/side_panel.png';
 
 type NodeKind = 'root' | 'main' | 'sub' | 'leaf';
 type LinkKind = 'root-link' | 'smart-link' | 'child-link' | 'detail-link';
@@ -57,54 +59,89 @@ interface GraphLink {
   type: LinkKind;
 }
 
-const STAR_POINTS = [
-  { x: 6, y: 12, size: 1.5 },
-  { x: 13, y: 26, size: 1.2 },
-  { x: 19, y: 43, size: 1.4 },
-  { x: 24, y: 16, size: 1.1 },
-  { x: 32, y: 36, size: 1.6 },
-  { x: 38, y: 58, size: 1.3 },
-  { x: 44, y: 19, size: 1.2 },
-  { x: 51, y: 11, size: 1.5 },
-  { x: 59, y: 29, size: 1.1 },
-  { x: 67, y: 17, size: 1.4 },
-  { x: 74, y: 35, size: 1.2 },
-  { x: 82, y: 12, size: 1.5 },
-  { x: 88, y: 24, size: 1.1 },
-  { x: 91, y: 45, size: 1.4 },
-  { x: 77, y: 64, size: 1.3 },
-  { x: 61, y: 74, size: 1.2 },
-  { x: 47, y: 83, size: 1.4 },
-  { x: 28, y: 76, size: 1.1 },
-];
-
 const getRiskColor = (riskLevel: RiskLevel): string => {
   switch (riskLevel) {
     case 'none':
-      return '#22c55e';
+      return '#77c8b3';
     case 'low':
-      return '#facc15';
+      return '#dcc46b';
     case 'medium':
-      return '#fb923c';
+      return '#e3a174';
     case 'high':
-      return '#ef4444';
+      return '#de6f66';
     default:
-      return '#22c55e';
+      return '#77c8b3';
   }
 };
 
 const getRiskText = (riskLevel: RiskLevel): string => {
   switch (riskLevel) {
     case 'none':
-      return '无风险';
+      return 'No Risk';
     case 'low':
-      return '低风险';
+      return 'Low Risk';
     case 'medium':
-      return '中风险';
+      return 'Medium Risk';
     case 'high':
-      return '高风险';
+      return 'High Risk';
     default:
-      return '无风险';
+      return 'No Risk';
+  }
+};
+
+const getRiskNodeStrokeColor = (riskLevel: RiskLevel): string => {
+  switch (riskLevel) {
+    case 'none':
+      return '#77c8b3';
+    case 'low':
+      return '#dcc46b';
+    case 'medium':
+      return '#e3a174';
+    case 'high':
+      return '#de6f66';
+    default:
+      return '#77c8b3';
+  }
+};
+
+/** Seeded 0–1 from string id for stable per-node randomness */
+function seededRandom(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = ((h << 5) - h + id.charCodeAt(i)) | 0;
+  return (Math.abs(h) % 10000) / 10000;
+}
+
+/** Highlight arc length (min = current, max = 1/3 of circle); position in bottom-right */
+function getNodeHighlightParams(nodeId: string, arcR: number): { length: number; offset: number } {
+  const circum = 2 * Math.PI * arcR;
+  const minLength = circum * (150 / 1055);
+  const maxLength = circum / 3;
+  const u = seededRandom(nodeId);
+  const v = seededRandom(nodeId + '2');
+  const length = minLength + u * (maxLength - minLength);
+  const offsetStart = circum * 0.12;
+  const offsetEnd = circum * 0.42;
+  const offset = -(offsetStart + v * (offsetEnd - offsetStart));
+  return { length, offset };
+}
+
+const getRiskNodeGradientId = (riskLevel: RiskLevel): string => {
+  switch (riskLevel) {
+    case 'none': return 'node-fill-none';
+    case 'low': return 'node-fill-low';
+    case 'medium': return 'node-fill-medium';
+    case 'high': return 'node-fill-high';
+    default: return 'node-fill-none';
+  }
+};
+
+const getRiskNodeInnerStroke = (riskLevel: RiskLevel): string => {
+  switch (riskLevel) {
+    case 'none': return '#89cfbb';
+    case 'low': return '#e3cd79';
+    case 'medium': return '#e9af89';
+    case 'high': return '#ea8b83';
+    default: return '#89cfbb';
   }
 };
 
@@ -112,112 +149,112 @@ const getAiSuggestion = (node: GraphNode) => {
   if (node.riskLevel === 'none') return null;
   if (node.riskLevel === 'low') {
     return {
-      title: '建议补强措辞',
-      reason: '当前条款总体可用，但部分触发条件和边界描述偏宽泛。',
-      replacement: `${node.content} 建议补充“以双方签字确认文件为准”的判定标准。`,
+      title: 'Strengthen Wording',
+      reason: 'The clause is usable overall, but trigger conditions and boundaries are still broad.',
+      replacement: `${node.content} Suggested addition: "Determination is subject to written confirmation signed by both parties."`,
     };
   }
   if (node.riskLevel === 'medium') {
     return {
-      title: '建议明确执行条件',
-      reason: '该条款存在解释空间，可能导致执行口径不一致。',
-      replacement: `${node.content} 建议增加明确的时间节点、验收标准和书面确认流程。`,
+      title: 'Clarify Execution Conditions',
+      reason: 'This clause has interpretation ambiguity and may lead to inconsistent execution.',
+      replacement: `${node.content} Suggested addition: explicit timelines, acceptance criteria, and written confirmation workflow.`,
     };
   }
   return {
-    title: '高风险建议立即修订',
-    reason: '条款争议风险较高，建议增加量化条件和违约后处理路径。',
-    replacement: `${node.content} 建议补充“触发条件、责任上限、争议解决时限”三项硬性约束，并以附件标准模板执行。`,
+    title: 'High-Risk: Immediate Revision Suggested',
+    reason: 'This clause has a high dispute risk; add quantifiable conditions and post-breach handling paths.',
+    replacement: `${node.content} Suggested addition: hard constraints for "trigger conditions, liability cap, and dispute-resolution timeline", executed via a standard appendix template.`,
   };
 };
 
 const NODE_LIBRARY: TemplateItem[] = [
   {
     id: 'tpl-payment',
-    label: '标准付款条款',
-    description: '付款节点清晰、时限明确，执行风险低',
+    label: 'Standard Payment Terms',
+    description: 'Clear payment milestones and timelines with low execution risk',
     type: 'financial',
     riskLevel: 'none',
-    content: '甲方应在验收通过后 10 个工作日内支付对应阶段费用。',
+    content: 'Party A shall pay the corresponding milestone fee within 10 business days after acceptance.',
     satellites: [
       {
-        label: '首付款',
-        content: '合同签署后支付首付款。',
-        details: [{ label: '付款凭证', content: '以银行回单作为首付款完成凭证。' }],
+        label: 'Initial Payment',
+        content: 'Initial payment is due upon contract signing.',
+        details: [{ label: 'Payment Proof', content: 'Bank transfer receipt serves as proof of initial payment.' }],
       },
-      { label: '验收款', content: '验收通过后支付第二阶段款项。' },
-      { label: '尾款', content: '质保期结束后支付剩余尾款。' },
+      { label: 'Acceptance Payment', content: 'Second-stage payment is due after acceptance is approved.' },
+      { label: 'Final Payment', content: 'Remaining balance is due after the warranty period ends.' },
     ],
   },
   {
     id: 'tpl-ip',
-    label: '知识产权归属',
-    description: '交付物权属清晰，但侵权界定仍需补强',
+    label: 'Intellectual Property Ownership',
+    description: 'Deliverable ownership is clear, but infringement boundaries need refinement',
     type: 'asset',
     riskLevel: 'low',
-    content: '本项目交付物及其衍生成果的知识产权归甲方所有。',
+    content: 'All deliverables and derivative outcomes of this project are owned by Party A.',
     satellites: [
       {
-        label: '背景 IP',
-        content: '乙方保留既有背景知识产权。',
-        details: [{ label: '授权范围', content: '背景 IP 在本项目内授予非独占使用许可。' }],
+        label: 'Background IP',
+        content: 'Party B retains pre-existing background intellectual property rights.',
+        details: [{ label: 'License Scope', content: 'Background IP grants a non-exclusive license for this project only.' }],
       },
-      { label: '侵权担保', content: '乙方对侵权风险承担赔偿责任。' },
+      { label: 'Infringement Warranty', content: 'Party B assumes indemnification responsibility for infringement risk.' },
     ],
   },
   {
     id: 'tpl-confidentiality',
-    label: '双向保密义务',
-    description: '覆盖保密期限和例外披露，风险可控',
+    label: 'Mutual Confidentiality Obligation',
+    description: 'Covers confidentiality duration and disclosure exceptions with controllable risk',
     type: 'obligation',
     riskLevel: 'none',
-    content: '双方应对合作期间知悉的商业秘密承担持续保密义务。',
+    content: 'Both parties shall maintain ongoing confidentiality for trade secrets learned during collaboration.',
     satellites: [
-      { label: '保密期限', content: '协议终止后仍保持约定期限保密。' },
-      { label: '披露例外', content: '法律强制披露场景可作为例外。' },
+      { label: 'Confidentiality Period', content: 'Confidentiality obligations continue for the agreed period after termination.' },
+      { label: 'Disclosure Exceptions', content: 'Legally mandated disclosure scenarios are treated as exceptions.' },
     ],
   },
   {
     id: 'tpl-acceptance',
-    label: '验收标准条款',
-    description: '验收标准不够量化，争议概率中等',
+    label: 'Acceptance Criteria Clause',
+    description: 'Acceptance criteria are not sufficiently quantifiable; dispute risk is medium',
     type: 'obligation',
     riskLevel: 'medium',
-    content: '甲方应在交付后进行验收，但具体验收指标需双方另行确认。',
+    content: 'Party A shall conduct acceptance after delivery; specific criteria require joint confirmation.',
     satellites: [
-      { label: '缺陷修复', content: '乙方应在合理期限内完成缺陷修复。' },
+      { label: 'Defect Remediation', content: 'Party B shall complete defect remediation within a reasonable timeframe.' },
       {
-        label: '复验流程',
-        content: '复验不通过时应进入再次整改流程。',
-        details: [{ label: '复验时限', content: '每次整改后 3 个工作日内完成复验反馈。' }],
+        label: 'Re-Validation Process',
+        content: 'If re-validation fails, another remediation cycle must begin.',
+        details: [{ label: 'Re-Validation SLA', content: 'Provide re-validation feedback within 3 business days after each remediation.' }],
       },
     ],
   },
   {
     id: 'tpl-liability',
-    label: '责任与赔偿',
-    description: '责任上限及免责边界存在解释空间',
+    label: 'Liability and Indemnification',
+    description: 'Liability cap and exemption boundaries still leave interpretation room',
     type: 'risk',
     riskLevel: 'medium',
-    content: '因乙方违约导致的直接损失，应在责任上限内予以赔偿。',
+    content: 'Direct losses caused by Party B breach shall be compensated within the liability cap.',
     satellites: [
-      { label: '责任上限', content: '赔偿上限以合同总价为基准。' },
-      { label: '免责条款', content: '不可抗力导致损失可部分免责。' },
+      { label: 'Liability Cap', content: 'Compensation cap is based on total contract value.' },
+      { label: 'Exemption Clause', content: 'Losses caused by force majeure may be partially exempted.' },
     ],
   },
   {
     id: 'tpl-termination',
-    label: '单方解除权',
-    description: '触发条件不明确，存在高争议和高风险',
+    label: 'Unilateral Termination Right',
+    description: 'Trigger conditions are ambiguous, creating high dispute and risk potential',
     type: 'risk',
     riskLevel: 'high',
-    content: '一方可在认定重大违约时单方解除合同，但未定义量化标准。',
+    content: 'Either party may unilaterally terminate for material breach, but quantitative standards are undefined.',
     satellites: [
-      { label: '通知期限', content: '解除前应至少提前 7 日发出书面通知。' },
+      { label: 'Notice Period', content: 'A written notice must be issued at least 7 days before termination.' },
       {
-        label: '损失结算',
-        content: '解除后双方应在 15 日内完成费用结算。',
-        details: [{ label: '结算口径', content: '按已完成里程碑及可验收成果进行结算。' }],
+        label: 'Loss Settlement',
+        content: 'Both parties shall complete settlement within 15 days after termination.',
+        details: [{ label: 'Settlement Basis', content: 'Settlement is based on completed milestones and acceptable deliverables.' }],
       },
     ],
   },
@@ -229,11 +266,40 @@ const distance = (a: GraphNode, b: GraphNode): number => {
   return Math.sqrt(dx * dx + dy * dy);
 };
 
+const getEdgePath = (
+  source: GraphNode,
+  target: GraphNode,
+  bend = 0.18,
+  sourcePadding = 0,
+  targetPadding = 0,
+): string => {
+  const dx = target.x - source.x;
+  const dy = target.y - source.y;
+  const len = Math.sqrt(dx * dx + dy * dy) || 1;
+  const ux = dx / len;
+  const uy = dy / len;
+  const maxPad = Math.max(0, len / 2 - 2);
+  const startPad = Math.min(sourcePadding, maxPad);
+  const endPad = Math.min(targetPadding, maxPad);
+  const sx = source.x + ux * startPad;
+  const sy = source.y + uy * startPad;
+  const tx = target.x - ux * endPad;
+  const ty = target.y - uy * endPad;
+  const mx = (sx + tx) / 2;
+  const my = (sy + ty) / 2;
+  const nx = -dy / len;
+  const ny = dx / len;
+  const curve = Math.min(34, len * bend);
+  const cx = mx + nx * curve;
+  const cy = my + ny * curve;
+  return `M ${sx} ${sy} Q ${cx} ${cy} ${tx} ${ty}`;
+};
+
 const useGalaxyEngine = (width: number, height: number) => {
   const rootNode = useMemo<GraphNode>(
     () => ({
       id: 'root',
-      label: '主合同',
+      label: 'Master Contract',
       type: 'root',
       color: '#cbd5e1',
       x: width / 2,
@@ -241,7 +307,7 @@ const useGalaxyEngine = (width: number, height: number) => {
       vx: 0,
       vy: 0,
       r: 30,
-      content: '合同结构中心节点',
+      content: 'Contract structure central node',
       riskLevel: 'none',
     }),
     [width, height],
@@ -425,17 +491,19 @@ const useGalaxyEngine = (width: number, height: number) => {
         return;
       }
 
-      const repulsion = 5200;
+      const repulsion = 7600;
       const damping = 0.88;
-      const centerPull = 0.006;
+      const centerPull = 0.0036;
       const rootSpring = 0.02;
       const smartSpring = 0.06;
       const childSpring = 0.12;
       const detailSpring = 0.14;
-      const rootLen = 170;
-      const smartLen = 140;
-      const childLen = 62;
-      const detailLen = 38;
+      // Adapt spacing by graph density to better use the canvas area.
+      const spreadFactor = localNodes.length <= 12 ? 1.58 : localNodes.length <= 22 ? 1.28 : 1.05;
+      const rootLen = 188 * spreadFactor;
+      const smartLen = 156 * spreadFactor;
+      const childLen = 70 * spreadFactor;
+      const detailLen = 44 * spreadFactor;
 
       const forces = localNodes.map(() => ({ fx: 0, fy: 0 }));
 
@@ -450,7 +518,7 @@ const useGalaxyEngine = (width: number, height: number) => {
           const dy = a.y - b.y;
           const d2 = dx * dx + dy * dy || 1;
           const d = Math.sqrt(d2);
-          if (d > 320) continue;
+          if (d > 420) continue;
           const f = repulsion / d2;
           const fx = (dx / d) * f;
           const fy = (dy / d) * f;
@@ -568,6 +636,7 @@ export default function ContractConstellation() {
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
   const [isOverTrash, setIsOverTrash] = useState(false);
   const [exportState, setExportState] = useState<'idle' | 'exporting' | 'success'>('idle');
+  const [revealStage, setRevealStage] = useState<1 | 2>(2);
   const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const exportTimerRef = useRef<number | null>(null);
   const {
@@ -592,22 +661,41 @@ export default function ContractConstellation() {
     () => (selectedNode && selectedNode.id !== 'root' ? getAiSuggestion(selectedNode) : null),
     [selectedNode],
   );
-  const focusedNodeIds = useMemo(() => {
+  const focusDepthMap = useMemo(() => {
     if (!selectedNodeId) return null;
-    const related = new Set<string>();
+    const depthMap = new Map<string, number>();
     const queue: string[] = [selectedNodeId];
+    const queueDepth: number[] = [0];
     while (queue.length > 0) {
       const current = queue.shift();
-      if (!current || related.has(current)) continue;
-      related.add(current);
+      const currentDepth = queueDepth.shift() ?? 0;
+      if (!current || depthMap.has(current)) continue;
+      depthMap.set(current, currentDepth);
       links.forEach((link) => {
-        if (link.source === current && !related.has(link.target)) {
+        if (link.source === current && !depthMap.has(link.target)) {
           queue.push(link.target);
+          queueDepth.push(currentDepth + 1);
         }
       });
     }
-    return related;
+    return depthMap;
   }, [links, selectedNodeId]);
+  const incomingNodeIds = useMemo(() => {
+    if (!selectedNodeId) return new Set<string>();
+    return new Set(
+      links.filter((link) => link.target === selectedNodeId && link.source !== selectedNodeId).map((link) => link.source),
+    );
+  }, [links, selectedNodeId]);
+
+  useEffect(() => {
+    if (!selectedNodeId) {
+      setRevealStage(2);
+      return;
+    }
+    setRevealStage(1);
+    const timer = window.setTimeout(() => setRevealStage(2), 260);
+    return () => window.clearTimeout(timer);
+  }, [selectedNodeId]);
 
   const handleDragStart = (event: DragEvent<HTMLDivElement>, templateId: string) => {
     event.dataTransfer.effectAllowed = 'copy';
@@ -767,75 +855,51 @@ export default function ContractConstellation() {
   }, []);
 
   return (
-    <div className="flex h-full w-full overflow-hidden border border-indigo-400/20 bg-slate-950 shadow-[0_20px_80px_rgba(15,23,42,0.75)]">
-      <div className="relative flex-1 bg-[radial-gradient(circle_at_20%_20%,#1e1b4b_0%,#0f172a_40%,#020617_100%)]">
-        <div className="pointer-events-none absolute inset-0 opacity-[0.13] [background-image:linear-gradient(rgba(148,163,184,0.28)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.28)_1px,transparent_1px)] [background-size:56px_56px]" />
-        <div className="pointer-events-none absolute inset-0 opacity-30 [background:radial-gradient(circle_at_10%_15%,rgba(99,102,241,0.45),transparent_30%),radial-gradient(circle_at_88%_18%,rgba(56,189,248,0.28),transparent_25%),radial-gradient(circle_at_55%_82%,rgba(244,114,182,0.2),transparent_35%)]" />
-        <div className="pointer-events-none absolute inset-0">
-          {STAR_POINTS.map((star, idx) => (
-            <motion.span
-              key={`${star.x}-${star.y}`}
-              className="absolute rounded-full bg-white/90"
-              style={{
-                left: `${star.x}%`,
-                top: `${star.y}%`,
-                width: `${star.size}px`,
-                height: `${star.size}px`,
-              }}
-              animate={{ opacity: [0.25, 0.8, 0.25], scale: [1, 1.18, 1] }}
-              transition={{
-                duration: 2.4 + (idx % 5) * 0.45,
-                repeat: Infinity,
-                ease: 'easeInOut',
-                delay: (idx % 7) * 0.22,
-              }}
-            />
-          ))}
-        </div>
-        <motion.div
-          className="pointer-events-none absolute -left-24 top-20 h-56 w-56 rounded-full bg-indigo-500/20 blur-3xl"
-          animate={{ x: [0, 20, 0], y: [0, -12, 0] }}
-          transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
+    <div className="flex h-full w-full overflow-hidden border border-slate-200 bg-[#F7F9FC]">
+      <div className="relative flex-1 select-none border-r border-slate-200 bg-white">
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage: `url(${canvasBg})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            opacity: 0.14,
+          }}
         />
-        <motion.div
-          className="pointer-events-none absolute bottom-14 right-10 h-52 w-52 rounded-full bg-cyan-400/20 blur-3xl"
-          animate={{ x: [0, -16, 0], y: [0, 10, 0] }}
-          transition={{ duration: 8.5, repeat: Infinity, ease: 'easeInOut' }}
-        />
+        <div className="pointer-events-none absolute inset-0 bg-white/86" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_100%_at_50%_40%,rgba(255,255,255,0)_0%,rgba(255,255,255,0.3)_100%)]" />
 
-        <div className="absolute left-4 top-4 z-10 rounded-lg border border-white/15 bg-slate-900/55 px-3 py-2 text-xs text-slate-200 backdrop-blur-md">
-          拖拽右侧节点到主编辑区，系统会自动创建关联关系
-        </div>
-        <div className="absolute right-4 top-4 z-10 rounded-lg border border-cyan-300/30 bg-cyan-400/10 px-3 py-1.5 text-[11px] font-medium text-cyan-100 backdrop-blur-md">
-          UIST Demo Visual Build
+        <div className="absolute left-4 top-4 z-10 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 shadow-sm">
+          Drag nodes from the right panel into the canvas to auto-create relationships.
         </div>
         <div
           ref={trashRef}
-          className={`absolute bottom-20 left-4 z-20 w-52 rounded-xl border border-dashed p-3 text-center transition ${
+          className={`pointer-events-none absolute bottom-20 left-4 z-0 w-52 rounded-xl border border-dashed p-3 text-center transition ${
             isOverTrash
-              ? 'border-red-400 bg-red-500/20 text-red-100 shadow-[0_0_24px_rgba(248,113,113,0.35)]'
+              ? 'border-red-400 bg-red-50 text-red-600'
               : draggingNodeId
-                ? 'border-red-400/70 bg-red-500/10 text-red-200'
-                : 'border-white/25 bg-slate-900/55 text-slate-300'
+                ? 'border-red-300 bg-red-50 text-red-500'
+                : 'border-slate-300 bg-white text-slate-600'
           }`}
         >
           <div className="flex items-center justify-center gap-2 text-xs font-semibold">
             <Trash2 size={14} />
-            拖拽到此
+            Drop Here
           </div>
-          <p className="mt-1 text-[11px] opacity-80">子条例删除 / 主条款取消引用</p>
+          <p className="mt-1 text-[11px] opacity-80">Sub-clause: Delete / Main clause: Remove reference</p>
         </div>
-        <div className="absolute bottom-4 left-4 z-10 rounded-lg border border-white/15 bg-slate-900/55 px-3 py-2 text-[11px] text-slate-200 backdrop-blur-md">
-          <div className="mb-1 font-semibold text-slate-100">风险色阶</div>
+        <div className="absolute bottom-4 left-4 z-10 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-600 shadow-sm">
+          <div className="mb-1 font-semibold text-slate-700">Risk Legend</div>
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: getRiskColor('none') }} />
-            无风险
+            No Risk
             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: getRiskColor('low') }} />
-            低风险
+            Low Risk
             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: getRiskColor('medium') }} />
-            中风险
+            Medium Risk
             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: getRiskColor('high') }} />
-            高风险
+            High Risk
           </div>
         </div>
 
@@ -853,19 +917,41 @@ export default function ContractConstellation() {
           }}
           onDragLeave={() => setIsDragOverCanvas(false)}
           onDrop={handleDrop}
-          className="h-full w-full cursor-crosshair"
+          className="relative z-[1] h-full w-full cursor-crosshair"
         >
           <defs>
-            <marker id="auto-arrow" markerWidth="10" markerHeight="10" refX="20" refY="3" orient="auto">
-              <path d="M0,0 L0,6 L9,3 z" fill="#94a3b8" />
+            <marker
+              id="auto-arrow"
+              viewBox="0 0 10 10"
+              markerWidth="6"
+              markerHeight="6"
+              refX="10"
+              refY="5"
+              orient="auto"
+              markerUnits="userSpaceOnUse"
+            >
+              <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8" />
             </marker>
-            <filter id="node-glow">
-              <feGaussianBlur stdDeviation="3" result="coloredBlur" />
-              <feMerge>
-                <feMergeNode in="coloredBlur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
+            <radialGradient id="node-fill-none" cx="34%" cy="30%" r="76%">
+              <stop offset="0%" stopColor="#9fd8c9" />
+              <stop offset="100%" stopColor="#90cdc0" />
+            </radialGradient>
+            <radialGradient id="node-fill-low" cx="34%" cy="30%" r="76%">
+              <stop offset="0%" stopColor="#efd27c" />
+              <stop offset="100%" stopColor="#e7c86a" />
+            </radialGradient>
+            <radialGradient id="node-fill-medium" cx="34%" cy="30%" r="76%">
+              <stop offset="0%" stopColor="#efae95" />
+              <stop offset="100%" stopColor="#e69d84" />
+            </radialGradient>
+            <radialGradient id="node-fill-high" cx="34%" cy="30%" r="76%">
+              <stop offset="0%" stopColor="#ef9b93" />
+              <stop offset="100%" stopColor="#e9867d" />
+            </radialGradient>
+            <radialGradient id="node-soft-light" cx="30%" cy="22%" r="62%">
+              <stop offset="0%" stopColor="#ffffff" stopOpacity={0.2} />
+              <stop offset="100%" stopColor="#ffffff" stopOpacity={0} />
+            </radialGradient>
           </defs>
 
           {links.map((link) => {
@@ -878,42 +964,70 @@ export default function ContractConstellation() {
             const smart = link.type === 'smart-link';
             const child = link.type === 'child-link';
             const detail = link.type === 'detail-link';
-            const isFocused = !selectedNodeId || Boolean(focusedNodeIds?.has(link.source));
-            const flowColor = child || detail ? target.color : smart ? target.color : '#64748b';
+            const sourceDepth = focusDepthMap?.get(link.source);
+            const isFocused = !selectedNodeId || sourceDepth !== undefined;
+            const isIncomingToSelected = Boolean(selectedNodeId) && link.target === selectedNodeId && link.source !== selectedNodeId;
+            const isOutgoingFromSelected = Boolean(selectedNodeId) && link.source === selectedNodeId;
+            const sourceEffectiveR =
+              source.id === 'root' ? source.r : (source.r * 227) / 256;
+            const targetEffectiveR =
+              target.id === 'root' ? target.r : (target.r * 227) / 256;
+            const edgePath = getEdgePath(
+              source,
+              target,
+              detail ? 0.08 : child ? 0.12 : 0.18,
+              sourceEffectiveR,
+              targetEffectiveR,
+            );
+            const shouldRevealEdge =
+              !selectedNodeId ||
+              isIncomingToSelected ||
+              (sourceDepth !== undefined && (revealStage === 2 || sourceDepth <= 1));
+            const edgeCenterX = (source.x + target.x) / 2;
+            const edgeCenterY = (source.y + target.y) / 2;
+            const distToSelected = selectedNode
+              ? Math.hypot(edgeCenterX - selectedNode.x, edgeCenterY - selectedNode.y)
+              : 0;
+            const lensFactor = !selectedNode ? 1 : distToSelected > 320 ? 0.65 : distToSelected > 250 ? 0.82 : 1;
+            const baseOpacity =
+              !shouldRevealEdge
+                ? 0.08
+                : isIncomingToSelected
+                  ? 0.52
+                  : detail
+                    ? 0.44
+                    : child
+                      ? 0.56
+                      : smart
+                        ? 0.44
+                        : 0.3;
             return (
               <g key={`${link.source}-${link.target}-${link.type}`}>
-                <motion.line
+                <motion.path
                   initial={{ pathLength: 0, opacity: 0 }}
                   animate={{
                     pathLength: 1,
-                    opacity: isFocused ? (detail ? 0.5 : child ? 0.6 : smart ? 0.45 : 0.3) : 0.08,
+                    opacity: baseOpacity * lensFactor,
                   }}
                   transition={{ duration: 0.35, ease: 'easeOut' }}
-                  x1={source.x}
-                  y1={source.y}
-                  x2={target.x}
-                  y2={target.y}
-                  stroke={child || detail ? target.color : smart ? target.color : '#64748b'}
-                  strokeWidth={detail ? 1.1 : child ? 1.4 : smart ? 1.8 : 1.2}
-                  strokeDasharray={smart ? '4 3' : child ? '2 2' : detail ? '1.5 2.5' : '0'}
+                  d={edgePath}
+                  stroke={isFocused ? (child || detail ? target.color : '#2563eb') : isIncomingToSelected ? '#94a3b8' : '#cbd5e1'}
+                  strokeWidth={selectedNodeId && sourceDepth !== undefined && sourceDepth <= 1 ? 1.9 : 1.2}
+                  strokeDasharray={detail ? '2 2' : '0'}
+                  strokeLinecap="round"
+                  fill="none"
                   markerEnd="url(#auto-arrow)"
                 />
-                {selectedNodeId && isFocused && (
-                  <motion.line
-                    x1={source.x}
-                    y1={source.y}
-                    x2={target.x}
-                    y2={target.y}
-                    stroke={flowColor}
-                    strokeWidth={detail ? 1.8 : 2.2}
+                {selectedNodeId && isOutgoingFromSelected && (
+                  <motion.path
+                    d={edgePath}
+                    stroke={child || detail ? target.color : '#2563eb'}
+                    strokeWidth={2}
                     strokeLinecap="round"
-                    strokeDasharray={detail ? '5 12' : '8 14'}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: detail ? 0.75 : 0.9, strokeDashoffset: [0, -44] }}
-                    transition={{
-                      opacity: { duration: 0.2 },
-                      strokeDashoffset: { duration: 1.1, repeat: Infinity, ease: 'linear' },
-                    }}
+                    strokeDasharray="7 10"
+                    fill="none"
+                    animate={{ strokeDashoffset: [0, -38], opacity: [0.45, 0.9, 0.45] }}
+                    transition={{ duration: 1.1, repeat: Infinity, ease: 'linear' }}
                   />
                 )}
               </g>
@@ -923,9 +1037,40 @@ export default function ContractConstellation() {
           {nodes.map((node) => {
             const selected = node.id === selectedNodeId;
             const isRoot = node.id === 'root';
-            const isSub = node.type === 'sub';
             const isLeaf = node.type === 'leaf';
-            const isFocused = !focusedNodeIds || focusedNodeIds.has(node.id);
+            const depth = focusDepthMap?.get(node.id);
+            const isIncoming = incomingNodeIds.has(node.id);
+            const isFocused = !selectedNodeId || depth !== undefined || isIncoming;
+            const distToSelected = selectedNode
+              ? Math.hypot(node.x - selectedNode.x, node.y - selectedNode.y)
+              : 0;
+            const lensFactor = !selectedNode ? 1 : distToSelected > 340 ? 0.5 : distToSelected > 260 ? 0.72 : 1;
+            const depthOpacity = !selectedNodeId
+              ? 1
+              : selected
+                ? 1
+                : isIncoming
+                  ? 0.72
+                  : depth === undefined
+                    ? 0.14
+                    : revealStage === 1 && depth > 1
+                      ? 0.16
+                      : depth === 1
+                        ? 0.9
+                        : depth === 2
+                          ? 0.58
+                          : 0.34;
+            const nodeTone = !selectedNodeId
+              ? 1
+              : selected
+                ? 1
+                : isFocused
+                  ? Math.max(0.46, depthOpacity * lensFactor)
+                  : 0.16;
+            const shouldShowLabel =
+              !isLeaf
+                ? !selectedNodeId || selected || isIncoming || (depth !== undefined && depth <= 1)
+                : selected || (depth !== undefined && depth <= 1 && revealStage === 2);
             const isDragging = node.id === draggingNodeId;
             return (
               <motion.g
@@ -934,8 +1079,8 @@ export default function ContractConstellation() {
                 animate={{
                   x: node.x,
                   y: node.y,
-                  opacity: isFocused ? 1 : 0.18,
-                  scale: selected ? 1.12 : isFocused ? 1 : 0.95,
+                  opacity: 1,
+                  scale: selected ? 1.12 : isFocused ? (depth !== undefined && depth > 1 ? 0.98 : 1) : 0.95,
                 }}
                 transition={{
                   x: isDragging
@@ -953,40 +1098,70 @@ export default function ContractConstellation() {
                 }}
                 onPointerDown={(event) => handleNodePointerDown(event, node)}
                 className={node.id === 'root' ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'}
-                style={{ filter: isFocused ? 'none' : 'saturate(0.15) brightness(0.7)' }}
+                style={{
+                  filter: !isFocused
+                    ? 'saturate(0.72) brightness(0.98)'
+                    : selected
+                      ? 'drop-shadow(0 5px 12px rgba(59,130,246,0.2))'
+                      : 'none',
+                }}
               >
                 {selected && (
                   <circle
-                    r={node.r + 8}
+                    r={node.r + 3}
                     fill="none"
-                    stroke={node.color}
-                    strokeOpacity={0.65}
-                    strokeWidth={2}
-                    filter="url(#node-glow)"
+                    stroke={isRoot ? '#94a3b8' : getRiskNodeStrokeColor(node.riskLevel)}
+                    strokeWidth={1.6}
+                    strokeOpacity={0.32}
                   />
                 )}
                 <circle
                   r={node.r}
-                  fill={isRoot ? '#ffffff' : node.color}
-                  fillOpacity={isRoot ? 0.14 : isLeaf ? 0.18 : isSub ? 0.14 : 0.2}
-                  stroke={isRoot ? '#cbd5e1' : node.color}
-                  strokeWidth={isRoot ? 1.5 : isLeaf ? 1.1 : isSub ? 1.3 : 2}
+                  fill={isRoot ? '#f1f3f6' : 'none'}
+                  fillOpacity={isRoot ? Math.min(1, nodeTone + 0.06) : 0}
+                  stroke={isRoot ? '#a4a9b4' : 'none'}
+                  strokeWidth={isRoot ? 1.8 : 0}
+                  strokeOpacity={isRoot ? nodeTone : 0}
                 />
-                <circle
-                  r={isRoot ? 4 : isLeaf ? 1.7 : isSub ? 2 : 3}
-                  fill={isRoot ? '#f8fafc' : node.color}
-                  filter={selected ? 'url(#node-glow)' : undefined}
-                />
-                {(!isLeaf || selected) && (
+                {!isRoot && (() => {
+                  const R = (node.r * 227) / 256;
+                  const arcR = (node.r * 168) / 256;
+                  const circum = 2 * Math.PI * arcR;
+                  const scale = node.r / 256;
+                  const mainStroke = 10.5 * scale;
+                  const innerStroke = 5.2 * scale;
+                  const arcStroke = 36.4 * scale;
+                  const softR = (node.r * 214) / 256;
+                  const innerR = (node.r * 197) / 256;
+                  const { length: highlightLen, offset: highlightOffset } = getNodeHighlightParams(node.id, arcR);
+                  return (
+                    <g opacity={Math.min(1, nodeTone + 0.04)}>
+                      <circle r={R} fill={`url(#${getRiskNodeGradientId(node.riskLevel)})`} stroke={getRiskNodeStrokeColor(node.riskLevel)} strokeWidth={mainStroke} />
+                      <circle r={softR} fill="url(#node-soft-light)" opacity={0.6} />
+                      <circle r={innerR} fill="none" stroke={getRiskNodeInnerStroke(node.riskLevel)} strokeWidth={innerStroke} opacity={0.58} />
+                      <circle r={arcR} fill="none" stroke="#ffffff" strokeWidth={arcStroke} strokeLinecap="round" strokeDasharray={`${circum} 1`} strokeOpacity={0.24} />
+                      <circle r={arcR} fill="none" stroke="#ffffff" strokeWidth={arcStroke} strokeLinecap="round" strokeDasharray={`${highlightLen} ${circum - highlightLen}`} strokeDashoffset={highlightOffset} strokeOpacity={0.94} />
+                    </g>
+                  );
+                })()}
+                {isRoot && (
+                  <circle
+                    r={3.8}
+                    fill="#6b7280"
+                    fillOpacity={nodeTone}
+                  />
+                )}
+                {shouldShowLabel && (
                   <text
                     x={0}
                     y={node.r + 16}
                     textAnchor="middle"
                     fontSize={isLeaf ? 10 : 11}
-                    fill={isRoot ? '#e2e8f0' : node.color}
+                    fill={isRoot ? '#374151' : '#1f2937'}
+                    fillOpacity={Math.min(1, nodeTone + 0.08)}
                     className="pointer-events-none select-none font-semibold"
                   >
-                    {isLeaf ? `·· ${node.label}` : isSub ? `· ${node.label}` : node.label}
+                    {node.label}
                   </text>
                 )}
               </motion.g>
@@ -999,23 +1174,34 @@ export default function ContractConstellation() {
         )}
       </div>
 
-      <div className="relative flex w-80 flex-col border-l border-white/10 bg-slate-900/85 backdrop-blur-xl">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-cyan-400/8 to-transparent" />
-        <div className="border-b border-white/10 px-4 py-3">
-          <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-100">
-            <Link2 size={14} className="text-cyan-300" />
-            节点栏
+      <div className="relative flex w-80 flex-col overflow-hidden border-l border-slate-200 bg-white">
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage: `url(${sidePanelBg})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            opacity: 0.9,
+          }}
+        />
+        <div className="pointer-events-none absolute inset-0 bg-white/72" />
+
+        <div className="relative z-[1] border-b border-slate-200 px-4 py-3">
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+            <Link2 size={14} className="text-blue-600" />
+            Node Library
           </h3>
-          <p className="mt-1 text-xs text-slate-400">拖拽节点到主编辑栏，自动生成联系</p>
+          <p className="mt-1 text-xs text-slate-500">Drag nodes into the main canvas to auto-generate links</p>
         </div>
 
-        <div className="flex-1 space-y-3 overflow-y-auto p-4">
+        <div className="relative z-[1] flex-1 space-y-3 overflow-y-auto p-4">
           {availableTemplates.map((item) => (
             <div
               key={item.id}
               draggable
               onDragStart={(event) => handleDragStart(event, item.id)}
-              className="cursor-grab rounded-xl border border-white/10 bg-slate-800/65 p-3 shadow-[0_8px_24px_rgba(2,6,23,0.4)] transition hover:-translate-y-0.5 hover:border-cyan-300/40 hover:bg-slate-800/85 active:cursor-grabbing"
+              className="cursor-grab rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md active:cursor-grabbing"
             >
               <div className="flex items-start gap-3">
                 <div
@@ -1027,11 +1213,21 @@ export default function ContractConstellation() {
                 >
                   {getTemplateIcon(item.type)}
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <div className="text-sm font-semibold text-slate-100">{item.label}</div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div
+                      className="min-w-0 flex-1 text-sm font-semibold leading-snug text-slate-800"
+                      style={{
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {item.label}
+                    </div>
                     <span
-                      className="rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                      className="shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-semibold"
                       style={{
                         backgroundColor: `${getRiskColor(item.riskLevel)}1f`,
                         color: getRiskColor(item.riskLevel),
@@ -1040,27 +1236,27 @@ export default function ContractConstellation() {
                       {getRiskText(item.riskLevel)}
                     </span>
                   </div>
-                  <div className="mt-1 text-xs leading-snug text-slate-400">{item.description}</div>
+                  <div className="mt-1 text-xs leading-snug text-slate-500">{item.description}</div>
                 </div>
               </div>
             </div>
           ))}
           {availableTemplates.length === 0 && (
-            <div className="rounded-lg border border-dashed border-white/20 bg-slate-800/50 p-4 text-center text-xs text-slate-400">
-              节点已全部添加，可点击画布节点继续编辑。
+            <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-center text-xs text-slate-500">
+              All nodes have been added. Click canvas nodes to continue editing.
             </div>
           )}
         </div>
 
-        <div className="border-t border-white/10 p-4">
-          <div className="rounded-xl border border-white/10 bg-slate-800/55 p-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">当前选中</p>
+        <div className="relative z-[1] border-t border-slate-200 p-4">
+          <div className="rounded-xl border border-slate-200 bg-white p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Selected Node</p>
             {selectedNode && selectedNode.id !== 'root' ? (
               <div className="mt-2 space-y-2">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-slate-100">{selectedNode.label}</p>
+                  <p className="text-sm font-semibold text-slate-800">{selectedNode.label}</p>
                   <span
-                    className="rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                    className="shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-semibold"
                     style={{
                       backgroundColor: `${getRiskColor(selectedNode.riskLevel)}1f`,
                       color: getRiskColor(selectedNode.riskLevel),
@@ -1069,49 +1265,49 @@ export default function ContractConstellation() {
                     {getRiskText(selectedNode.riskLevel)}
                   </span>
                 </div>
-                <p className="text-xs leading-relaxed text-slate-300">{selectedNode.content}</p>
+                <p className="text-xs leading-relaxed text-slate-600">{selectedNode.content}</p>
                 {lastAppliedNodeId === selectedNode.id && selectedNode.riskLevel === 'none' && (
-                  <p className="text-[11px] font-semibold text-emerald-300">AI 修改已生效，节点已标记为无风险状态</p>
+                  <p className="text-[11px] font-semibold text-emerald-600">AI update applied; node is now marked as no-risk.</p>
                 )}
                 {aiSuggestion && (
-                  <div className="mt-3 rounded-lg border border-cyan-400/25 bg-cyan-400/10 p-3">
-                    <div className="mb-1 flex items-center gap-1 text-xs font-semibold text-cyan-200">
+                  <div className="mt-3 rounded-lg border border-blue-200 bg-sky-50 p-3">
+                    <div className="mb-1 flex items-center gap-1 border-l-4 border-blue-500 pl-2 text-xs font-semibold text-blue-700">
                       <Sparkles size={12} />
-                      AI建议：{aiSuggestion.title}
+                      AI Suggestion: {aiSuggestion.title}
                     </div>
-                    <p className="text-xs leading-relaxed text-cyan-100/90">{aiSuggestion.reason}</p>
-                    <div className="mt-2 rounded border border-white/10 bg-slate-900/70 p-2 text-xs leading-relaxed text-slate-200">
+                    <p className="text-xs leading-relaxed text-slate-600">{aiSuggestion.reason}</p>
+                    <div className="mt-2 rounded border border-slate-200 bg-white p-2 text-xs leading-relaxed text-slate-700">
                       {aiSuggestion.replacement}
                     </div>
                     <button
-                      className="mt-2 w-full rounded bg-cyan-500 px-2 py-1.5 text-xs font-semibold text-slate-950 transition hover:bg-cyan-400"
+                      className="mt-2 w-full rounded border border-blue-200 bg-blue-50 px-2 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 hover:border-blue-300"
                       onClick={() => {
                         markNodeAsMitigated(selectedNode.id, aiSuggestion.replacement);
                         setLastAppliedNodeId(selectedNode.id);
                       }}
                     >
-                      一键替换为AI建议
+                      Apply AI Suggestion
                     </button>
                     {lastAppliedNodeId === selectedNode.id && (
-                      <p className="mt-1 text-center text-[11px] text-emerald-300">已替换为 AI 建议文本</p>
+                      <p className="mt-1 text-center text-[11px] text-emerald-600">AI suggestion applied successfully.</p>
                     )}
                   </div>
                 )}
               </div>
             ) : (
-              <p className="mt-2 text-xs text-slate-400">点击画布中的条款节点查看详情</p>
+              <p className="mt-2 text-xs text-slate-500">Click a clause node on the canvas to view details.</p>
             )}
           </div>
           <button
             onClick={handleExportContract}
             disabled={exportState === 'exporting'}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-500 px-3 py-2 text-xs font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-cyan-700/70 disabled:text-slate-200"
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 hover:border-blue-300 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
           >
             <Download size={14} />
-            {exportState === 'exporting' ? '导出中...' : '导出合同'}
+            {exportState === 'exporting' ? 'Exporting...' : 'Export Contract'}
           </button>
           {exportState === 'success' && (
-            <p className="mt-1 text-center text-[11px] text-emerald-300">导出成功，已同步当前修改（Demo）</p>
+            <p className="mt-1 text-center text-[11px] text-emerald-600">Export successful. Current changes were included (Demo).</p>
           )}
         </div>
       </div>

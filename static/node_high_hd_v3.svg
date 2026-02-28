@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <radialGradient id="fill-high" cx="34%" cy="30%" r="76%">
+      <stop offset="0%" stop-color="#ef9b93" />
+      <stop offset="100%" stop-color="#e9867d" />
+    </radialGradient>
+    <radialGradient id="soft-light" cx="30%" cy="22%" r="62%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.2" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <circle cx="256" cy="256" r="227" fill="url(#fill-high)" stroke="#de6f66" stroke-width="10.5" />
+  <circle cx="256" cy="256" r="214" fill="url(#soft-light)" opacity="0.6" />
+  <circle cx="256" cy="256" r="197" fill="none" stroke="#ea8b83" stroke-width="5.2" opacity="0.58" />
+
+  <circle
+    cx="256"
+    cy="256"
+    r="168"
+    fill="none"
+    stroke="#ffffff"
+    stroke-width="36.4"
+    stroke-linecap="round"
+    stroke-dasharray="1056 1"
+    stroke-opacity="0.24"
+  />
+
+  <circle
+    cx="256"
+    cy="256"
+    r="168"
+    fill="none"
+    stroke="#ffffff"
+    stroke-width="36.4"
+    stroke-linecap="round"
+    stroke-dasharray="150 1056"
+    stroke-dashoffset="-154"
+    stroke-opacity="0.94"
+  />
+</svg>
