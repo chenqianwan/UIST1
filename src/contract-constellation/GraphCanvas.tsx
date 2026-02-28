@@ -1,0 +1,309 @@
+import type { PointerEvent } from 'react';
+import { motion } from 'framer-motion';
+import type { GraphLink, GraphNode } from './types';
+import {
+  getEdgePath,
+  getRiskNodeStrokeColor,
+  getRiskNodeGradientId,
+  getRiskNodeInnerStroke,
+  getNodeHighlightParams,
+} from './utils';
+
+const CANVAS_WIDTH = 760;
+const CANVAS_HEIGHT = 620;
+
+interface GraphCanvasProps {
+  nodes: GraphNode[];
+  links: GraphLink[];
+  selectedNodeId: string | null;
+  draggingNodeId: string | null;
+  focusDepthMap: Map<string, number> | null;
+  incomingNodeIds: Set<string>;
+  revealStage: 1 | 2;
+  selectedNode: GraphNode | null;
+  svgRef: React.RefObject<SVGSVGElement | null>;
+  onSelectNode: (nodeId: string | null) => void;
+  onNodePointerDown: (event: PointerEvent<SVGGElement>, node: GraphNode) => void;
+  onDrop: (event: React.DragEvent<SVGSVGElement>) => void;
+  onPointerMove: (event: PointerEvent<SVGSVGElement>) => void;
+  onPointerUp: (event: PointerEvent<SVGSVGElement>) => void;
+  onDragOver: (event: React.DragEvent<SVGSVGElement>) => void;
+  onDragLeave: () => void;
+}
+
+export function GraphCanvas({
+  nodes,
+  links,
+  selectedNodeId,
+  draggingNodeId,
+  focusDepthMap,
+  incomingNodeIds,
+  revealStage,
+  selectedNode,
+  svgRef,
+  onSelectNode,
+  onNodePointerDown,
+  onDrop,
+  onPointerMove,
+  onPointerUp,
+  onDragOver,
+  onDragLeave,
+}: GraphCanvasProps) {
+  const width = CANVAS_WIDTH;
+  const height = CANVAS_HEIGHT;
+
+  return (
+    <svg
+      ref={svgRef as React.RefObject<SVGSVGElement>}
+      width="100%"
+      height="100%"
+      viewBox={`0 0 ${width} ${height}`}
+      onClick={() => onSelectNode(null)}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      className="relative z-[1] h-full w-full cursor-crosshair"
+    >
+      <defs>
+        <marker
+          id="auto-arrow"
+          viewBox="0 0 10 10"
+          markerWidth="6"
+          markerHeight="6"
+          refX="10"
+          refY="5"
+          orient="auto"
+          markerUnits="userSpaceOnUse"
+        >
+          <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8" />
+        </marker>
+        <radialGradient id="node-fill-none" cx="34%" cy="30%" r="76%">
+          <stop offset="0%" stopColor="#9fd8c9" />
+          <stop offset="100%" stopColor="#90cdc0" />
+        </radialGradient>
+        <radialGradient id="node-fill-low" cx="34%" cy="30%" r="76%">
+          <stop offset="0%" stopColor="#efd27c" />
+          <stop offset="100%" stopColor="#e7c86a" />
+        </radialGradient>
+        <radialGradient id="node-fill-medium" cx="34%" cy="30%" r="76%">
+          <stop offset="0%" stopColor="#efae95" />
+          <stop offset="100%" stopColor="#e69d84" />
+        </radialGradient>
+        <radialGradient id="node-fill-high" cx="34%" cy="30%" r="76%">
+          <stop offset="0%" stopColor="#ef9b93" />
+          <stop offset="100%" stopColor="#e9867d" />
+        </radialGradient>
+        <radialGradient id="node-soft-light" cx="30%" cy="22%" r="62%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity={0.2} />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity={0} />
+        </radialGradient>
+      </defs>
+
+      {links.map((link) => {
+        const source = nodes.find((node) => node.id === link.source);
+        const target = nodes.find((node) => node.id === link.target);
+        if (!source || !target) return null;
+        if (draggingNodeId && (link.source === draggingNodeId || link.target === draggingNodeId)) {
+          return null;
+        }
+        const child = link.type === 'child-link';
+        const detail = link.type === 'detail-link';
+        const sourceDepth = focusDepthMap?.get(link.source);
+        const isFocused = !selectedNodeId || sourceDepth !== undefined;
+        const isIncomingToSelected = Boolean(selectedNodeId) && link.target === selectedNodeId && link.source !== selectedNodeId;
+        const isOutgoingFromSelected = Boolean(selectedNodeId) && link.source === selectedNodeId;
+        const sourceEffectiveR = source.id === 'root' ? source.r : (source.r * 227) / 256;
+        const targetEffectiveR = target.id === 'root' ? target.r : (target.r * 227) / 256;
+        const edgePath = getEdgePath(
+          source,
+          target,
+          detail ? 0.08 : child ? 0.12 : 0.18,
+          sourceEffectiveR,
+          targetEffectiveR,
+        );
+        const shouldRevealEdge =
+          !selectedNodeId ||
+          isIncomingToSelected ||
+          (sourceDepth !== undefined && (revealStage === 2 || sourceDepth <= 1));
+        const edgeCenterX = (source.x + target.x) / 2;
+        const edgeCenterY = (source.y + target.y) / 2;
+        const distToSelected = selectedNode
+          ? Math.hypot(edgeCenterX - selectedNode.x, edgeCenterY - selectedNode.y)
+          : 0;
+        const lensFactor = !selectedNode ? 1 : distToSelected > 320 ? 0.65 : distToSelected > 250 ? 0.82 : 1;
+        const baseOpacity =
+          !shouldRevealEdge
+            ? 0.08
+            : isIncomingToSelected
+              ? 0.52
+              : detail
+                ? 0.44
+                : child
+                  ? 0.56
+                  : 0.44;
+        return (
+          <g key={`${link.source}-${link.target}-${link.type}`}>
+            <motion.path
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{
+                pathLength: 1,
+                opacity: baseOpacity * lensFactor,
+              }}
+              transition={{ duration: 0.35, ease: 'easeOut' }}
+              d={edgePath}
+              stroke={isFocused ? (child || detail ? target.color : '#2563eb') : isIncomingToSelected ? '#94a3b8' : '#cbd5e1'}
+              strokeWidth={selectedNodeId && sourceDepth !== undefined && sourceDepth <= 1 ? 1.9 : 1.2}
+              strokeDasharray={detail ? '2 2' : '0'}
+              strokeLinecap="round"
+              fill="none"
+              markerEnd="url(#auto-arrow)"
+            />
+            {selectedNodeId && isOutgoingFromSelected && (
+              <motion.path
+                d={edgePath}
+                stroke={child || detail ? target.color : '#2563eb'}
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeDasharray="7 10"
+                fill="none"
+                animate={{ strokeDashoffset: [0, -38], opacity: [0.45, 0.9, 0.45] }}
+                transition={{ duration: 1.1, repeat: Infinity, ease: 'linear' }}
+              />
+            )}
+          </g>
+        );
+      })}
+
+      {nodes.map((node) => {
+        const selected = node.id === selectedNodeId;
+        const isRoot = node.id === 'root';
+        const isLeaf = node.type === 'leaf';
+        const depth = focusDepthMap?.get(node.id);
+        const isIncoming = incomingNodeIds.has(node.id);
+        const isFocused = !selectedNodeId || depth !== undefined || isIncoming;
+        const distToSelected = selectedNode
+          ? Math.hypot(node.x - selectedNode.x, node.y - selectedNode.y)
+          : 0;
+        const lensFactor = !selectedNode ? 1 : distToSelected > 340 ? 0.5 : distToSelected > 260 ? 0.72 : 1;
+        const depthOpacity = !selectedNodeId
+          ? 1
+          : selected
+            ? 1
+            : isIncoming
+              ? 0.72
+              : depth === undefined
+                ? 0.14
+                : revealStage === 1 && depth > 1
+                  ? 0.16
+                  : depth === 1
+                    ? 0.9
+                    : depth === 2
+                      ? 0.58
+                      : 0.34;
+        const nodeTone = !selectedNodeId
+          ? 1
+          : selected
+            ? 1
+            : isFocused
+              ? Math.max(0.46, depthOpacity * lensFactor)
+              : 0.16;
+        const shouldShowLabel =
+          !isLeaf
+            ? !selectedNodeId || selected || isIncoming || (depth !== undefined && depth <= 1)
+            : selected || (depth !== undefined && depth <= 1 && revealStage === 2);
+        const isDragging = node.id === draggingNodeId;
+
+        return (
+          <motion.g
+            key={node.id}
+            initial={{ opacity: 0, scale: 0.7 }}
+            animate={{
+              x: node.x,
+              y: node.y,
+              opacity: 1,
+              scale: selected ? 1.12 : isFocused ? (depth !== undefined && depth > 1 ? 0.98 : 1) : 0.95,
+            }}
+            transition={{
+              x: isDragging ? { type: 'tween', duration: 0 } : { type: 'spring', stiffness: 170, damping: 18, mass: 0.7 },
+              y: isDragging ? { type: 'tween', duration: 0 } : { type: 'spring', stiffness: 170, damping: 18, mass: 0.7 },
+              scale: { type: 'spring', stiffness: 220, damping: 16 },
+              opacity: { duration: 0.2 },
+            }}
+            onClick={(event) => {
+              event.stopPropagation();
+              onSelectNode(node.id);
+            }}
+            onPointerDown={(event) => onNodePointerDown(event, node)}
+            className={node.id === 'root' ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'}
+            style={{
+              filter: !isFocused
+                ? 'saturate(0.72) brightness(0.98)'
+                : selected
+                  ? 'drop-shadow(0 5px 12px rgba(59,130,246,0.2))'
+                  : 'none',
+            }}
+          >
+            {selected && (
+              <circle
+                r={node.r + 3}
+                fill="none"
+                stroke={isRoot ? '#94a3b8' : getRiskNodeStrokeColor(node.riskLevel)}
+                strokeWidth={1.6}
+                strokeOpacity={0.32}
+              />
+            )}
+            <circle
+              r={node.r}
+              fill={isRoot ? '#f1f3f6' : 'none'}
+              fillOpacity={isRoot ? Math.min(1, nodeTone + 0.06) : 0}
+              stroke={isRoot ? '#a4a9b4' : 'none'}
+              strokeWidth={isRoot ? 1.8 : 0}
+              strokeOpacity={isRoot ? nodeTone : 0}
+            />
+            {!isRoot && (() => {
+              const R = (node.r * 227) / 256;
+              const arcR = (node.r * 168) / 256;
+              const circum = 2 * Math.PI * arcR;
+              const scale = node.r / 256;
+              const mainStroke = 10.5 * scale;
+              const innerStroke = 5.2 * scale;
+              const arcStroke = 36.4 * scale;
+              const softR = (node.r * 214) / 256;
+              const innerR = (node.r * 197) / 256;
+              const { length: highlightLen, offset: highlightOffset } = getNodeHighlightParams(node.id, arcR);
+              return (
+                <g opacity={Math.min(1, nodeTone + 0.04)}>
+                  <circle r={R} fill={`url(#${getRiskNodeGradientId(node.riskLevel)})`} stroke={getRiskNodeStrokeColor(node.riskLevel)} strokeWidth={mainStroke} />
+                  <circle r={softR} fill="url(#node-soft-light)" opacity={0.6} />
+                  <circle r={innerR} fill="none" stroke={getRiskNodeInnerStroke(node.riskLevel)} strokeWidth={innerStroke} opacity={0.58} />
+                  <circle r={arcR} fill="none" stroke="#ffffff" strokeWidth={arcStroke} strokeLinecap="round" strokeDasharray={`${circum} 1`} strokeOpacity={0.24} />
+                  <circle r={arcR} fill="none" stroke="#ffffff" strokeWidth={arcStroke} strokeLinecap="round" strokeDasharray={`${highlightLen} ${circum - highlightLen}`} strokeDashoffset={highlightOffset} strokeOpacity={0.94} />
+                </g>
+              );
+            })()}
+            {isRoot && (
+              <circle r={3.8} fill="#6b7280" fillOpacity={nodeTone} />
+            )}
+            {shouldShowLabel && (
+              <text
+                x={0}
+                y={node.r + 16}
+                textAnchor="middle"
+                fontSize={isLeaf ? 10 : 11}
+                fill={isRoot ? '#374151' : '#1f2937'}
+                fillOpacity={Math.min(1, nodeTone + 0.08)}
+                className="pointer-events-none select-none font-semibold"
+              >
+                {node.label}
+              </text>
+            )}
+          </motion.g>
+        );
+      })}
+    </svg>
+  );
+}
+
+export { CANVAS_WIDTH, CANVAS_HEIGHT };

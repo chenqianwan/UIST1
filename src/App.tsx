@@ -1,4 +1,4 @@
-import ContractConstellation from './ContractConstellation'
+import ContractConstellation from './contract-constellation'
 
 function App() {
   return (
