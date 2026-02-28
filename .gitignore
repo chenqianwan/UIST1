@@ -1,3 +1,9 @@
 node_modules/
 dist/
 .DS_Store
+.venv/
+python/.venv/
+python/__pycache__/
+src/md/
+src/v1.md
+src/vite-env.d.ts
