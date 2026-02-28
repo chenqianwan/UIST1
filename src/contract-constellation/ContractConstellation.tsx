@@ -15,7 +15,15 @@ import { GraphCanvas, CANVAS_WIDTH, CANVAS_HEIGHT } from './GraphCanvas';
 import { SidePanel } from './SidePanel';
 import type { GraphNode } from './types';
 import { getRiskColor, getAiSuggestion } from './utils';
+import { getSemanticTargetXMap } from './semanticEmbedding';
 import { useGalaxyEngine } from './useGalaxyEngine';
+
+const FALLBACK_X_BY_RISK = {
+  none: 0.24,
+  low: 0.42,
+  medium: 0.62,
+  high: 0.8,
+} as const;
 
 export default function ContractConstellation() {
   const width = CANVAS_WIDTH;
@@ -30,6 +38,9 @@ export default function ContractConstellation() {
   const [isOverTrash, setIsOverTrash] = useState(false);
   const [exportState, setExportState] = useState<'idle' | 'exporting' | 'success'>('idle');
   const [revealStage, setRevealStage] = useState<1 | 2>(2);
+  const [semanticBiasStrength, setSemanticBiasStrength] = useState(0);
+  const [riskBiasStrength, setRiskBiasStrength] = useState(0);
+  const [semanticTargetXById, setSemanticTargetXById] = useState<Record<string, number>>({});
   const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const exportTimerRef = useRef<number | null>(null);
 
@@ -41,7 +52,13 @@ export default function ContractConstellation() {
     updateNodePosition,
     removeNodeCascade,
     setDraggingNode,
-  } = useGalaxyEngine(width, height);
+  } = useGalaxyEngine(
+    width,
+    height,
+    semanticBiasStrength,
+    semanticTargetXById,
+    riskBiasStrength,
+  );
 
   const availableTemplates = useMemo(
     () => NODE_LIBRARY.filter((item) => !usedTemplateIds.includes(item.id)),
@@ -57,6 +74,33 @@ export default function ContractConstellation() {
     () => (selectedNode && selectedNode.id !== 'root' ? getAiSuggestion(selectedNode) : null),
     [selectedNode],
   );
+  const semanticNodes = useMemo(
+    () =>
+      nodes
+        .filter((node) => node.id !== 'root')
+        .map((node) => ({
+          id: node.id,
+          label: node.label,
+          content: node.content,
+          riskLevel: node.riskLevel,
+        })),
+    [nodes],
+  );
+  const semanticSignature = useMemo(
+    () =>
+      semanticNodes
+        .map((node) => `${node.id}::${node.label}::${node.content}::${node.riskLevel}`)
+        .join('|'),
+    [semanticNodes],
+  );
+  const semanticNodesForEmbedding = useMemo(() => semanticNodes, [semanticSignature]);
+  const fallbackSemanticTargetXById = useMemo(() => {
+    const map: Record<string, number> = {};
+    semanticNodesForEmbedding.forEach((node) => {
+      map[node.id] = FALLBACK_X_BY_RISK[node.riskLevel];
+    });
+    return map;
+  }, [semanticNodesForEmbedding]);
 
   const focusDepthMap = useMemo(() => {
     if (!selectedNodeId) return null;
@@ -78,6 +122,18 @@ export default function ContractConstellation() {
     return depthMap;
   }, [links, selectedNodeId]);
 
+  const riskHotspot = useMemo(() => {
+    const counts = { none: 0, low: 0, medium: 0, high: 0 };
+    semanticNodesForEmbedding.forEach((node) => {
+      counts[node.riskLevel] += 1;
+    });
+    const ordered: Array<keyof typeof counts> = ['high', 'medium', 'low', 'none'];
+    const top = ordered.find((level) => counts[level] > 0) ?? 'none';
+    const label =
+      top === 'high' ? 'High Risk' : top === 'medium' ? 'Medium Risk' : top === 'low' ? 'Low Risk' : 'No Risk';
+    return { level: top, label, count: counts[top] };
+  }, [semanticNodesForEmbedding]);
+
   const incomingNodeIds = useMemo(() => {
     if (!selectedNodeId) return new Set<string>();
     return new Set(
@@ -94,6 +150,31 @@ export default function ContractConstellation() {
     const timer = window.setTimeout(() => setRevealStage(2), 260);
     return () => window.clearTimeout(timer);
   }, [selectedNodeId]);
+
+  useEffect(() => {
+    if (semanticNodesForEmbedding.length === 0) {
+      setSemanticTargetXById({});
+      return;
+    }
+    let active = true;
+    void getSemanticTargetXMap(semanticNodesForEmbedding)
+      .then((targetMap) => {
+        if (!active) return;
+        if (Object.keys(targetMap).length > 0) {
+          setSemanticTargetXById(targetMap);
+        } else {
+          setSemanticTargetXById(fallbackSemanticTargetXById);
+        }
+      })
+      .catch((error) => {
+        if (!active) return;
+        console.warn('[Semantic] Built-in semantic grouping failed, fallback to risk lanes.', error);
+        setSemanticTargetXById(fallbackSemanticTargetXById);
+      });
+    return () => {
+      active = false;
+    };
+  }, [semanticNodesForEmbedding, fallbackSemanticTargetXById]);
 
   const handleDragStart = (event: DragEvent<HTMLDivElement>, templateId: string) => {
     event.dataTransfer.effectAllowed = 'copy';
@@ -266,23 +347,7 @@ export default function ContractConstellation() {
         <div className="absolute left-4 top-4 z-10 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 shadow-sm">
           Drag nodes from the right panel into the canvas to auto-create relationships.
         </div>
-        <div
-          ref={trashRef}
-          className={`pointer-events-none absolute bottom-20 left-4 z-0 w-52 rounded-xl border border-dashed p-3 text-center transition ${
-            isOverTrash
-              ? 'border-red-400 bg-red-50 text-red-600'
-              : draggingNodeId
-                ? 'border-red-300 bg-red-50 text-red-500'
-                : 'border-slate-300 bg-white text-slate-600'
-          }`}
-        >
-          <div className="flex items-center justify-center gap-2 text-xs font-semibold">
-            <Trash2 size={14} />
-            Drop Here
-          </div>
-          <p className="mt-1 text-[11px] opacity-80">Sub-clause: Delete / Main clause: Remove reference</p>
-        </div>
-        <div className="absolute bottom-4 left-4 z-10 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-600 shadow-sm">
+        <div className="absolute right-4 top-4 z-10 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-600 shadow-sm">
           <div className="mb-1 font-semibold text-slate-700">Risk Legend</div>
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: getRiskColor('none') }} />
@@ -293,6 +358,68 @@ export default function ContractConstellation() {
             Medium Risk
             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: getRiskColor('high') }} />
             High Risk
+          </div>
+        </div>
+        <div className="pointer-events-none absolute bottom-4 left-4 z-10 flex items-end gap-3">
+          <div
+            ref={trashRef}
+            className={`w-48 rounded-xl border border-dashed bg-white p-3 text-center text-slate-600 shadow-sm transition ${
+              isOverTrash
+                ? 'border-red-400 bg-red-50 text-red-600'
+                : draggingNodeId
+                  ? 'border-red-300 bg-red-50 text-red-500'
+                  : 'border-slate-300'
+            }`}
+          >
+            <div className="flex items-center justify-center gap-2 text-xs font-semibold">
+              <Trash2 size={14} />
+              Drop Here
+            </div>
+            <p className="mt-1 text-[11px] opacity-80">Sub-clause: Delete / Main clause: Remove reference</p>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <div className="pointer-events-auto w-[320px] rounded-lg border border-slate-200 bg-white/86 px-3 py-2 text-[11px] text-slate-700 shadow-sm backdrop-blur-sm">
+              <div className="mb-1 flex items-center justify-between">
+                <span className="font-semibold">Analysis Controls</span>
+                <span className="text-slate-500">S {Math.round(semanticBiasStrength * 100)}% / R {Math.round(riskBiasStrength * 100)}%</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <div className="mb-1 flex items-center justify-between text-[10px] text-slate-600">
+                    <span>Semantic Pull</span>
+                    <span>{Math.round(semanticBiasStrength * 100)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={semanticBiasStrength}
+                    onChange={(event) => setSemanticBiasStrength(Number(event.target.value))}
+                    className="h-1.5 w-full accent-slate-500"
+                  />
+                </div>
+                <div>
+                  <div className="mb-1 flex items-center justify-between text-[10px] text-slate-600">
+                    <span>Risk Pull</span>
+                    <span>{Math.round(riskBiasStrength * 100)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={riskBiasStrength}
+                    onChange={(event) => setRiskBiasStrength(Number(event.target.value))}
+                    className="h-1.5 w-full accent-rose-500"
+                  />
+                </div>
+              </div>
+              <div className="mt-2 text-[10px] text-slate-600">
+                Current hotspot: <span className="font-semibold">{riskHotspot.label}</span> ({riskHotspot.count})
+              </div>
+            </div>
           </div>
         </div>
 

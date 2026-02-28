@@ -2,7 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { GraphLink, GraphNode, TemplateItem } from './types';
 import { getRiskColor, distance } from './utils';
 
-export function useGalaxyEngine(width: number, height: number) {
+export function useGalaxyEngine(
+  width: number,
+  height: number,
+  semanticBiasStrength = 0,
+  semanticTargetXById: Record<string, number> = {},
+  riskBiasStrength = 0,
+) {
   const rootNode = useMemo<GraphNode>(
     () => ({
       id: 'root',
@@ -275,6 +281,33 @@ export function useGalaxyEngine(width: number, height: number) {
         forces[ti].fy -= fy;
       });
 
+      if (semanticBiasStrength > 0) {
+        const softForce = 0.12;
+        localNodes.forEach((node, i) => {
+          if (node.id === 'root' || draggingNodeIdRef.current === node.id) return;
+          const targetNorm = semanticTargetXById[node.id];
+          if (typeof targetNorm !== 'number') return;
+          const targetX = width * targetNorm;
+          forces[i].fx += (targetX - node.x) * semanticBiasStrength * softForce;
+        });
+      }
+
+      if (riskBiasStrength > 0) {
+        const softRiskForce = 0.1;
+        const riskLaneX: Record<GraphNode['riskLevel'], number> = {
+          none: 0.24,
+          low: 0.42,
+          medium: 0.62,
+          high: 0.8,
+        };
+        localNodes.forEach((node, i) => {
+          if (node.id === 'root' || draggingNodeIdRef.current === node.id) return;
+          const targetNorm = riskLaneX[node.riskLevel];
+          const targetX = width * targetNorm;
+          forces[i].fx += (targetX - node.x) * riskBiasStrength * softRiskForce;
+        });
+      }
+
       localNodes.forEach((node, i) => {
         if (node.id === 'root') {
           node.x = width / 2;
@@ -304,7 +337,7 @@ export function useGalaxyEngine(width: number, height: number) {
 
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [height, width]);
+  }, [height, width, semanticBiasStrength, semanticTargetXById, riskBiasStrength]);
 
   return {
     nodes,
