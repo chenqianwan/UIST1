@@ -1,7 +1,8 @@
-import { Box, DollarSign, Download, FileText, Link2, Shield, Sparkles } from 'lucide-react';
+import { Box, DollarSign, Download, FileText, Link2, PlusCircle, Shield, Sparkles, Trash2 } from 'lucide-react';
 import type { TemplateItem } from './types';
 import type { GraphNode } from './types';
 import type { AiSuggestion } from './types';
+import type { NodeActionItem, NodeActionType } from './types';
 import { getRiskColor, getRiskText } from './utils';
 
 function getTemplateIcon(type: TemplateItem['type']) {
@@ -21,11 +22,13 @@ interface SidePanelProps {
   availableTemplates: TemplateItem[];
   selectedNode: GraphNode | null;
   aiSuggestion: AiSuggestion | null;
-  lastAppliedNodeId: string | null;
+  lastAppliedAction: { nodeId: string; actionId: string; actionType: NodeActionType } | null;
   exportState: 'idle' | 'exporting' | 'success';
   sidePanelBg: string;
   onDragStart: (event: React.DragEvent<HTMLDivElement>, templateId: string) => void;
-  onApplySuggestion: (nodeId: string, replacement: string) => void;
+  onReviseNode: (nodeId: string, actionId: string, replacement: string) => void;
+  onDeleteNode: (nodeId: string, actionId: string) => void;
+  onAddSupplement: (nodeId: string, actionId: string, draft?: string) => void;
   onExport: () => void;
 }
 
@@ -33,13 +36,61 @@ export function SidePanel({
   availableTemplates,
   selectedNode,
   aiSuggestion,
-  lastAppliedNodeId,
+  lastAppliedAction,
   exportState,
   sidePanelBg,
   onDragStart,
-  onApplySuggestion,
+  onReviseNode,
+  onDeleteNode,
+  onAddSupplement,
   onExport,
 }: SidePanelProps) {
+  const showActionAdvice = Boolean(selectedNode && selectedNode.id !== 'root' && selectedNode.riskLevel !== 'none');
+  const actions = selectedNode?.actions ?? [];
+  const completedCount = actions.filter((action) => action.status === 'completed').length;
+  const pendingActions = actions.filter((action) => action.status !== 'completed');
+  const actionOrder: NodeActionType[] = ['delete', 'revise', 'add_clause'];
+  const actionLabel: Record<NodeActionType, string> = {
+    delete: 'Delete',
+    revise: 'Revise',
+    add_clause: 'Add Supplement',
+  };
+  const actionDescription: Record<NodeActionType, string> = {
+    delete: 'This clause is considered unsafe in current form and should be removed.',
+    revise: 'Refine wording to tighten conditions and reduce ambiguity.',
+    add_clause: 'Add a supplemental clause to close potential loopholes.',
+  };
+  const actionIcon: Record<NodeActionType, JSX.Element> = {
+    delete: <Trash2 size={12} />,
+    revise: <Sparkles size={12} />,
+    add_clause: <PlusCircle size={12} />,
+  };
+  const actionTone: Record<NodeActionType, { box: string; border: string; bar: string; text: string; button: string }> = {
+    delete: {
+      box: 'border-red-200 bg-red-50',
+      border: 'border-red-500',
+      bar: 'text-red-700',
+      text: 'text-red-700',
+      button: 'border-red-200 bg-red-50 text-red-700 hover:border-red-300 hover:bg-red-100',
+    },
+    revise: {
+      box: 'border-blue-200 bg-sky-50',
+      border: 'border-blue-500',
+      bar: 'text-blue-700',
+      text: 'text-blue-700',
+      button: 'border-blue-200 bg-blue-50 text-blue-700 hover:border-blue-300 hover:bg-blue-100',
+    },
+    add_clause: {
+      box: 'border-emerald-200 bg-emerald-50',
+      border: 'border-emerald-500',
+      bar: 'text-emerald-700',
+      text: 'text-emerald-700',
+      button: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-300 hover:bg-emerald-100',
+    },
+  };
+  const sortActions = (list: NodeActionItem[]) =>
+    [...list].sort((a, b) => actionOrder.indexOf(a.type) - actionOrder.indexOf(b.type));
+
   return (
     <div className="relative flex w-80 flex-col overflow-hidden border-l border-slate-200 bg-white">
       <div
@@ -119,7 +170,7 @@ export function SidePanel({
         <div className="rounded-xl border border-slate-200 bg-white p-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Selected Node</p>
           {selectedNode && selectedNode.id !== 'root' ? (
-            <div className="mt-2 space-y-2">
+            <div className="mt-2 max-h-[46vh] space-y-2 overflow-y-auto pr-1">
               <div className="flex items-center gap-2">
                 <p className="text-sm font-semibold text-slate-800">{selectedNode.label}</p>
                 <span
@@ -133,30 +184,54 @@ export function SidePanel({
                 </span>
               </div>
               <p className="text-xs leading-relaxed text-slate-600">{selectedNode.content}</p>
-              {lastAppliedNodeId === selectedNode.id && selectedNode.riskLevel === 'none' && (
-                <p className="text-[11px] font-semibold text-emerald-600">AI update applied; node is now marked as no-risk.</p>
-              )}
-              {aiSuggestion && (
-                <div className="mt-3 rounded-lg border border-blue-200 bg-sky-50 p-3">
-                  <div className="mb-1 flex items-center gap-1 border-l-4 border-blue-500 pl-2 text-xs font-semibold text-blue-700">
-                    <Sparkles size={12} />
-                    AI Suggestion: {aiSuggestion.title}
-                  </div>
-                  <p className="text-xs leading-relaxed text-slate-600">{aiSuggestion.reason}</p>
-                  <div className="mt-2 rounded border border-slate-200 bg-white p-2 text-xs leading-relaxed text-slate-700">
-                    {aiSuggestion.replacement}
-                  </div>
-                  <button
-                    className="mt-2 w-full rounded border border-blue-200 bg-blue-50 px-2 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 hover:border-blue-300"
-                    onClick={() => onApplySuggestion(selectedNode.id, aiSuggestion.replacement)}
-                  >
-                    Apply AI Suggestion
-                  </button>
-                  {lastAppliedNodeId === selectedNode.id && (
-                    <p className="mt-1 text-center text-[11px] text-emerald-600">AI suggestion applied successfully.</p>
-                  )}
+              {showActionAdvice && actions.length > 0 && (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-[11px] text-slate-600">
+                  Action progress: {completedCount} / {actions.length} completed
                 </div>
               )}
+              {lastAppliedAction?.nodeId === selectedNode.id && selectedNode.riskLevel === 'none' && (
+                <p className="text-[11px] font-semibold text-emerald-600">AI update applied; node is now marked as no-risk.</p>
+              )}
+              {showActionAdvice && pendingActions.length > 0 && sortActions(pendingActions).map((action) => {
+                const tone = actionTone[action.type];
+                const actionReason = action.reason ?? (action.type === 'revise' ? aiSuggestion?.reason : undefined);
+                const actionConfidence = typeof action.confidence === 'number' ? action.confidence : undefined;
+                return (
+                  <div key={action.id} className={`mt-3 rounded-lg border p-3 ${tone.box}`}>
+                    <div className={`mb-1 flex items-center gap-1 border-l-4 pl-2 text-xs font-semibold ${tone.border} ${tone.bar}`}>
+                      {actionIcon[action.type]}
+                      AI Action: {actionLabel[action.type]}
+                    </div>
+                    <p className="text-xs leading-relaxed text-slate-600">{actionReason ?? actionDescription[action.type]}</p>
+                    {actionConfidence !== undefined && (
+                      <p className="mt-1 text-[11px] text-slate-500">Confidence: {Math.round(actionConfidence * 100)}%</p>
+                    )}
+                    {action.type === 'revise' && (
+                      <div className="mt-2 rounded border border-slate-200 bg-white p-2 text-xs leading-relaxed text-slate-700">
+                        {action.suggestionText ?? aiSuggestion?.replacement ?? selectedNode.content}
+                      </div>
+                    )}
+                    {action.type === 'add_clause' && action.supplementDraft && (
+                      <div className="mt-2 rounded border border-slate-200 bg-white p-2 text-xs leading-relaxed text-slate-700">
+                        {action.supplementDraft}
+                      </div>
+                    )}
+                    <button
+                      className={`mt-2 w-full rounded border px-2 py-1.5 text-xs font-semibold transition ${tone.button}`}
+                      onClick={() => {
+                        if (action.type === 'delete') onDeleteNode(selectedNode.id, action.id);
+                        if (action.type === 'revise') onReviseNode(selectedNode.id, action.id, action.suggestionText ?? aiSuggestion?.replacement ?? selectedNode.content);
+                        if (action.type === 'add_clause') onAddSupplement(selectedNode.id, action.id, action.supplementDraft);
+                      }}
+                    >
+                      {action.type === 'delete' ? 'Delete Clause' : action.type === 'revise' ? 'Apply Revision' : 'Add Supplement Clause'}
+                    </button>
+                    {lastAppliedAction?.nodeId === selectedNode.id && lastAppliedAction.actionId === action.id && (
+                      <p className="mt-1 text-center text-[11px] text-emerald-600">Action applied successfully.</p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <p className="mt-2 text-xs text-slate-500">Click a clause node on the canvas to view details.</p>

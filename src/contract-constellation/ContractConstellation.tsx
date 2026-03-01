@@ -13,9 +13,33 @@ import sidePanelBg from '../../static/side_panel.png';
 import { NODE_LIBRARY } from './constants';
 import { GraphCanvas, CANVAS_WIDTH, CANVAS_HEIGHT } from './GraphCanvas';
 import { SidePanel } from './SidePanel';
-import type { GraphNode } from './types';
+import type { GraphNode, NodeActionType } from './types';
 import { getRiskColor, getAiSuggestion } from './utils';
+import { getSemanticTargetXMap } from './semanticEmbedding';
 import { useGalaxyEngine } from './useGalaxyEngine';
+
+const FALLBACK_X_BY_RISK = {
+  none: 0.24,
+  low: 0.42,
+  medium: 0.62,
+  high: 0.8,
+} as const;
+
+const TIME_LANE_X_BY_PHASE = {
+  pre_sign: 0.14,
+  effective: 0.28,
+  execution: 0.44,
+  acceptance: 0.6,
+  termination: 0.76,
+  post_termination: 0.88,
+} as const;
+
+const RISK_RANK = {
+  none: 0,
+  low: 1,
+  medium: 2,
+  high: 3,
+} as const;
 
 export default function ContractConstellation() {
   const width = CANVAS_WIDTH;
@@ -25,11 +49,16 @@ export default function ContractConstellation() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isDragOverCanvas, setIsDragOverCanvas] = useState(false);
   const [usedTemplateIds, setUsedTemplateIds] = useState<string[]>([]);
-  const [lastAppliedNodeId, setLastAppliedNodeId] = useState<string | null>(null);
+  const [lastAppliedAction, setLastAppliedAction] = useState<{ nodeId: string; actionId: string; actionType: NodeActionType } | null>(null);
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
   const [isOverTrash, setIsOverTrash] = useState(false);
   const [exportState, setExportState] = useState<'idle' | 'exporting' | 'success'>('idle');
   const [revealStage, setRevealStage] = useState<1 | 2>(2);
+  const [semanticBiasStrength, setSemanticBiasStrength] = useState(0);
+  const [riskBiasStrength, setRiskBiasStrength] = useState(0);
+  const [timeBiasStrength, setTimeBiasStrength] = useState(0);
+  const [semanticTargetXById, setSemanticTargetXById] = useState<Record<string, number>>({});
+  const [timeTargetXById, setTimeTargetXById] = useState<Record<string, number>>({});
   const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const exportTimerRef = useRef<number | null>(null);
 
@@ -37,11 +66,20 @@ export default function ContractConstellation() {
     nodes,
     links,
     addNodeFromTemplate,
-    markNodeAsMitigated,
+    completeNodeAction,
     updateNodePosition,
     removeNodeCascade,
+    addSupplementClause,
     setDraggingNode,
-  } = useGalaxyEngine(width, height);
+  } = useGalaxyEngine(
+    width,
+    height,
+    semanticBiasStrength,
+    semanticTargetXById,
+    riskBiasStrength,
+    timeBiasStrength,
+    timeTargetXById,
+  );
 
   const availableTemplates = useMemo(
     () => NODE_LIBRARY.filter((item) => !usedTemplateIds.includes(item.id)),
@@ -57,6 +95,43 @@ export default function ContractConstellation() {
     () => (selectedNode && selectedNode.id !== 'root' ? getAiSuggestion(selectedNode) : null),
     [selectedNode],
   );
+  const semanticNodes = useMemo(
+    () =>
+      nodes
+        .filter((node) => node.id !== 'root')
+        .map((node) => ({
+          id: node.id,
+          label: node.label,
+          content: node.content,
+          riskLevel: node.riskLevel,
+          timePhase: node.timePhase,
+        })),
+    [nodes],
+  );
+  const semanticSignature = useMemo(
+    () =>
+      semanticNodes
+        .map((node) => `${node.id}::${node.label}::${node.content}::${node.riskLevel}::${node.timePhase}`)
+        .join('|'),
+    [semanticNodes],
+  );
+  const semanticNodesForEmbedding = useMemo(() => semanticNodes, [semanticSignature]);
+  const fallbackSemanticTargetXById = useMemo(() => {
+    const map: Record<string, number> = {};
+    semanticNodesForEmbedding.forEach((node) => {
+      map[node.id] = FALLBACK_X_BY_RISK[node.riskLevel];
+    });
+    return map;
+  }, [semanticNodesForEmbedding]);
+  const fallbackTimeTargetXById = useMemo(() => {
+    const map: Record<string, number> = {};
+    nodes
+      .filter((node) => node.id !== 'root')
+      .forEach((node) => {
+        map[node.id] = TIME_LANE_X_BY_PHASE[node.timePhase];
+      });
+    return map;
+  }, [nodes]);
 
   const focusDepthMap = useMemo(() => {
     if (!selectedNodeId) return null;
@@ -69,6 +144,7 @@ export default function ContractConstellation() {
       if (!current || depthMap.has(current)) continue;
       depthMap.set(current, currentDepth);
       links.forEach((link) => {
+        if (link.type === 'reference-link') return;
         if (link.source === current && !depthMap.has(link.target)) {
           queue.push(link.target);
           queueDepth.push(currentDepth + 1);
@@ -78,12 +154,49 @@ export default function ContractConstellation() {
     return depthMap;
   }, [links, selectedNodeId]);
 
+  const pathMaxRiskByNode = useMemo(() => {
+    const nodeRiskById = new Map(nodes.map((node) => [node.id, node.riskLevel]));
+    const maxRiskMap = new Map<string, GraphNode['riskLevel']>();
+    nodes.forEach((node) => {
+      maxRiskMap.set(node.id, node.riskLevel);
+    });
+
+    const structuralLinks = links.filter((link) => link.type !== 'reference-link');
+    const outgoingBySource = new Map<string, string[]>();
+    structuralLinks.forEach((link) => {
+      const list = outgoingBySource.get(link.source) ?? [];
+      list.push(link.target);
+      outgoingBySource.set(link.source, list);
+    });
+
+    const queue = Array.from(outgoingBySource.keys());
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (!current) continue;
+      const currentMaxRisk = maxRiskMap.get(current) ?? nodeRiskById.get(current) ?? 'none';
+      const targets = outgoingBySource.get(current) ?? [];
+      targets.forEach((targetId) => {
+        const targetCurrent = maxRiskMap.get(targetId) ?? nodeRiskById.get(targetId) ?? 'none';
+        const nextMaxRisk = RISK_RANK[currentMaxRisk] > RISK_RANK[targetCurrent] ? currentMaxRisk : targetCurrent;
+        if (RISK_RANK[nextMaxRisk] > RISK_RANK[targetCurrent]) {
+          maxRiskMap.set(targetId, nextMaxRisk);
+          queue.push(targetId);
+        }
+      });
+    }
+    return maxRiskMap;
+  }, [links, nodes]);
+
   const incomingNodeIds = useMemo(() => {
     if (!selectedNodeId) return new Set<string>();
     return new Set(
       links.filter((link) => link.target === selectedNodeId && link.source !== selectedNodeId).map((link) => link.source),
     );
   }, [links, selectedNodeId]);
+  const aggregationStrength = useMemo(
+    () => Math.max(semanticBiasStrength, riskBiasStrength, timeBiasStrength),
+    [semanticBiasStrength, riskBiasStrength, timeBiasStrength],
+  );
 
   useEffect(() => {
     if (!selectedNodeId) {
@@ -94,6 +207,35 @@ export default function ContractConstellation() {
     const timer = window.setTimeout(() => setRevealStage(2), 260);
     return () => window.clearTimeout(timer);
   }, [selectedNodeId]);
+
+  useEffect(() => {
+    if (semanticNodesForEmbedding.length === 0) {
+      setSemanticTargetXById({});
+      return;
+    }
+    let active = true;
+    void getSemanticTargetXMap(semanticNodesForEmbedding)
+      .then((targetMap) => {
+        if (!active) return;
+        if (Object.keys(targetMap).length > 0) {
+          setSemanticTargetXById(targetMap);
+        } else {
+          setSemanticTargetXById(fallbackSemanticTargetXById);
+        }
+      })
+      .catch((error) => {
+        if (!active) return;
+        console.warn('[Semantic] Built-in semantic grouping failed, fallback to risk lanes.', error);
+        setSemanticTargetXById(fallbackSemanticTargetXById);
+      });
+    return () => {
+      active = false;
+    };
+  }, [semanticNodesForEmbedding, fallbackSemanticTargetXById]);
+
+  useEffect(() => {
+    setTimeTargetXById(fallbackTimeTargetXById);
+  }, [fallbackTimeTargetXById]);
 
   const handleDragStart = (event: DragEvent<HTMLDivElement>, templateId: string) => {
     event.dataTransfer.effectAllowed = 'copy';
@@ -126,27 +268,32 @@ export default function ContractConstellation() {
     setSelectedNodeId(node.id);
   };
 
+  const removeNodeByUserAction = useCallback((nodeId: string) => {
+    const targetNode = nodes.find((node) => node.id === nodeId);
+    if (!targetNode || targetNode.id === 'root') return;
+    if (targetNode.type === 'sub') {
+      removeNodeCascade(nodeId);
+      if (selectedNodeId === nodeId) setSelectedNodeId(null);
+      return;
+    }
+    removeNodeCascade(nodeId);
+    if (targetNode.templateId) {
+      setUsedTemplateIds((prev) => prev.filter((id) => id !== targetNode.templateId));
+    }
+    if (selectedNodeId === nodeId) setSelectedNodeId(null);
+  }, [nodes, removeNodeCascade, selectedNodeId]);
+
   const endNodeDrag = useCallback(
     (shouldDelete: boolean) => {
       if (!draggingNodeId) return;
       if (shouldDelete) {
-        const draggedNode = nodes.find((node) => node.id === draggingNodeId);
-        if (draggedNode?.type === 'sub') {
-          removeNodeCascade(draggingNodeId);
-          if (selectedNodeId === draggingNodeId) setSelectedNodeId(null);
-        } else if (draggedNode && draggedNode.id !== 'root') {
-          removeNodeCascade(draggingNodeId);
-          if (draggedNode.templateId) {
-            setUsedTemplateIds((prev) => prev.filter((id) => id !== draggedNode.templateId));
-          }
-          setSelectedNodeId(null);
-        }
+        removeNodeByUserAction(draggingNodeId);
       }
       setDraggingNodeId(null);
       setDraggingNode(null);
       setIsOverTrash(false);
     },
-    [draggingNodeId, nodes, removeNodeCascade, selectedNodeId, setDraggingNode],
+    [draggingNodeId, removeNodeByUserAction, setDraggingNode],
   );
 
   const updateDraggingByClient = useCallback(
@@ -176,6 +323,7 @@ export default function ContractConstellation() {
   );
 
   const handleCanvasPointerMove = (event: PointerEvent<SVGSVGElement>) => {
+    if (draggingNodeId) return;
     updateDraggingByClient(event.clientX, event.clientY);
   };
 
@@ -186,7 +334,7 @@ export default function ContractConstellation() {
     };
     const onWindowPointerUp = (event: globalThis.PointerEvent) => {
       const shouldDelete = updateDraggingByClient(event.clientX, event.clientY);
-      endNodeDrag(shouldDelete);
+      endNodeDrag(Boolean(shouldDelete));
     };
     window.addEventListener('pointermove', onWindowPointerMove);
     window.addEventListener('pointerup', onWindowPointerUp);
@@ -198,7 +346,7 @@ export default function ContractConstellation() {
 
   const handleCanvasPointerUp = (event: PointerEvent<SVGSVGElement>) => {
     const shouldDelete = updateDraggingByClient(event.clientX, event.clientY);
-    endNodeDrag(shouldDelete);
+    endNodeDrag(Boolean(shouldDelete));
   };
 
   const handleExportContract = useCallback(() => {
@@ -217,6 +365,7 @@ export default function ContractConstellation() {
           label: node.label,
           type: node.type,
           riskLevel: node.riskLevel,
+          timePhase: node.timePhase,
           content: node.content,
           parentId: node.parentId ?? null,
         })),
@@ -240,12 +389,44 @@ export default function ContractConstellation() {
   }, []);
 
   const handleApplySuggestion = useCallback(
-    (nodeId: string, replacement: string) => {
-      markNodeAsMitigated(nodeId, replacement);
-      setLastAppliedNodeId(nodeId);
+    (nodeId: string, actionId: string, replacement: string) => {
+      const didComplete = completeNodeAction(nodeId, actionId, replacement);
+      if (didComplete) {
+        setLastAppliedAction({ nodeId, actionId, actionType: 'revise' });
+      }
     },
-    [markNodeAsMitigated],
+    [completeNodeAction],
   );
+
+  const handleDeleteNodeAction = useCallback((nodeId: string, actionId: string) => {
+    const node = nodes.find((item) => item.id === nodeId);
+    if (!node || node.id === 'root') return;
+    removeNodeCascade(nodeId);
+    if (node.templateId) {
+      setUsedTemplateIds((prev) => prev.filter((id) => id !== node.templateId));
+    }
+    setSelectedNodeId(null);
+    setLastAppliedAction({ nodeId, actionId, actionType: 'delete' });
+  }, [nodes, removeNodeCascade]);
+
+  const handleAddSupplementAction = useCallback((nodeId: string, actionId: string, draft?: string) => {
+    addSupplementClause(nodeId, draft);
+    const targetNode = nodes.find((node) => node.id === nodeId);
+    if (targetNode && targetNode.id !== 'root') {
+      const mergedContent = draft?.trim()
+        ? `${targetNode.content} ${draft.trim()}`
+        : targetNode.content;
+      const didComplete = completeNodeAction(nodeId, actionId, mergedContent);
+      if (didComplete) {
+        setLastAppliedAction({ nodeId, actionId, actionType: 'add_clause' });
+      }
+    }
+  }, [addSupplementClause, completeNodeAction, nodes]);
+  const deletableSelectedNode = selectedNode && selectedNode.id !== 'root' ? selectedNode : null;
+  const handleDeleteSelectedNode = useCallback(() => {
+    if (!deletableSelectedNode) return;
+    removeNodeByUserAction(deletableSelectedNode.id);
+  }, [deletableSelectedNode, removeNodeByUserAction]);
 
   return (
     <div className="flex h-full w-full overflow-hidden border border-slate-200 bg-[#F7F9FC]">
@@ -266,24 +447,7 @@ export default function ContractConstellation() {
         <div className="absolute left-4 top-4 z-10 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 shadow-sm">
           Drag nodes from the right panel into the canvas to auto-create relationships.
         </div>
-        <div
-          ref={trashRef}
-          className={`pointer-events-none absolute bottom-20 left-4 z-0 w-52 rounded-xl border border-dashed p-3 text-center transition ${
-            isOverTrash
-              ? 'border-red-400 bg-red-50 text-red-600'
-              : draggingNodeId
-                ? 'border-red-300 bg-red-50 text-red-500'
-                : 'border-slate-300 bg-white text-slate-600'
-          }`}
-        >
-          <div className="flex items-center justify-center gap-2 text-xs font-semibold">
-            <Trash2 size={14} />
-            Drop Here
-          </div>
-          <p className="mt-1 text-[11px] opacity-80">Sub-clause: Delete / Main clause: Remove reference</p>
-        </div>
-        <div className="absolute bottom-4 left-4 z-10 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-600 shadow-sm">
-          <div className="mb-1 font-semibold text-slate-700">Risk Legend</div>
+        <div className="absolute right-4 top-4 z-10 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-600 shadow-sm">
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: getRiskColor('none') }} />
             No Risk
@@ -294,14 +458,116 @@ export default function ContractConstellation() {
             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: getRiskColor('high') }} />
             High Risk
           </div>
+          <div className="mt-1.5 flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <svg width="28" height="8" viewBox="0 0 28 8" fill="none">
+                <line x1="0" y1="4" x2="22" y2="4" stroke="#2563eb" strokeWidth="1.8" strokeLinecap="round" />
+                <polygon points="22,1 28,4 22,7" fill="#2563eb" />
+              </svg>
+              <span>Structural link</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <svg width="28" height="8" viewBox="0 0 28 8" fill="none">
+                <line x1="0" y1="4" x2="22" y2="4" stroke="#334155" strokeWidth="1.8" strokeDasharray="2 5" strokeLinecap="round" />
+                <polygon points="22,1 28,4 22,7" fill="#334155" />
+              </svg>
+              <span>Reference link</span>
+            </div>
+          </div>
+        </div>
+        <div className="pointer-events-none absolute bottom-4 left-4 z-10">
+          <div
+            ref={trashRef}
+            className={`pointer-events-auto flex h-[96px] w-48 flex-col justify-center rounded-xl border bg-white px-3 py-2 text-center shadow-sm transition ${
+              isOverTrash
+                ? 'cursor-pointer border-red-400 bg-red-100 text-red-700'
+                : draggingNodeId
+                  ? 'cursor-pointer border-red-200 bg-red-50/75 text-red-500'
+                  : deletableSelectedNode
+                    ? 'cursor-pointer border-red-300 bg-red-50/90 text-red-600'
+                    : 'cursor-not-allowed border-slate-200 text-slate-500'
+            }`}
+            style={{ borderStyle: 'solid' }}
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={handleDeleteSelectedNode}
+          >
+            <div className="flex items-center justify-center gap-2 text-sm font-semibold">
+              <Trash2 size={14} />
+              Drop / Click Here
+            </div>
+            <p className="mt-1 overflow-hidden text-ellipsis whitespace-nowrap text-[11px] leading-tight opacity-80">
+              {deletableSelectedNode
+                ? `Delete selected node: ${deletableSelectedNode.label}`
+                : 'Select a node for quick delete'}
+            </p>
+          </div>
+        </div>
+        <div className="pointer-events-none absolute bottom-4 right-4 z-10">
+          <div className="pointer-events-auto flex h-[96px] w-[470px] flex-col justify-center rounded-xl border border-slate-200 bg-white/90 px-4 py-2 text-[11px] text-slate-700 shadow-sm backdrop-blur-sm">
+            <div className="mb-1.5 flex items-center justify-between">
+              <span className="font-semibold">Analysis Controls</span>
+              <span className="text-slate-500">
+                S {Math.round(semanticBiasStrength * 100)}% / R {Math.round(riskBiasStrength * 100)}% / T {Math.round(timeBiasStrength * 100)}%
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-md border border-slate-200 bg-slate-50/65 px-2 py-1">
+                <div className="mb-0.5 flex items-center justify-between text-[10px] text-slate-600">
+                  <span>Semantic Pull</span>
+                  <span>{Math.round(semanticBiasStrength * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={semanticBiasStrength}
+                  onChange={(event) => setSemanticBiasStrength(Number(event.target.value))}
+                  className="analysis-slider analysis-slider--semantic"
+                />
+              </div>
+              <div className="rounded-md border border-slate-200 bg-slate-50/65 px-2 py-1">
+                <div className="mb-0.5 flex items-center justify-between text-[10px] text-slate-600">
+                  <span>Risk Pull</span>
+                  <span>{Math.round(riskBiasStrength * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={riskBiasStrength}
+                  onChange={(event) => setRiskBiasStrength(Number(event.target.value))}
+                  className="analysis-slider analysis-slider--risk"
+                />
+              </div>
+              <div className="rounded-md border border-slate-200 bg-slate-50/65 px-2 py-1">
+                <div className="mb-0.5 flex items-center justify-between text-[10px] text-slate-600">
+                  <span>Time Pull</span>
+                  <span>{Math.round(timeBiasStrength * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={timeBiasStrength}
+                  onChange={(event) => setTimeBiasStrength(Number(event.target.value))}
+                  className="analysis-slider analysis-slider--time"
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
         <GraphCanvas
           nodes={nodes}
           links={links}
+          aggregationStrength={aggregationStrength}
           selectedNodeId={selectedNodeId}
           draggingNodeId={draggingNodeId}
           focusDepthMap={focusDepthMap}
+          pathMaxRiskByNode={pathMaxRiskByNode}
           incomingNodeIds={incomingNodeIds}
           revealStage={revealStage}
           selectedNode={selectedNode}
@@ -327,11 +593,13 @@ export default function ContractConstellation() {
         availableTemplates={availableTemplates}
         selectedNode={selectedNode}
         aiSuggestion={aiSuggestion}
-        lastAppliedNodeId={lastAppliedNodeId}
+        lastAppliedAction={lastAppliedAction}
         exportState={exportState}
         sidePanelBg={sidePanelBg}
         onDragStart={handleDragStart}
-        onApplySuggestion={handleApplySuggestion}
+        onReviseNode={handleApplySuggestion}
+        onDeleteNode={handleDeleteNodeAction}
+        onAddSupplement={handleAddSupplementAction}
         onExport={handleExportContract}
       />
     </div>

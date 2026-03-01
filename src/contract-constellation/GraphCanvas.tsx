@@ -1,8 +1,9 @@
-import type { PointerEvent } from 'react';
+import { useMemo, type PointerEvent } from 'react';
 import { motion } from 'framer-motion';
 import type { GraphLink, GraphNode } from './types';
 import {
   getEdgePath,
+  getRiskColor,
   getRiskNodeStrokeColor,
   getRiskNodeGradientId,
   getRiskNodeInnerStroke,
@@ -15,9 +16,11 @@ const CANVAS_HEIGHT = 620;
 interface GraphCanvasProps {
   nodes: GraphNode[];
   links: GraphLink[];
+  aggregationStrength: number;
   selectedNodeId: string | null;
   draggingNodeId: string | null;
   focusDepthMap: Map<string, number> | null;
+  pathMaxRiskByNode: Map<string, GraphNode['riskLevel']> | null;
   incomingNodeIds: Set<string>;
   revealStage: 1 | 2;
   selectedNode: GraphNode | null;
@@ -34,9 +37,11 @@ interface GraphCanvasProps {
 export function GraphCanvas({
   nodes,
   links,
+  aggregationStrength,
   selectedNodeId,
   draggingNodeId,
   focusDepthMap,
+  pathMaxRiskByNode,
   incomingNodeIds,
   revealStage,
   selectedNode,
@@ -51,6 +56,23 @@ export function GraphCanvas({
 }: GraphCanvasProps) {
   const width = CANVAS_WIDTH;
   const height = CANVAS_HEIGHT;
+  const nodeById = useMemo(() => {
+    const map = new Map<string, GraphNode>();
+    nodes.forEach((node) => map.set(node.id, node));
+    return map;
+  }, [nodes]);
+  const clampedAggregation = Math.max(0, Math.min(1, aggregationStrength));
+  const aggregationFade = 1 - 0.72 * clampedAggregation;
+  const actionBadge = (node: GraphNode) => {
+    const pending = (node.actions ?? []).filter((action) => action.status !== 'completed');
+    if (pending.length === 0) return null;
+    if (pending.length > 1) return { text: `${pending.length}`, fill: '#8b5cf6' };
+    const actionType = pending[0].type;
+    if (actionType === 'delete') return { text: 'D', fill: '#ef4444' };
+    if (actionType === 'revise') return { text: 'R', fill: '#3b82f6' };
+    if (actionType === 'add_clause') return { text: 'A', fill: '#10b981' };
+    return null;
+  };
 
   return (
     <svg
@@ -79,6 +101,18 @@ export function GraphCanvas({
         >
           <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8" />
         </marker>
+        <marker
+          id="reference-arrow"
+          viewBox="0 0 10 10"
+          markerWidth="7"
+          markerHeight="7"
+          refX="10"
+          refY="5"
+          orient="auto"
+          markerUnits="userSpaceOnUse"
+        >
+          <path d="M0,0 L10,5 L0,10 z" fill="#334155" />
+        </marker>
         <radialGradient id="node-fill-none" cx="34%" cy="30%" r="76%">
           <stop offset="0%" stopColor="#9fd8c9" />
           <stop offset="100%" stopColor="#90cdc0" />
@@ -102,12 +136,13 @@ export function GraphCanvas({
       </defs>
 
       {links.map((link) => {
-        const source = nodes.find((node) => node.id === link.source);
-        const target = nodes.find((node) => node.id === link.target);
+        const source = nodeById.get(link.source);
+        const target = nodeById.get(link.target);
         if (!source || !target) return null;
         if (draggingNodeId && (link.source === draggingNodeId || link.target === draggingNodeId)) {
           return null;
         }
+        const reference = link.type === 'reference-link';
         const child = link.type === 'child-link';
         const detail = link.type === 'detail-link';
         const sourceDepth = focusDepthMap?.get(link.source);
@@ -127,6 +162,10 @@ export function GraphCanvas({
           !selectedNodeId ||
           isIncomingToSelected ||
           (sourceDepth !== undefined && (revealStage === 2 || sourceDepth <= 1));
+        const shouldRenderReference =
+          !reference ||
+          (Boolean(selectedNodeId) && (isIncomingToSelected || isOutgoingFromSelected));
+        if (!shouldRenderReference) return null;
         const edgeCenterX = (source.x + target.x) / 2;
         const edgeCenterY = (source.y + target.y) / 2;
         const distToSelected = selectedNode
@@ -136,6 +175,8 @@ export function GraphCanvas({
         const baseOpacity =
           !shouldRevealEdge
             ? 0.08
+            : reference
+              ? 0.34
             : isIncomingToSelected
               ? 0.52
               : detail
@@ -143,32 +184,65 @@ export function GraphCanvas({
                 : child
                   ? 0.56
                   : 0.44;
+        const minEdgeOpacity = isIncomingToSelected || isOutgoingFromSelected ? 0.22 : 0.08;
+        const edgeOpacity = Math.max(minEdgeOpacity, baseOpacity * lensFactor * aggregationFade);
+        const pulseLowOpacity = Math.max(0.12, 0.45 * aggregationFade);
+        const pulseHighOpacity = Math.max(0.25, 0.9 * aggregationFade);
+        const shouldAnimateStructuralFlow =
+          Boolean(selectedNodeId) &&
+          !reference &&
+          shouldRevealEdge &&
+          sourceDepth !== undefined &&
+          !isIncomingToSelected;
+        const sourceRiskStroke =
+          link.type === 'root-link'
+            ? '#2563eb'
+            : getRiskColor(source.riskLevel);
+        const propagatedRisk = pathMaxRiskByNode?.get(link.source);
+        const structuralStroke =
+          link.type !== 'root-link' && propagatedRisk
+            ? getRiskColor(propagatedRisk)
+            : sourceRiskStroke;
         return (
           <g key={`${link.source}-${link.target}-${link.type}`}>
             <motion.path
-              initial={{ pathLength: 0, opacity: 0 }}
-              animate={{
-                pathLength: 1,
-                opacity: baseOpacity * lensFactor,
-              }}
+              initial={reference ? { opacity: 0 } : { pathLength: 0, opacity: 0 }}
+              animate={
+                reference
+                  ? { opacity: edgeOpacity }
+                  : {
+                      pathLength: 1,
+                      opacity: edgeOpacity,
+                    }
+              }
               transition={{ duration: 0.35, ease: 'easeOut' }}
               d={edgePath}
-              stroke={isFocused ? (child || detail ? target.color : '#2563eb') : isIncomingToSelected ? '#94a3b8' : '#cbd5e1'}
-              strokeWidth={selectedNodeId && sourceDepth !== undefined && sourceDepth <= 1 ? 1.9 : 1.2}
-              strokeDasharray={detail ? '2 2' : '0'}
-              strokeLinecap="round"
+              stroke={
+                reference
+                  ? '#334155'
+                  : structuralStroke
+              }
+              strokeWidth={
+                reference
+                  ? 1.8
+                  : selectedNodeId && sourceDepth !== undefined && sourceDepth <= 1
+                    ? 1.9
+                    : 1.2
+              }
+              strokeDasharray={reference ? '10 8' : detail ? '2 2' : '0'}
+              strokeLinecap={reference ? 'round' : 'round'}
               fill="none"
-              markerEnd="url(#auto-arrow)"
+              markerEnd={reference ? 'url(#reference-arrow)' : 'url(#auto-arrow)'}
             />
-            {selectedNodeId && isOutgoingFromSelected && (
+            {shouldAnimateStructuralFlow && (
               <motion.path
                 d={edgePath}
-                stroke={child || detail ? target.color : '#2563eb'}
+                stroke={structuralStroke}
                 strokeWidth={2}
                 strokeLinecap="round"
                 strokeDasharray="7 10"
                 fill="none"
-                animate={{ strokeDashoffset: [0, -38], opacity: [0.45, 0.9, 0.45] }}
+                animate={{ strokeDashoffset: [0, -38], opacity: [pulseLowOpacity, pulseHighOpacity, pulseLowOpacity] }}
                 transition={{ duration: 1.1, repeat: Infinity, ease: 'linear' }}
               />
             )}
@@ -194,26 +268,27 @@ export function GraphCanvas({
             : isIncoming
               ? 0.72
               : depth === undefined
-                ? 0.14
+                ? 0.22
                 : revealStage === 1 && depth > 1
-                  ? 0.16
+                  ? 0.24
                   : depth === 1
                     ? 0.9
                     : depth === 2
-                      ? 0.58
-                      : 0.34;
+                      ? 0.66
+                      : 0.42;
         const nodeTone = !selectedNodeId
           ? 1
           : selected
             ? 1
             : isFocused
-              ? Math.max(0.46, depthOpacity * lensFactor)
-              : 0.16;
+              ? Math.max(0.56, depthOpacity * lensFactor)
+              : 0.26;
         const shouldShowLabel =
           !isLeaf
             ? !selectedNodeId || selected || isIncoming || (depth !== undefined && depth <= 1)
             : selected || (depth !== undefined && depth <= 1 && revealStage === 2);
         const isDragging = node.id === draggingNodeId;
+        const badge = actionBadge(node);
 
         return (
           <motion.g
@@ -239,7 +314,7 @@ export function GraphCanvas({
             className={node.id === 'root' ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'}
             style={{
               filter: !isFocused
-                ? 'saturate(0.72) brightness(0.98)'
+                ? 'saturate(0.84) brightness(1)'
                 : selected
                   ? 'drop-shadow(0 5px 12px rgba(59,130,246,0.2))'
                   : 'none',
@@ -285,6 +360,24 @@ export function GraphCanvas({
             })()}
             {isRoot && (
               <circle r={3.8} fill="#6b7280" fillOpacity={nodeTone} />
+            )}
+            {!isRoot && badge && (
+              <g
+                transform={`translate(${node.r * 0.72}, ${-node.r * 0.72})`}
+                opacity={Math.max(0.08, Math.min(1, nodeTone))}
+              >
+                <circle r={6.6} fill={badge.fill} stroke="#ffffff" strokeWidth={1.3} />
+                <text
+                  x={0}
+                  y={2.8}
+                  textAnchor="middle"
+                  fontSize={7.5}
+                  fill="#ffffff"
+                  className="pointer-events-none select-none font-bold"
+                >
+                  {badge.text}
+                </text>
+              </g>
             )}
             {shouldShowLabel && (
               <text
