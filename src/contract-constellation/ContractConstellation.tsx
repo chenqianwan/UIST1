@@ -13,7 +13,7 @@ import sidePanelBg from '../../static/side_panel.png';
 import { NODE_LIBRARY } from './constants';
 import { GraphCanvas, CANVAS_WIDTH, CANVAS_HEIGHT } from './GraphCanvas';
 import { SidePanel } from './SidePanel';
-import type { GraphNode } from './types';
+import type { GraphNode, NodeActionType } from './types';
 import { getRiskColor, getAiSuggestion } from './utils';
 import { getSemanticTargetXMap } from './semanticEmbedding';
 import { useGalaxyEngine } from './useGalaxyEngine';
@@ -34,6 +34,13 @@ const TIME_LANE_X_BY_PHASE = {
   post_termination: 0.88,
 } as const;
 
+const RISK_RANK = {
+  none: 0,
+  low: 1,
+  medium: 2,
+  high: 3,
+} as const;
+
 export default function ContractConstellation() {
   const width = CANVAS_WIDTH;
   const height = CANVAS_HEIGHT;
@@ -42,7 +49,7 @@ export default function ContractConstellation() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isDragOverCanvas, setIsDragOverCanvas] = useState(false);
   const [usedTemplateIds, setUsedTemplateIds] = useState<string[]>([]);
-  const [lastAppliedNodeId, setLastAppliedNodeId] = useState<string | null>(null);
+  const [lastAppliedAction, setLastAppliedAction] = useState<{ nodeId: string; actionId: string; actionType: NodeActionType } | null>(null);
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
   const [isOverTrash, setIsOverTrash] = useState(false);
   const [exportState, setExportState] = useState<'idle' | 'exporting' | 'success'>('idle');
@@ -59,7 +66,7 @@ export default function ContractConstellation() {
     nodes,
     links,
     addNodeFromTemplate,
-    markNodeAsMitigated,
+    completeNodeAction,
     updateNodePosition,
     removeNodeCascade,
     addSupplementClause,
@@ -137,6 +144,7 @@ export default function ContractConstellation() {
       if (!current || depthMap.has(current)) continue;
       depthMap.set(current, currentDepth);
       links.forEach((link) => {
+        if (link.type === 'reference-link') return;
         if (link.source === current && !depthMap.has(link.target)) {
           queue.push(link.target);
           queueDepth.push(currentDepth + 1);
@@ -145,6 +153,39 @@ export default function ContractConstellation() {
     }
     return depthMap;
   }, [links, selectedNodeId]);
+
+  const pathMaxRiskByNode = useMemo(() => {
+    const nodeRiskById = new Map(nodes.map((node) => [node.id, node.riskLevel]));
+    const maxRiskMap = new Map<string, GraphNode['riskLevel']>();
+    nodes.forEach((node) => {
+      maxRiskMap.set(node.id, node.riskLevel);
+    });
+
+    const structuralLinks = links.filter((link) => link.type !== 'reference-link');
+    const outgoingBySource = new Map<string, string[]>();
+    structuralLinks.forEach((link) => {
+      const list = outgoingBySource.get(link.source) ?? [];
+      list.push(link.target);
+      outgoingBySource.set(link.source, list);
+    });
+
+    const queue = Array.from(outgoingBySource.keys());
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (!current) continue;
+      const currentMaxRisk = maxRiskMap.get(current) ?? nodeRiskById.get(current) ?? 'none';
+      const targets = outgoingBySource.get(current) ?? [];
+      targets.forEach((targetId) => {
+        const targetCurrent = maxRiskMap.get(targetId) ?? nodeRiskById.get(targetId) ?? 'none';
+        const nextMaxRisk = RISK_RANK[currentMaxRisk] > RISK_RANK[targetCurrent] ? currentMaxRisk : targetCurrent;
+        if (RISK_RANK[nextMaxRisk] > RISK_RANK[targetCurrent]) {
+          maxRiskMap.set(targetId, nextMaxRisk);
+          queue.push(targetId);
+        }
+      });
+    }
+    return maxRiskMap;
+  }, [links, nodes]);
 
   const incomingNodeIds = useMemo(() => {
     if (!selectedNodeId) return new Set<string>();
@@ -227,27 +268,32 @@ export default function ContractConstellation() {
     setSelectedNodeId(node.id);
   };
 
+  const removeNodeByUserAction = useCallback((nodeId: string) => {
+    const targetNode = nodes.find((node) => node.id === nodeId);
+    if (!targetNode || targetNode.id === 'root') return;
+    if (targetNode.type === 'sub') {
+      removeNodeCascade(nodeId);
+      if (selectedNodeId === nodeId) setSelectedNodeId(null);
+      return;
+    }
+    removeNodeCascade(nodeId);
+    if (targetNode.templateId) {
+      setUsedTemplateIds((prev) => prev.filter((id) => id !== targetNode.templateId));
+    }
+    if (selectedNodeId === nodeId) setSelectedNodeId(null);
+  }, [nodes, removeNodeCascade, selectedNodeId]);
+
   const endNodeDrag = useCallback(
     (shouldDelete: boolean) => {
       if (!draggingNodeId) return;
       if (shouldDelete) {
-        const draggedNode = nodes.find((node) => node.id === draggingNodeId);
-        if (draggedNode?.type === 'sub') {
-          removeNodeCascade(draggingNodeId);
-          if (selectedNodeId === draggingNodeId) setSelectedNodeId(null);
-        } else if (draggedNode && draggedNode.id !== 'root') {
-          removeNodeCascade(draggingNodeId);
-          if (draggedNode.templateId) {
-            setUsedTemplateIds((prev) => prev.filter((id) => id !== draggedNode.templateId));
-          }
-          setSelectedNodeId(null);
-        }
+        removeNodeByUserAction(draggingNodeId);
       }
       setDraggingNodeId(null);
       setDraggingNode(null);
       setIsOverTrash(false);
     },
-    [draggingNodeId, nodes, removeNodeCascade, selectedNodeId, setDraggingNode],
+    [draggingNodeId, removeNodeByUserAction, setDraggingNode],
   );
 
   const updateDraggingByClient = useCallback(
@@ -277,6 +323,7 @@ export default function ContractConstellation() {
   );
 
   const handleCanvasPointerMove = (event: PointerEvent<SVGSVGElement>) => {
+    if (draggingNodeId) return;
     updateDraggingByClient(event.clientX, event.clientY);
   };
 
@@ -287,7 +334,7 @@ export default function ContractConstellation() {
     };
     const onWindowPointerUp = (event: globalThis.PointerEvent) => {
       const shouldDelete = updateDraggingByClient(event.clientX, event.clientY);
-      endNodeDrag(shouldDelete);
+      endNodeDrag(Boolean(shouldDelete));
     };
     window.addEventListener('pointermove', onWindowPointerMove);
     window.addEventListener('pointerup', onWindowPointerUp);
@@ -299,7 +346,7 @@ export default function ContractConstellation() {
 
   const handleCanvasPointerUp = (event: PointerEvent<SVGSVGElement>) => {
     const shouldDelete = updateDraggingByClient(event.clientX, event.clientY);
-    endNodeDrag(shouldDelete);
+    endNodeDrag(Boolean(shouldDelete));
   };
 
   const handleExportContract = useCallback(() => {
@@ -342,14 +389,16 @@ export default function ContractConstellation() {
   }, []);
 
   const handleApplySuggestion = useCallback(
-    (nodeId: string, replacement: string) => {
-      markNodeAsMitigated(nodeId, replacement);
-      setLastAppliedNodeId(nodeId);
+    (nodeId: string, actionId: string, replacement: string) => {
+      const didComplete = completeNodeAction(nodeId, actionId, replacement);
+      if (didComplete) {
+        setLastAppliedAction({ nodeId, actionId, actionType: 'revise' });
+      }
     },
-    [markNodeAsMitigated],
+    [completeNodeAction],
   );
 
-  const handleDeleteNodeAction = useCallback((nodeId: string) => {
+  const handleDeleteNodeAction = useCallback((nodeId: string, actionId: string) => {
     const node = nodes.find((item) => item.id === nodeId);
     if (!node || node.id === 'root') return;
     removeNodeCascade(nodeId);
@@ -357,19 +406,27 @@ export default function ContractConstellation() {
       setUsedTemplateIds((prev) => prev.filter((id) => id !== node.templateId));
     }
     setSelectedNodeId(null);
+    setLastAppliedAction({ nodeId, actionId, actionType: 'delete' });
   }, [nodes, removeNodeCascade]);
 
-  const handleAddSupplementAction = useCallback((nodeId: string, draft?: string) => {
+  const handleAddSupplementAction = useCallback((nodeId: string, actionId: string, draft?: string) => {
     addSupplementClause(nodeId, draft);
     const targetNode = nodes.find((node) => node.id === nodeId);
     if (targetNode && targetNode.id !== 'root') {
       const mergedContent = draft?.trim()
         ? `${targetNode.content} ${draft.trim()}`
         : targetNode.content;
-      markNodeAsMitigated(nodeId, mergedContent);
+      const didComplete = completeNodeAction(nodeId, actionId, mergedContent);
+      if (didComplete) {
+        setLastAppliedAction({ nodeId, actionId, actionType: 'add_clause' });
+      }
     }
-    setLastAppliedNodeId(nodeId);
-  }, [addSupplementClause, markNodeAsMitigated, nodes]);
+  }, [addSupplementClause, completeNodeAction, nodes]);
+  const deletableSelectedNode = selectedNode && selectedNode.id !== 'root' ? selectedNode : null;
+  const handleDeleteSelectedNode = useCallback(() => {
+    if (!deletableSelectedNode) return;
+    removeNodeByUserAction(deletableSelectedNode.id);
+  }, [deletableSelectedNode, removeNodeByUserAction]);
 
   return (
     <div className="flex h-full w-full overflow-hidden border border-slate-200 bg-[#F7F9FC]">
@@ -391,7 +448,6 @@ export default function ContractConstellation() {
           Drag nodes from the right panel into the canvas to auto-create relationships.
         </div>
         <div className="absolute right-4 top-4 z-10 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-600 shadow-sm">
-          <div className="mb-1 font-semibold text-slate-700">Risk Legend</div>
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: getRiskColor('none') }} />
             No Risk
@@ -402,26 +458,48 @@ export default function ContractConstellation() {
             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: getRiskColor('high') }} />
             High Risk
           </div>
+          <div className="mt-1.5 flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <svg width="28" height="8" viewBox="0 0 28 8" fill="none">
+                <line x1="0" y1="4" x2="22" y2="4" stroke="#2563eb" strokeWidth="1.8" strokeLinecap="round" />
+                <polygon points="22,1 28,4 22,7" fill="#2563eb" />
+              </svg>
+              <span>Structural link</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <svg width="28" height="8" viewBox="0 0 28 8" fill="none">
+                <line x1="0" y1="4" x2="22" y2="4" stroke="#334155" strokeWidth="1.8" strokeDasharray="2 5" strokeLinecap="round" />
+                <polygon points="22,1 28,4 22,7" fill="#334155" />
+              </svg>
+              <span>Reference link</span>
+            </div>
+          </div>
         </div>
         <div className="pointer-events-none absolute bottom-4 left-4 z-10">
           <div
             ref={trashRef}
-            className={`flex h-[96px] w-48 flex-col justify-center rounded-xl border bg-white px-3 py-2 text-center text-slate-600 shadow-sm transition ${
+            className={`pointer-events-auto flex h-[96px] w-48 flex-col justify-center rounded-xl border bg-white px-3 py-2 text-center shadow-sm transition ${
               isOverTrash
-                ? 'border-red-300 bg-red-50/90 text-red-600'
+                ? 'cursor-pointer border-red-400 bg-red-100 text-red-700'
                 : draggingNodeId
-                  ? 'border-red-200 bg-red-50/70 text-red-500'
-                  : 'border-slate-200'
+                  ? 'cursor-pointer border-red-200 bg-red-50/75 text-red-500'
+                  : deletableSelectedNode
+                    ? 'cursor-pointer border-red-300 bg-red-50/90 text-red-600'
+                    : 'cursor-not-allowed border-slate-200 text-slate-500'
             }`}
-            style={{
-              borderStyle: isOverTrash || draggingNodeId ? 'solid' : 'dashed',
-            }}
+            style={{ borderStyle: 'solid' }}
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={handleDeleteSelectedNode}
           >
             <div className="flex items-center justify-center gap-2 text-sm font-semibold">
               <Trash2 size={14} />
-              Drop Here
+              Drop / Click Here
             </div>
-            <p className="mt-1 text-[11px] leading-tight opacity-80">Sub-clause: Delete / Main clause: Remove reference</p>
+            <p className="mt-1 overflow-hidden text-ellipsis whitespace-nowrap text-[11px] leading-tight opacity-80">
+              {deletableSelectedNode
+                ? `Delete selected node: ${deletableSelectedNode.label}`
+                : 'Select a node for quick delete'}
+            </p>
           </div>
         </div>
         <div className="pointer-events-none absolute bottom-4 right-4 z-10">
@@ -489,6 +567,7 @@ export default function ContractConstellation() {
           selectedNodeId={selectedNodeId}
           draggingNodeId={draggingNodeId}
           focusDepthMap={focusDepthMap}
+          pathMaxRiskByNode={pathMaxRiskByNode}
           incomingNodeIds={incomingNodeIds}
           revealStage={revealStage}
           selectedNode={selectedNode}
@@ -514,7 +593,7 @@ export default function ContractConstellation() {
         availableTemplates={availableTemplates}
         selectedNode={selectedNode}
         aiSuggestion={aiSuggestion}
-        lastAppliedNodeId={lastAppliedNodeId}
+        lastAppliedAction={lastAppliedAction}
         exportState={exportState}
         sidePanelBg={sidePanelBg}
         onDragStart={handleDragStart}

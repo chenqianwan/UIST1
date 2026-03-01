@@ -1,13 +1,25 @@
 export type NodeKind = 'root' | 'main' | 'sub' | 'leaf';
-export type LinkKind = 'root-link' | 'smart-link' | 'child-link' | 'detail-link';
+export type LinkKind = 'root-link' | 'child-link' | 'detail-link' | 'reference-link';
 export type RiskLevel = 'none' | 'low' | 'medium' | 'high';
 export type NodeActionType = 'delete' | 'revise' | 'add_clause';
+export type NodeActionStatus = 'pending' | 'completed';
 export type TimePhase = 'pre_sign' | 'effective' | 'execution' | 'acceptance' | 'termination' | 'post_termination';
+
+export interface NodeActionItem {
+  id: string;
+  type: NodeActionType;
+  status: NodeActionStatus;
+  reason?: string;
+  confidence?: number;
+  suggestionText?: string;
+  supplementDraft?: string;
+}
 
 export interface TemplateDetailItem {
   label: string;
   content: string;
   timePhase?: TimePhase;
+  references?: string[];
 }
 
 export interface TemplateSubItem {
@@ -15,6 +27,7 @@ export interface TemplateSubItem {
   content: string;
   details?: TemplateDetailItem[];
   timePhase?: TimePhase;
+  references?: string[];
 }
 
 export interface TemplateItem {
@@ -26,15 +39,12 @@ export interface TemplateItem {
   content: string;
   satellites?: TemplateSubItem[];
   timePhase?: TimePhase;
-  actionType?: NodeActionType;
-  actionReason?: string;
-  suggestionText?: string;
-  supplementDraft?: string;
-  confidence?: number;
+  actions?: NodeActionItem[];
 }
 
 export interface GraphNode {
   id: string;
+  references?: string[];
   label: string;
   type: NodeKind;
   color: string;
@@ -48,11 +58,7 @@ export interface GraphNode {
   timePhase: TimePhase;
   templateId?: string;
   parentId?: string;
-  actionType?: NodeActionType;
-  actionReason?: string;
-  suggestionText?: string;
-  supplementDraft?: string;
-  confidence?: number;
+  actions?: NodeActionItem[];
 }
 
 export interface GraphLink {

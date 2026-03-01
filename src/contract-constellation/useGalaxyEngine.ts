@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { GraphLink, GraphNode, TemplateItem } from './types';
-import { getRiskColor, distance, seededRandom } from './utils';
+import { getRiskColor, seededRandom } from './utils';
 
 function getIndependentRiskLevel(seed: string): GraphNode['riskLevel'] {
+  // TODO(upstream): Remove this local fallback once upstream always provides riskLevel for sub/leaf nodes.
   const v = seededRandom(seed);
   if (v < 0.25) return 'none';
   if (v < 0.5) return 'low';
@@ -10,15 +11,41 @@ function getIndependentRiskLevel(seed: string): GraphNode['riskLevel'] {
   return 'high';
 }
 
-function getActionTypeByRisk(
+function getFallbackActionsByRisk(
   riskLevel: GraphNode['riskLevel'],
   seed: string,
-): GraphNode['actionType'] {
+): GraphNode['actions'] {
+  // TODO(upstream): Remove this local action generation once upstream always provides actions.
   if (riskLevel === 'none') return undefined;
   const u = seededRandom(seed);
-  if (riskLevel === 'low') return u < 0.5 ? 'add_clause' : 'revise';
-  if (riskLevel === 'medium') return u < 0.33 ? 'delete' : u < 0.66 ? 'revise' : 'add_clause';
-  return u < 0.55 ? 'revise' : 'delete';
+  const make = (type: 'delete' | 'revise' | 'add_clause', idx = 0) => ({
+    id: `${seed}::${type}::${idx}`,
+    type,
+    status: 'pending' as const,
+  });
+  if (riskLevel === 'low') return u < 0.5 ? [make('add_clause')] : [make('revise')];
+  if (riskLevel === 'medium') {
+    if (u < 0.28) return [make('delete')];
+    if (u < 0.62) return [make('revise')];
+    return [make('add_clause', 0), make('revise', 1)];
+  }
+  return u < 0.5 ? [make('delete')] : [make('revise', 0), make('add_clause', 1)];
+}
+
+function normalizeActions(actions?: GraphNode['actions']): GraphNode['actions'] {
+  if (!actions || actions.length === 0) return undefined;
+  const seen = new Set<string>();
+  const normalized = actions
+    .filter((action) => {
+      if (!action.id || seen.has(action.id)) return false;
+      seen.add(action.id);
+      return true;
+    })
+    .map((action) => ({
+      ...action,
+      status: action.status ?? 'pending',
+    }));
+  return normalized.length > 0 ? normalized : undefined;
 }
 
 function inferTimePhaseFromText(seedText: string): GraphNode['timePhase'] {
@@ -29,6 +56,33 @@ function inferTimePhaseFromText(seedText: string): GraphNode['timePhase'] {
   if (text.includes('termination') || text.includes('terminate') || text.includes('notice period')) return 'termination';
   if (text.includes('warranty') || text.includes('settlement') || text.includes('post')) return 'post_termination';
   return 'execution';
+}
+
+function buildReferenceLinks(nodes: GraphNode[]): GraphLink[] {
+  const resolveTargetId = (referenceKey: string): string | null => {
+    const byNodeId = nodes.find((node) => node.id === referenceKey);
+    if (byNodeId) return byNodeId.id;
+    return null;
+  };
+  const links: GraphLink[] = [];
+  nodes.forEach((node) => {
+    if (!node.references || node.references.length === 0) return;
+    node.references.forEach((referenceKey) => {
+      const targetId = resolveTargetId(referenceKey);
+      if (!targetId || targetId === node.id) return;
+      links.push({
+        source: node.id,
+        target: targetId,
+        type: 'reference-link',
+      });
+    });
+  });
+  return links;
+}
+
+function mergeLinksWithReferences(baseLinks: GraphLink[], nodes: GraphNode[]): GraphLink[] {
+  const nonReference = baseLinks.filter((link) => link.type !== 'reference-link');
+  return [...nonReference, ...buildReferenceLinks(nodes)];
 }
 
 export function useGalaxyEngine(
@@ -73,7 +127,51 @@ export function useGalaxyEngine(
 
   const addNodeFromTemplate = useCallback(
     (template: TemplateItem, x: number, y: number) => {
-      const id = `node_${Date.now()}`;
+      const id = template.id;
+      if (template.id === 'tpl-demo-risk-ladder') {
+        const baseId = `${id}_${Date.now()}`;
+        const chain = [
+          { id: `${baseId}_0`, label: 'Demo Healthy Start', type: 'main' as const, riskLevel: 'none' as const, r: 18, content: 'Chain node 1: healthy.' },
+          { id: `${baseId}_1`, label: 'Demo Low Risk', type: 'sub' as const, riskLevel: 'low' as const, r: 10, content: 'Chain node 2: low risk.' },
+          { id: `${baseId}_2`, label: 'Demo Medium Risk', type: 'leaf' as const, riskLevel: 'medium' as const, r: 7, content: 'Chain node 3: medium risk.' },
+          { id: `${baseId}_3`, label: 'Demo High Risk', type: 'leaf' as const, riskLevel: 'high' as const, r: 7, content: 'Chain node 4: high risk.' },
+          { id: `${baseId}_4`, label: 'Demo Healthy End', type: 'leaf' as const, riskLevel: 'none' as const, r: 7, content: 'Chain node 5: healthy.' },
+        ];
+        const spacing = 68;
+        const chainNodes: GraphNode[] = chain.map((item, index) => ({
+          id: item.id,
+          label: item.label,
+          type: item.type,
+          color: getRiskColor(item.riskLevel),
+          x: x + spacing * index,
+          y,
+          vx: 0,
+          vy: 0,
+          r: item.r,
+          content: item.content,
+          riskLevel: item.riskLevel,
+          timePhase: 'execution',
+          templateId: template.id,
+          parentId: index === 0 ? undefined : chain[index - 1].id,
+          actions: undefined,
+        }));
+        const chainLinks: GraphLink[] = [
+          { source: 'root', target: chainNodes[0].id, type: 'root-link' },
+          { source: chainNodes[0].id, target: chainNodes[1].id, type: 'child-link' },
+          { source: chainNodes[1].id, target: chainNodes[2].id, type: 'detail-link' },
+          { source: chainNodes[2].id, target: chainNodes[3].id, type: 'detail-link' },
+          { source: chainNodes[3].id, target: chainNodes[4].id, type: 'detail-link' },
+        ];
+        const nextNodes = [...nodesRef.current, ...chainNodes];
+        const nextBaseLinks = [...linksRef.current, ...chainLinks];
+        const nextLinks = mergeLinksWithReferences(nextBaseLinks, nextNodes);
+        nodesRef.current = nextNodes;
+        linksRef.current = nextLinks;
+        setNodes(nextNodes);
+        setLinks(nextLinks);
+        return;
+      }
+      const actions = template.riskLevel === 'none' ? undefined : normalizeActions(template.actions);
       const newNode: GraphNode = {
         id,
         label: template.label,
@@ -88,29 +186,20 @@ export function useGalaxyEngine(
         riskLevel: template.riskLevel,
         timePhase: template.timePhase ?? inferTimePhaseFromText(`${template.label}. ${template.content}`),
         templateId: template.id,
-        actionType: template.riskLevel === 'none' ? undefined : template.actionType,
-        actionReason: template.riskLevel === 'none' ? undefined : template.actionReason,
-        suggestionText: template.riskLevel === 'none' ? undefined : template.suggestionText,
-        supplementDraft: template.riskLevel === 'none' ? undefined : template.supplementDraft,
-        confidence: template.riskLevel === 'none' ? undefined : template.confidence,
+        actions,
       };
 
       const existing = nodesRef.current;
-      const smartTargets = existing
-        .filter((node) => node.id !== 'root' && node.type === 'main')
-        .map((node) => ({ id: node.id, d: distance(node, newNode) }))
-        .sort((a, b) => a.d - b.d)
-        .slice(0, 2)
-        .filter((item) => item.d < 260)
-        .map((item) => item.id);
 
       const satellites = (template.satellites ?? []).map((item, index, arr) => {
         const angle = (index / Math.max(arr.length, 1)) * Math.PI * 2;
+        // TODO(upstream): Replace local risk/action fallback with upstream-provided fields for generated child nodes.
         const riskLevel = getIndependentRiskLevel(`${template.id}::sat::${item.label}::${item.content}`);
-        const actionType = getActionTypeByRisk(riskLevel, `${template.id}::sat-action::${item.label}`);
+        const actions = normalizeActions(getFallbackActionsByRisk(riskLevel, `${template.id}::sat-action::${item.label}`));
         const timePhase = item.timePhase ?? inferTimePhaseFromText(`${item.label}. ${item.content}`);
         return {
           id: `sub_${id}_${index}`,
+          references: item.references,
           label: item.label,
           type: 'sub' as const,
           color: getRiskColor(riskLevel),
@@ -124,7 +213,7 @@ export function useGalaxyEngine(
           timePhase,
           templateId: template.id,
           parentId: id,
-          actionType,
+          actions,
         };
       });
       const detailNodes = (template.satellites ?? []).flatMap((item, index, arr) => {
@@ -138,11 +227,13 @@ export function useGalaxyEngine(
         const uy = Math.sin(satAngle);
 
         return details.slice(0, 1).map((detail, detailIndex) => {
+          // TODO(upstream): Replace local risk/action fallback with upstream-provided fields for generated leaf nodes.
           const riskLevel = getIndependentRiskLevel(`${template.id}::leaf::${detail.label}::${detail.content}`);
-          const actionType = getActionTypeByRisk(riskLevel, `${template.id}::leaf-action::${detail.label}`);
+          const actions = normalizeActions(getFallbackActionsByRisk(riskLevel, `${template.id}::leaf-action::${detail.label}`));
           const timePhase = detail.timePhase ?? inferTimePhaseFromText(`${detail.label}. ${detail.content}`);
           return {
             id: `leaf_${id}_${index}_${detailIndex}`,
+            references: detail.references,
             label: detail.label,
             type: 'leaf' as const,
             color: getRiskColor(riskLevel),
@@ -156,17 +247,12 @@ export function useGalaxyEngine(
             timePhase,
             templateId: template.id,
             parentId: satId,
-            actionType,
+            actions,
           };
         });
       });
 
       const rootLink: GraphLink = { source: 'root', target: id, type: 'root-link' };
-      const autoLinks: GraphLink[] = smartTargets.map((targetId) => ({
-        source: id,
-        target: targetId,
-        type: 'smart-link',
-      }));
       const satelliteLinks: GraphLink[] = satellites.map((sat) => ({
         source: id,
         target: sat.id,
@@ -179,7 +265,8 @@ export function useGalaxyEngine(
       }));
 
       const nextNodes = [...existing, newNode, ...satellites, ...detailNodes];
-      const nextLinks = [...linksRef.current, rootLink, ...autoLinks, ...satelliteLinks, ...detailLinks];
+      const nextBaseLinks = [...linksRef.current, rootLink, ...satelliteLinks, ...detailLinks];
+      const nextLinks = mergeLinksWithReferences(nextBaseLinks, nextNodes);
 
       nodesRef.current = nextNodes;
       linksRef.current = nextLinks;
@@ -198,17 +285,56 @@ export function useGalaxyEngine(
             content,
             riskLevel: 'none' as const,
             color: safeColor,
-            actionType: undefined,
-            actionReason: undefined,
-            suggestionText: undefined,
-            supplementDraft: undefined,
-            confidence: undefined,
+            actions: undefined,
           }
         : node,
     );
     nodesRef.current = nextNodes;
     setNodes(nextNodes);
   }, []);
+
+  const completeNodeAction = useCallback(
+    (nodeId: string, actionId: string, content?: string) => {
+      const safeColor = getRiskColor('none');
+      let didComplete = false;
+      const nextNodes = nodesRef.current.map((node) => {
+        if (node.id !== nodeId) return node;
+        const plannedActions = normalizeActions(node.actions);
+        if (!plannedActions) {
+          return content !== undefined ? { ...node, content } : node;
+        }
+        let changed = false;
+        const nextActions = plannedActions.map((action) => {
+          if (action.id !== actionId) return action;
+          changed = true;
+          return { ...action, status: 'completed' as const };
+        });
+        if (!changed) {
+          return content !== undefined ? { ...node, content } : node;
+        }
+        didComplete = true;
+        const allDone = nextActions.every((action) => action.status === 'completed');
+        if (allDone) {
+          return {
+            ...node,
+            content: content ?? node.content,
+            riskLevel: 'none' as const,
+            color: safeColor,
+            actions: undefined,
+          };
+        }
+        return {
+          ...node,
+          content: content ?? node.content,
+          actions: nextActions,
+        };
+      });
+      nodesRef.current = nextNodes;
+      setNodes(nextNodes);
+      return didComplete;
+    },
+    [],
+  );
 
   const updateNodePosition = useCallback((nodeId: string, x: number, y: number) => {
     const nextNodes = nodesRef.current.map((node) =>
@@ -233,9 +359,10 @@ export function useGalaxyEngine(
     }
 
     const nextNodes = nodesRef.current.filter((node) => !removeIds.has(node.id));
-    const nextLinks = linksRef.current.filter(
+    const nextBaseLinks = linksRef.current.filter(
       (link) => !removeIds.has(link.source) && !removeIds.has(link.target),
     );
+    const nextLinks = mergeLinksWithReferences(nextBaseLinks, nextNodes);
 
     nodesRef.current = nextNodes;
     linksRef.current = nextLinks;
@@ -278,7 +405,8 @@ export function useGalaxyEngine(
       type: isParentMain ? 'child-link' : 'detail-link',
     };
     const nextNodes = [...nodesRef.current, newNode];
-    const nextLinks = [...linksRef.current, newLink];
+    const nextBaseLinks = [...linksRef.current, newLink];
+    const nextLinks = mergeLinksWithReferences(nextBaseLinks, nextNodes);
     nodesRef.current = nextNodes;
     linksRef.current = nextLinks;
     setNodes(nextNodes);
@@ -300,17 +428,21 @@ export function useGalaxyEngine(
         frame = requestAnimationFrame(tick);
         return;
       }
+      if (draggingNodeIdRef.current) {
+        frame = requestAnimationFrame(tick);
+        return;
+      }
 
       const repulsion = 7600;
       const damping = 0.88;
       const centerPull = 0.0036;
       const rootSpring = 0.02;
-      const smartSpring = 0.06;
+      const referenceSpring = 0.06;
       const childSpring = 0.12;
       const detailSpring = 0.14;
       const spreadFactor = localNodes.length <= 12 ? 1.58 : localNodes.length <= 22 ? 1.28 : 1.05;
       const rootLen = 188 * spreadFactor;
-      const smartLen = 156 * spreadFactor;
+      const referenceLen = 156 * spreadFactor;
       const childLen = 70 * spreadFactor;
       const detailLen = 44 * spreadFactor;
 
@@ -360,7 +492,7 @@ export function useGalaxyEngine(
               ? childLen
               : link.type === 'detail-link'
                 ? detailLen
-                : smartLen;
+                : referenceLen;
         const k =
           link.type === 'root-link'
             ? rootSpring
@@ -368,7 +500,7 @@ export function useGalaxyEngine(
               ? childSpring
               : link.type === 'detail-link'
                 ? detailSpring
-                : smartSpring;
+                : referenceSpring;
         const f = (d - len) * k;
         const fx = (dx / d) * f;
         const fy = (dy / d) * f;
@@ -452,6 +584,7 @@ export function useGalaxyEngine(
     links,
     addNodeFromTemplate,
     markNodeAsMitigated,
+    completeNodeAction,
     updateNodePosition,
     removeNodeCascade,
     addSupplementClause,
