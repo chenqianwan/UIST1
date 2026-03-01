@@ -2,16 +2,19 @@ export type NodeKind = 'root' | 'main' | 'sub' | 'leaf';
 export type LinkKind = 'root-link' | 'smart-link' | 'child-link' | 'detail-link';
 export type RiskLevel = 'none' | 'low' | 'medium' | 'high';
 export type NodeActionType = 'delete' | 'revise' | 'add_clause';
+export type TimePhase = 'pre_sign' | 'effective' | 'execution' | 'acceptance' | 'termination' | 'post_termination';
 
 export interface TemplateDetailItem {
   label: string;
   content: string;
+  timePhase?: TimePhase;
 }
 
 export interface TemplateSubItem {
   label: string;
   content: string;
   details?: TemplateDetailItem[];
+  timePhase?: TimePhase;
 }
 
 export interface TemplateItem {
@@ -22,6 +25,7 @@ export interface TemplateItem {
   riskLevel: RiskLevel;
   content: string;
   satellites?: TemplateSubItem[];
+  timePhase?: TimePhase;
   actionType?: NodeActionType;
   actionReason?: string;
   suggestionText?: string;
@@ -41,6 +45,7 @@ export interface GraphNode {
   r: number;
   content: string;
   riskLevel: RiskLevel;
+  timePhase: TimePhase;
   templateId?: string;
   parentId?: string;
   actionType?: NodeActionType;

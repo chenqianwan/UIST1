@@ -24,3 +24,59 @@ body {
   margin: 0;
   min-width: 320px;
 }
+
+.analysis-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  width: 100%;
+  border-radius: 9999px;
+  background: #d1d5db;
+  outline: none;
+  --slider-thumb: #94a3b8;
+}
+
+.analysis-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: #d1d5db;
+}
+
+.analysis-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  margin-top: -3.5px;
+  border-radius: 9999px;
+  border: 1px solid #ffffff;
+  background: var(--slider-thumb);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.18);
+}
+
+.analysis-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: #d1d5db;
+}
+
+.analysis-slider::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  border-radius: 9999px;
+  border: 1px solid #ffffff;
+  background: var(--slider-thumb);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.18);
+}
+
+.analysis-slider--semantic {
+  --slider-thumb: #9aa8bf;
+}
+
+.analysis-slider--risk {
+  --slider-thumb: #f29ab0;
+}
+
+.analysis-slider--time {
+  --slider-thumb: #9ec5f0;
+}

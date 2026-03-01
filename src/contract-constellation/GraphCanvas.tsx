@@ -15,6 +15,7 @@ const CANVAS_HEIGHT = 620;
 interface GraphCanvasProps {
   nodes: GraphNode[];
   links: GraphLink[];
+  aggregationStrength: number;
   selectedNodeId: string | null;
   draggingNodeId: string | null;
   focusDepthMap: Map<string, number> | null;
@@ -34,6 +35,7 @@ interface GraphCanvasProps {
 export function GraphCanvas({
   nodes,
   links,
+  aggregationStrength,
   selectedNodeId,
   draggingNodeId,
   focusDepthMap,
@@ -51,6 +53,8 @@ export function GraphCanvas({
 }: GraphCanvasProps) {
   const width = CANVAS_WIDTH;
   const height = CANVAS_HEIGHT;
+  const clampedAggregation = Math.max(0, Math.min(1, aggregationStrength));
+  const aggregationFade = 1 - 0.72 * clampedAggregation;
   const actionBadge = (actionType?: GraphNode['actionType']) => {
     if (actionType === 'delete') return { text: 'D', fill: '#ef4444' };
     if (actionType === 'revise') return { text: 'R', fill: '#3b82f6' };
@@ -149,13 +153,17 @@ export function GraphCanvas({
                 : child
                   ? 0.56
                   : 0.44;
+        const minEdgeOpacity = isIncomingToSelected || isOutgoingFromSelected ? 0.22 : 0.08;
+        const edgeOpacity = Math.max(minEdgeOpacity, baseOpacity * lensFactor * aggregationFade);
+        const pulseLowOpacity = Math.max(0.12, 0.45 * aggregationFade);
+        const pulseHighOpacity = Math.max(0.25, 0.9 * aggregationFade);
         return (
           <g key={`${link.source}-${link.target}-${link.type}`}>
             <motion.path
               initial={{ pathLength: 0, opacity: 0 }}
               animate={{
                 pathLength: 1,
-                opacity: baseOpacity * lensFactor,
+                opacity: edgeOpacity,
               }}
               transition={{ duration: 0.35, ease: 'easeOut' }}
               d={edgePath}
@@ -174,7 +182,7 @@ export function GraphCanvas({
                 strokeLinecap="round"
                 strokeDasharray="7 10"
                 fill="none"
-                animate={{ strokeDashoffset: [0, -38], opacity: [0.45, 0.9, 0.45] }}
+                animate={{ strokeDashoffset: [0, -38], opacity: [pulseLowOpacity, pulseHighOpacity, pulseLowOpacity] }}
                 transition={{ duration: 1.1, repeat: Infinity, ease: 'linear' }}
               />
             )}
@@ -294,7 +302,10 @@ export function GraphCanvas({
               <circle r={3.8} fill="#6b7280" fillOpacity={nodeTone} />
             )}
             {!isRoot && badge && (
-              <g transform={`translate(${node.r * 0.72}, ${-node.r * 0.72})`}>
+              <g
+                transform={`translate(${node.r * 0.72}, ${-node.r * 0.72})`}
+                opacity={Math.max(0.08, Math.min(1, nodeTone))}
+              >
                 <circle r={6.6} fill={badge.fill} stroke="#ffffff" strokeWidth={1.3} />
                 <text
                   x={0}

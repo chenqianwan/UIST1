@@ -7,15 +7,17 @@ export const NODE_LIBRARY: TemplateItem[] = [
     description: 'Clear payment milestones and timelines with low execution risk',
     type: 'financial',
     riskLevel: 'none',
+    timePhase: 'execution',
     content: 'Party A shall pay the corresponding milestone fee within 10 business days after acceptance.',
     satellites: [
       {
         label: 'Initial Payment',
         content: 'Initial payment is due upon contract signing.',
-        details: [{ label: 'Payment Proof', content: 'Bank transfer receipt serves as proof of initial payment.' }],
+        timePhase: 'pre_sign',
+        details: [{ label: 'Payment Proof', content: 'Bank transfer receipt serves as proof of initial payment.', timePhase: 'execution' }],
       },
-      { label: 'Acceptance Payment', content: 'Second-stage payment is due after acceptance is approved.' },
-      { label: 'Final Payment', content: 'Remaining balance is due after the warranty period ends.' },
+      { label: 'Acceptance Payment', content: 'Second-stage payment is due after acceptance is approved.', timePhase: 'acceptance' },
+      { label: 'Final Payment', content: 'Remaining balance is due after the warranty period ends.', timePhase: 'post_termination' },
     ],
   },
   {
@@ -24,6 +26,7 @@ export const NODE_LIBRARY: TemplateItem[] = [
     description: 'Deliverable ownership is clear, but infringement boundaries need refinement',
     type: 'asset',
     riskLevel: 'low',
+    timePhase: 'effective',
     content: 'All deliverables and derivative outcomes of this project are owned by Party A.',
     actionType: 'add_clause',
     actionReason:
@@ -35,9 +38,10 @@ export const NODE_LIBRARY: TemplateItem[] = [
       {
         label: 'Background IP',
         content: 'Party B retains pre-existing background intellectual property rights.',
-        details: [{ label: 'License Scope', content: 'Background IP grants a non-exclusive license for this project only.' }],
+        timePhase: 'effective',
+        details: [{ label: 'License Scope', content: 'Background IP grants a non-exclusive license for this project only.', timePhase: 'execution' }],
       },
-      { label: 'Infringement Warranty', content: 'Party B assumes indemnification responsibility for infringement risk.' },
+      { label: 'Infringement Warranty', content: 'Party B assumes indemnification responsibility for infringement risk.', timePhase: 'post_termination' },
     ],
   },
   {
@@ -46,10 +50,11 @@ export const NODE_LIBRARY: TemplateItem[] = [
     description: 'Covers confidentiality duration and disclosure exceptions with controllable risk',
     type: 'obligation',
     riskLevel: 'none',
+    timePhase: 'effective',
     content: 'Both parties shall maintain ongoing confidentiality for trade secrets learned during collaboration.',
     satellites: [
-      { label: 'Confidentiality Period', content: 'Confidentiality obligations continue for the agreed period after termination.' },
-      { label: 'Disclosure Exceptions', content: 'Legally mandated disclosure scenarios are treated as exceptions.' },
+      { label: 'Confidentiality Period', content: 'Confidentiality obligations continue for the agreed period after termination.', timePhase: 'post_termination' },
+      { label: 'Disclosure Exceptions', content: 'Legally mandated disclosure scenarios are treated as exceptions.', timePhase: 'execution' },
     ],
   },
   {
@@ -58,6 +63,7 @@ export const NODE_LIBRARY: TemplateItem[] = [
     description: 'Acceptance criteria are not sufficiently quantifiable; dispute risk is medium',
     type: 'obligation',
     riskLevel: 'medium',
+    timePhase: 'acceptance',
     content: 'Party A shall conduct acceptance after delivery; specific criteria require joint confirmation.',
     actionType: 'add_clause',
     actionReason:
@@ -66,11 +72,12 @@ export const NODE_LIBRARY: TemplateItem[] = [
       'Supplement: Appendix A shall define objective KPIs, pass/fail thresholds, and evidence formats for each deliverable item.',
     confidence: 0.83,
     satellites: [
-      { label: 'Defect Remediation', content: 'Party B shall complete defect remediation within a reasonable timeframe.' },
+      { label: 'Defect Remediation', content: 'Party B shall complete defect remediation within a reasonable timeframe.', timePhase: 'acceptance' },
       {
         label: 'Re-Validation Process',
         content: 'If re-validation fails, another remediation cycle must begin.',
-        details: [{ label: 'Re-Validation SLA', content: 'Provide re-validation feedback within 3 business days after each remediation.' }],
+        timePhase: 'acceptance',
+        details: [{ label: 'Re-Validation SLA', content: 'Provide re-validation feedback within 3 business days after each remediation.', timePhase: 'acceptance' }],
       },
     ],
   },
@@ -80,14 +87,15 @@ export const NODE_LIBRARY: TemplateItem[] = [
     description: 'Liability cap and exemption boundaries still leave interpretation room',
     type: 'risk',
     riskLevel: 'medium',
+    timePhase: 'execution',
     content: 'Direct losses caused by Party B breach shall be compensated within the liability cap.',
     actionType: 'delete',
     actionReason:
       'Current liability sentence partially conflicts with the master indemnity section and should be removed to avoid contradictory cap calculations.',
     confidence: 0.75,
     satellites: [
-      { label: 'Liability Cap', content: 'Compensation cap is based on total contract value.' },
-      { label: 'Exemption Clause', content: 'Losses caused by force majeure may be partially exempted.' },
+      { label: 'Liability Cap', content: 'Compensation cap is based on total contract value.', timePhase: 'execution' },
+      { label: 'Exemption Clause', content: 'Losses caused by force majeure may be partially exempted.', timePhase: 'execution' },
     ],
   },
   {
@@ -96,6 +104,7 @@ export const NODE_LIBRARY: TemplateItem[] = [
     description: 'Trigger conditions are ambiguous, creating high dispute and risk potential',
     type: 'risk',
     riskLevel: 'high',
+    timePhase: 'termination',
     content: 'Either party may unilaterally terminate for material breach, but quantitative standards are undefined.',
     actionType: 'revise',
     actionReason:
@@ -104,11 +113,12 @@ export const NODE_LIBRARY: TemplateItem[] = [
       'Revision: "Material breach" means uncured breach lasting more than 15 business days after written notice; termination requires board-level written approval and settlement checklist completion.',
     confidence: 0.9,
     satellites: [
-      { label: 'Notice Period', content: 'A written notice must be issued at least 7 days before termination.' },
+      { label: 'Notice Period', content: 'A written notice must be issued at least 7 days before termination.', timePhase: 'termination' },
       {
         label: 'Loss Settlement',
         content: 'Both parties shall complete settlement within 15 days after termination.',
-        details: [{ label: 'Settlement Basis', content: 'Settlement is based on completed milestones and acceptable deliverables.' }],
+        timePhase: 'post_termination',
+        details: [{ label: 'Settlement Basis', content: 'Settlement is based on completed milestones and acceptable deliverables.', timePhase: 'post_termination' }],
       },
     ],
   },

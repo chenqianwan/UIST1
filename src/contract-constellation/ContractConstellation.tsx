@@ -25,6 +25,15 @@ const FALLBACK_X_BY_RISK = {
   high: 0.8,
 } as const;
 
+const TIME_LANE_X_BY_PHASE = {
+  pre_sign: 0.14,
+  effective: 0.28,
+  execution: 0.44,
+  acceptance: 0.6,
+  termination: 0.76,
+  post_termination: 0.88,
+} as const;
+
 export default function ContractConstellation() {
   const width = CANVAS_WIDTH;
   const height = CANVAS_HEIGHT;
@@ -40,7 +49,9 @@ export default function ContractConstellation() {
   const [revealStage, setRevealStage] = useState<1 | 2>(2);
   const [semanticBiasStrength, setSemanticBiasStrength] = useState(0);
   const [riskBiasStrength, setRiskBiasStrength] = useState(0);
+  const [timeBiasStrength, setTimeBiasStrength] = useState(0);
   const [semanticTargetXById, setSemanticTargetXById] = useState<Record<string, number>>({});
+  const [timeTargetXById, setTimeTargetXById] = useState<Record<string, number>>({});
   const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const exportTimerRef = useRef<number | null>(null);
 
@@ -59,6 +70,8 @@ export default function ContractConstellation() {
     semanticBiasStrength,
     semanticTargetXById,
     riskBiasStrength,
+    timeBiasStrength,
+    timeTargetXById,
   );
 
   const availableTemplates = useMemo(
@@ -84,13 +97,14 @@ export default function ContractConstellation() {
           label: node.label,
           content: node.content,
           riskLevel: node.riskLevel,
+          timePhase: node.timePhase,
         })),
     [nodes],
   );
   const semanticSignature = useMemo(
     () =>
       semanticNodes
-        .map((node) => `${node.id}::${node.label}::${node.content}::${node.riskLevel}`)
+        .map((node) => `${node.id}::${node.label}::${node.content}::${node.riskLevel}::${node.timePhase}`)
         .join('|'),
     [semanticNodes],
   );
@@ -102,6 +116,15 @@ export default function ContractConstellation() {
     });
     return map;
   }, [semanticNodesForEmbedding]);
+  const fallbackTimeTargetXById = useMemo(() => {
+    const map: Record<string, number> = {};
+    nodes
+      .filter((node) => node.id !== 'root')
+      .forEach((node) => {
+        map[node.id] = TIME_LANE_X_BY_PHASE[node.timePhase];
+      });
+    return map;
+  }, [nodes]);
 
   const focusDepthMap = useMemo(() => {
     if (!selectedNodeId) return null;
@@ -129,6 +152,10 @@ export default function ContractConstellation() {
       links.filter((link) => link.target === selectedNodeId && link.source !== selectedNodeId).map((link) => link.source),
     );
   }, [links, selectedNodeId]);
+  const aggregationStrength = useMemo(
+    () => Math.max(semanticBiasStrength, riskBiasStrength, timeBiasStrength),
+    [semanticBiasStrength, riskBiasStrength, timeBiasStrength],
+  );
 
   useEffect(() => {
     if (!selectedNodeId) {
@@ -164,6 +191,10 @@ export default function ContractConstellation() {
       active = false;
     };
   }, [semanticNodesForEmbedding, fallbackSemanticTargetXById]);
+
+  useEffect(() => {
+    setTimeTargetXById(fallbackTimeTargetXById);
+  }, [fallbackTimeTargetXById]);
 
   const handleDragStart = (event: DragEvent<HTMLDivElement>, templateId: string) => {
     event.dataTransfer.effectAllowed = 'copy';
@@ -287,6 +318,7 @@ export default function ContractConstellation() {
           label: node.label,
           type: node.type,
           riskLevel: node.riskLevel,
+          timePhase: node.timePhase,
           content: node.content,
           parentId: node.parentId ?? null,
         })),
@@ -392,14 +424,16 @@ export default function ContractConstellation() {
             <p className="mt-1 text-[11px] leading-tight opacity-80">Sub-clause: Delete / Main clause: Remove reference</p>
           </div>
         </div>
-        <div className="pointer-events-none absolute bottom-4 right-4 z-10 flex h-[96px] flex-col justify-center gap-2">
-          <div className="pointer-events-auto w-[320px] rounded-xl border border-slate-200 bg-white/90 px-4 py-2 text-[11px] text-slate-700 shadow-sm backdrop-blur-sm">
+        <div className="pointer-events-none absolute bottom-4 right-4 z-10">
+          <div className="pointer-events-auto flex h-[96px] w-[470px] flex-col justify-center rounded-xl border border-slate-200 bg-white/90 px-4 py-2 text-[11px] text-slate-700 shadow-sm backdrop-blur-sm">
             <div className="mb-1.5 flex items-center justify-between">
               <span className="font-semibold">Analysis Controls</span>
-              <span className="text-slate-500">S {Math.round(semanticBiasStrength * 100)}% / R {Math.round(riskBiasStrength * 100)}%</span>
+              <span className="text-slate-500">
+                S {Math.round(semanticBiasStrength * 100)}% / R {Math.round(riskBiasStrength * 100)}% / T {Math.round(timeBiasStrength * 100)}%
+              </span>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-md border border-slate-200 bg-slate-50/65 px-2 py-1">
                 <div className="mb-0.5 flex items-center justify-between text-[10px] text-slate-600">
                   <span>Semantic Pull</span>
                   <span>{Math.round(semanticBiasStrength * 100)}%</span>
@@ -411,10 +445,10 @@ export default function ContractConstellation() {
                   step={0.01}
                   value={semanticBiasStrength}
                   onChange={(event) => setSemanticBiasStrength(Number(event.target.value))}
-                  className="h-1.5 w-full accent-slate-500"
+                  className="analysis-slider analysis-slider--semantic"
                 />
               </div>
-              <div>
+              <div className="rounded-md border border-slate-200 bg-slate-50/65 px-2 py-1">
                 <div className="mb-0.5 flex items-center justify-between text-[10px] text-slate-600">
                   <span>Risk Pull</span>
                   <span>{Math.round(riskBiasStrength * 100)}%</span>
@@ -426,7 +460,22 @@ export default function ContractConstellation() {
                   step={0.01}
                   value={riskBiasStrength}
                   onChange={(event) => setRiskBiasStrength(Number(event.target.value))}
-                  className="h-1.5 w-full accent-rose-500"
+                  className="analysis-slider analysis-slider--risk"
+                />
+              </div>
+              <div className="rounded-md border border-slate-200 bg-slate-50/65 px-2 py-1">
+                <div className="mb-0.5 flex items-center justify-between text-[10px] text-slate-600">
+                  <span>Time Pull</span>
+                  <span>{Math.round(timeBiasStrength * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={timeBiasStrength}
+                  onChange={(event) => setTimeBiasStrength(Number(event.target.value))}
+                  className="analysis-slider analysis-slider--time"
                 />
               </div>
             </div>
@@ -436,6 +485,7 @@ export default function ContractConstellation() {
         <GraphCanvas
           nodes={nodes}
           links={links}
+          aggregationStrength={aggregationStrength}
           selectedNodeId={selectedNodeId}
           draggingNodeId={draggingNodeId}
           focusDepthMap={focusDepthMap}

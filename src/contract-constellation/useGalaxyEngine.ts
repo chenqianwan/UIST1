@@ -21,12 +21,24 @@ function getActionTypeByRisk(
   return u < 0.55 ? 'revise' : 'delete';
 }
 
+function inferTimePhaseFromText(seedText: string): GraphNode['timePhase'] {
+  const text = seedText.toLowerCase();
+  if (text.includes('sign') || text.includes('effective date')) return 'pre_sign';
+  if (text.includes('effective') || text.includes('background ip')) return 'effective';
+  if (text.includes('accept') || text.includes('validation') || text.includes('remediation')) return 'acceptance';
+  if (text.includes('termination') || text.includes('terminate') || text.includes('notice period')) return 'termination';
+  if (text.includes('warranty') || text.includes('settlement') || text.includes('post')) return 'post_termination';
+  return 'execution';
+}
+
 export function useGalaxyEngine(
   width: number,
   height: number,
   semanticBiasStrength = 0,
   semanticTargetXById: Record<string, number> = {},
   riskBiasStrength = 0,
+  timeBiasStrength = 0,
+  timeTargetXById: Record<string, number> = {},
 ) {
   const rootNode = useMemo<GraphNode>(
     () => ({
@@ -41,6 +53,7 @@ export function useGalaxyEngine(
       r: 30,
       content: 'Contract structure central node',
       riskLevel: 'none',
+      timePhase: 'effective',
     }),
     [width, height],
   );
@@ -73,6 +86,7 @@ export function useGalaxyEngine(
         r: 18,
         content: template.content,
         riskLevel: template.riskLevel,
+        timePhase: template.timePhase ?? inferTimePhaseFromText(`${template.label}. ${template.content}`),
         templateId: template.id,
         actionType: template.riskLevel === 'none' ? undefined : template.actionType,
         actionReason: template.riskLevel === 'none' ? undefined : template.actionReason,
@@ -94,6 +108,7 @@ export function useGalaxyEngine(
         const angle = (index / Math.max(arr.length, 1)) * Math.PI * 2;
         const riskLevel = getIndependentRiskLevel(`${template.id}::sat::${item.label}::${item.content}`);
         const actionType = getActionTypeByRisk(riskLevel, `${template.id}::sat-action::${item.label}`);
+        const timePhase = item.timePhase ?? inferTimePhaseFromText(`${item.label}. ${item.content}`);
         return {
           id: `sub_${id}_${index}`,
           label: item.label,
@@ -106,6 +121,7 @@ export function useGalaxyEngine(
           r: 10,
           content: item.content,
           riskLevel,
+          timePhase,
           templateId: template.id,
           parentId: id,
           actionType,
@@ -124,6 +140,7 @@ export function useGalaxyEngine(
         return details.slice(0, 1).map((detail, detailIndex) => {
           const riskLevel = getIndependentRiskLevel(`${template.id}::leaf::${detail.label}::${detail.content}`);
           const actionType = getActionTypeByRisk(riskLevel, `${template.id}::leaf-action::${detail.label}`);
+          const timePhase = detail.timePhase ?? inferTimePhaseFromText(`${detail.label}. ${detail.content}`);
           return {
             id: `leaf_${id}_${index}_${detailIndex}`,
             label: detail.label,
@@ -136,6 +153,7 @@ export function useGalaxyEngine(
             r: 7,
             content: detail.content,
             riskLevel,
+            timePhase,
             templateId: template.id,
             parentId: satId,
             actionType,
@@ -250,6 +268,7 @@ export function useGalaxyEngine(
       r: newRadius,
       content,
       riskLevel,
+      timePhase: 'execution',
       templateId: parentNode.templateId,
       parentId: parentNode.id,
     };
@@ -386,6 +405,17 @@ export function useGalaxyEngine(
         });
       }
 
+      if (timeBiasStrength > 0) {
+        const softTimeForce = 0.09;
+        localNodes.forEach((node, i) => {
+          if (node.id === 'root' || draggingNodeIdRef.current === node.id) return;
+          const targetNorm = timeTargetXById[node.id];
+          if (typeof targetNorm !== 'number') return;
+          const targetX = width * targetNorm;
+          forces[i].fx += (targetX - node.x) * timeBiasStrength * softTimeForce;
+        });
+      }
+
       localNodes.forEach((node, i) => {
         if (node.id === 'root') {
           node.x = width / 2;
@@ -415,7 +445,7 @@ export function useGalaxyEngine(
 
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [height, width, semanticBiasStrength, semanticTargetXById, riskBiasStrength]);
+  }, [height, width, semanticBiasStrength, semanticTargetXById, riskBiasStrength, timeBiasStrength, timeTargetXById]);
 
   return {
     nodes,
