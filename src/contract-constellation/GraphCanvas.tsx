@@ -25,7 +25,10 @@ interface GraphCanvasProps {
   revealStage: 1 | 2;
   selectedNode: GraphNode | null;
   svgRef: React.RefObject<SVGSVGElement | null>;
-  onSelectNode: (nodeId: string | null) => void;
+  onSelectNode: (
+    nodeId: string | null,
+    meta?: { clientX: number; clientY: number; source: 'canvas_click' | 'node_click' },
+  ) => void;
   onNodePointerDown: (event: PointerEvent<SVGGElement>, node: GraphNode) => void;
   onDrop: (event: React.DragEvent<SVGSVGElement>) => void;
   onPointerMove: (event: PointerEvent<SVGSVGElement>) => void;
@@ -80,7 +83,9 @@ export function GraphCanvas({
       width="100%"
       height="100%"
       viewBox={`0 0 ${width} ${height}`}
-      onClick={() => onSelectNode(null)}
+      onClick={(event) =>
+        onSelectNode(null, { clientX: event.clientX, clientY: event.clientY, source: 'canvas_click' })
+      }
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onDragOver={onDragOver}
@@ -146,7 +151,6 @@ export function GraphCanvas({
         const child = link.type === 'child-link';
         const detail = link.type === 'detail-link';
         const sourceDepth = focusDepthMap?.get(link.source);
-        const isFocused = !selectedNodeId || sourceDepth !== undefined;
         const isIncomingToSelected = Boolean(selectedNodeId) && link.target === selectedNodeId && link.source !== selectedNodeId;
         const isOutgoingFromSelected = Boolean(selectedNodeId) && link.source === selectedNodeId;
         const sourceEffectiveR = source.id === 'root' ? source.r : (source.r * 227) / 256;
@@ -308,7 +312,11 @@ export function GraphCanvas({
             }}
             onClick={(event) => {
               event.stopPropagation();
-              onSelectNode(node.id);
+              onSelectNode(node.id, {
+                clientX: event.clientX,
+                clientY: event.clientY,
+                source: 'node_click',
+              });
             }}
             onPointerDown={(event) => onNodePointerDown(event, node)}
             className={node.id === 'root' ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'}

@@ -1,4 +1,4 @@
-import { Box, DollarSign, Download, FileText, Link2, PlusCircle, Shield, Sparkles, Trash2 } from 'lucide-react';
+import { Box, DollarSign, Download, FileText, Link2, Loader2, PlusCircle, Shield, Sparkles, Trash2 } from 'lucide-react';
 import type { TemplateItem } from './types';
 import type { GraphNode } from './types';
 import type { AiSuggestion } from './types';
@@ -30,6 +30,11 @@ interface SidePanelProps {
   onDeleteNode: (nodeId: string, actionId: string) => void;
   onAddSupplement: (nodeId: string, actionId: string, draft?: string) => void;
   onExport: () => void;
+  onModifyHoverSample?: (meta: { clientX: number; clientY: number; ratioY: number }) => void;
+  isBulkApplying?: boolean;
+  bulkApplySummary?: { nodeCount: number; revise: number; addClause: number; delete: number; total: number } | null;
+  bulkApplyDoneCount?: number | null;
+  onBulkApply?: () => void;
 }
 
 export function SidePanel({
@@ -44,6 +49,11 @@ export function SidePanel({
   onDeleteNode,
   onAddSupplement,
   onExport,
+  onModifyHoverSample,
+  isBulkApplying = false,
+  bulkApplySummary = null,
+  bulkApplyDoneCount = null,
+  onBulkApply,
 }: SidePanelProps) {
   const showActionAdvice = Boolean(selectedNode && selectedNode.id !== 'root' && selectedNode.riskLevel !== 'none');
   const actions = selectedNode?.actions ?? [];
@@ -192,12 +202,48 @@ export function SidePanel({
               {lastAppliedAction?.nodeId === selectedNode.id && selectedNode.riskLevel === 'none' && (
                 <p className="text-[11px] font-semibold text-emerald-600">AI update applied; node is now marked as no-risk.</p>
               )}
-              {showActionAdvice && pendingActions.length > 0 && sortActions(pendingActions).map((action) => {
-                const tone = actionTone[action.type];
-                const actionReason = action.reason ?? (action.type === 'revise' ? aiSuggestion?.reason : undefined);
-                const actionConfidence = typeof action.confidence === 'number' ? action.confidence : undefined;
-                return (
-                  <div key={action.id} className={`mt-3 rounded-lg border p-3 ${tone.box}`}>
+              {showActionAdvice && bulkApplySummary && onBulkApply && (
+                <>
+                  <button
+                    type="button"
+                    onClick={onBulkApply}
+                    disabled={isBulkApplying}
+                    className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-semibold text-violet-700 transition hover:border-violet-300 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {isBulkApplying ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" />
+                        处理中…
+                      </>
+                    ) : (
+                      <>一键递归修改（{bulkApplySummary.total} 项）</>
+                    )}
+                  </button>
+                  {bulkApplyDoneCount != null && (
+                    <p className="mt-1 text-center text-[11px] font-semibold text-emerald-600">已递归执行 {bulkApplyDoneCount} 项</p>
+                  )}
+                </>
+              )}
+              {showActionAdvice && pendingActions.length > 0 && (
+                <div className="max-h-[250px] overflow-y-auto pr-1">
+                  {sortActions(pendingActions).map((action) => {
+                    const tone = actionTone[action.type];
+                    const actionReason = action.reason ?? (action.type === 'revise' ? aiSuggestion?.reason : undefined);
+                    const actionConfidence = typeof action.confidence === 'number' ? action.confidence : undefined;
+                    return (
+                      <div
+                        key={action.id}
+                        className={`mt-3 rounded-lg border p-3 ${tone.box}`}
+                        onPointerMove={(event) => {
+                          const cardRect = event.currentTarget.getBoundingClientRect();
+                          const ratioY = cardRect.height > 0 ? (event.clientY - cardRect.top) / cardRect.height : 0.5;
+                          onModifyHoverSample?.({
+                            clientX: event.clientX,
+                            clientY: event.clientY,
+                            ratioY: Math.max(0, Math.min(1, ratioY)),
+                          });
+                        }}
+                      >
                     <div className={`mb-1 flex items-center gap-1 border-l-4 pl-2 text-xs font-semibold ${tone.border} ${tone.bar}`}>
                       {actionIcon[action.type]}
                       AI Action: {actionLabel[action.type]}
@@ -229,9 +275,11 @@ export function SidePanel({
                     {lastAppliedAction?.nodeId === selectedNode.id && lastAppliedAction.actionId === action.id && (
                       <p className="mt-1 text-center text-[11px] text-emerald-600">Action applied successfully.</p>
                     )}
-                  </div>
-                );
-              })}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           ) : (
             <p className="mt-2 text-xs text-slate-500">Click a clause node on the canvas to view details.</p>

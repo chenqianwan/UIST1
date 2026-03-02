@@ -4,6 +4,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ChangeEvent,
   type DragEvent,
   type PointerEvent,
 } from 'react';
@@ -13,10 +14,12 @@ import sidePanelBg from '../../static/side_panel.png';
 import { NODE_LIBRARY } from './constants';
 import { GraphCanvas, CANVAS_WIDTH, CANVAS_HEIGHT } from './GraphCanvas';
 import { SidePanel } from './SidePanel';
-import type { GraphNode, NodeActionType } from './types';
+import type { GraphNode, GraphLink, NodeActionType } from './types';
+import type { NodeActionItem } from './types';
 import { getRiskColor, getAiSuggestion } from './utils';
 import { getSemanticTargetXMap } from './semanticEmbedding';
 import { useGalaxyEngine } from './useGalaxyEngine';
+import { useMonitoring } from '../monitoring/useMonitoring';
 
 const FALLBACK_X_BY_RISK = {
   none: 0.24,
@@ -41,9 +44,64 @@ const RISK_RANK = {
   high: 3,
 } as const;
 
+const SIDE_PANEL_WIDTH = 320;
+const CONTROLS_PANEL_WIDTH = 470;
+const CONTROLS_PANEL_HEIGHT = 96;
+const TRASH_ZONE_WIDTH = 192;
+const TRASH_ZONE_HEIGHT = 96;
+const TRASH_ZONE_LEFT = 16;
+const TRASH_ZONE_BOTTOM = 16;
+const HOVER_SAMPLE_INTERVAL_MS = 320;
+const HOVER_HEAT_WEIGHT = 0.12;
+const SLIDER_SAMPLE_INTERVAL_MS = 220;
+const SLIDER_HEAT_WEIGHT = 0.4;
+const MODIFY_SAMPLE_INTERVAL_MS = 220;
+const MODIFY_HEAT_WEIGHT = 0.45;
+
+/** Structural links only (child-link, detail-link); exclude reference-link. */
+function getStructuralChildrenBySource(links: GraphLink[]): Map<string, string[]> {
+  const map = new Map<string, string[]>();
+  links.forEach((link) => {
+    if (link.type === 'reference-link') return;
+    const list = map.get(link.source) ?? [];
+    list.push(link.target);
+    map.set(link.source, list);
+  });
+  return map;
+}
+
+/** DFS order of node ids in subtree (structural links only). Parent deleted => skip that branch. */
+function getSubtreeDfsOrder(seedNodeId: string, childrenBySource: Map<string, string[]>): string[] {
+  const order: string[] = [];
+  function dfs(id: string) {
+    order.push(id);
+    const children = childrenBySource.get(id);
+    if (!children) return;
+    children.forEach((c) => dfs(c));
+  }
+  dfs(seedNodeId);
+  return order;
+}
+
+/** All descendant ids for a node (structural links only). */
+function getDescendantIds(nodeId: string, childrenBySource: Map<string, string[]>): Set<string> {
+  const set = new Set<string>();
+  function dfs(id: string) {
+    const children = childrenBySource.get(id);
+    if (!children) return;
+    children.forEach((c) => {
+      set.add(c);
+      dfs(c);
+    });
+  }
+  dfs(nodeId);
+  return set;
+}
+
 export default function ContractConstellation() {
   const width = CANVAS_WIDTH;
   const height = CANVAS_HEIGHT;
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const trashRef = useRef<HTMLDivElement | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -53,6 +111,9 @@ export default function ContractConstellation() {
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
   const [isOverTrash, setIsOverTrash] = useState(false);
   const [exportState, setExportState] = useState<'idle' | 'exporting' | 'success'>('idle');
+  const [isBulkApplying, setIsBulkApplying] = useState(false);
+  const [bulkApplyDoneCount, setBulkApplyDoneCount] = useState<number | null>(null);
+  const bulkApplyDoneTimerRef = useRef<number | null>(null);
   const [revealStage, setRevealStage] = useState<1 | 2>(2);
   const [semanticBiasStrength, setSemanticBiasStrength] = useState(0);
   const [riskBiasStrength, setRiskBiasStrength] = useState(0);
@@ -61,6 +122,35 @@ export default function ContractConstellation() {
   const [timeTargetXById, setTimeTargetXById] = useState<Record<string, number>>({});
   const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const exportTimerRef = useRef<number | null>(null);
+  const hoverSampleAtRef = useRef<number>(0);
+  const sliderSampleAtRef = useRef<number>(0);
+  const modifySampleAtRef = useRef<number>(0);
+  const { track } = useMonitoring('main', true);
+  const layoutWidth = width + SIDE_PANEL_WIDTH;
+  const layoutHeight = height;
+  const trashCenterX = TRASH_ZONE_LEFT + TRASH_ZONE_WIDTH / 2;
+  const trashCenterY = height - TRASH_ZONE_BOTTOM - TRASH_ZONE_HEIGHT / 2;
+
+  const getCanvasPointFromClient = useCallback((clientX: number, clientY: number) => {
+    if (!svgRef.current) return null;
+    const rect = svgRef.current.getBoundingClientRect();
+    const x = ((clientX - rect.left) / rect.width) * width;
+    const y = ((clientY - rect.top) / rect.height) * height;
+    return {
+      x: Math.max(0, Math.min(width, x)),
+      y: Math.max(0, Math.min(height, y)),
+    };
+  }, [height, width]);
+  const getLayoutPointFromClient = useCallback((clientX: number, clientY: number) => {
+    if (!rootRef.current) return null;
+    const rect = rootRef.current.getBoundingClientRect();
+    const x = ((clientX - rect.left) / rect.width) * layoutWidth;
+    const y = ((clientY - rect.top) / rect.height) * layoutHeight;
+    return {
+      x: Math.max(0, Math.min(layoutWidth, x)),
+      y: Math.max(0, Math.min(layoutHeight, y)),
+    };
+  }, [layoutHeight, layoutWidth]);
 
   const {
     nodes,
@@ -90,6 +180,29 @@ export default function ContractConstellation() {
     () => nodes.find((node) => node.id === selectedNodeId) ?? null,
     [nodes, selectedNodeId],
   );
+
+  const bulkApplySummary = useMemo(() => {
+    if (!selectedNodeId || !selectedNode || selectedNode.id === 'root') return null;
+    const childrenBySource = getStructuralChildrenBySource(links);
+    const subtreeIds = getSubtreeDfsOrder(selectedNodeId, childrenBySource);
+    let revise = 0;
+    let addClause = 0;
+    let del = 0;
+    const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+    subtreeIds.forEach((id) => {
+      const node = nodeMap.get(id);
+      if (!node?.actions) return;
+      node.actions.forEach((a) => {
+        if (a.status === 'completed') return;
+        if (a.type === 'revise') revise += 1;
+        else if (a.type === 'add_clause') addClause += 1;
+        else if (a.type === 'delete') del += 1;
+      });
+    });
+    const total = revise + addClause + del;
+    if (total === 0) return null;
+    return { nodeCount: subtreeIds.length, revise, addClause, delete: del, total };
+  }, [links, nodes, selectedNode, selectedNodeId]);
 
   const aiSuggestion = useMemo(
     () => (selectedNode && selectedNode.id !== 'root' ? getAiSuggestion(selectedNode) : null),
@@ -254,6 +367,18 @@ export default function ContractConstellation() {
     const y = ((event.clientY - rect.top) / rect.height) * height;
     addNodeFromTemplate(template, x, y);
     setUsedTemplateIds((prev) => [...prev, template.id]);
+    track('template_added', {
+      componentId: 'canvas',
+      payload: {
+        template_id: template.id,
+        x: Math.round(x),
+        y: Math.round(y),
+        canvas_w: width,
+        canvas_h: height,
+        layout_w: layoutWidth,
+        layout_h: layoutHeight,
+      },
+    });
   };
 
   const handleNodePointerDown = (event: PointerEvent<SVGGElement>, node: GraphNode) => {
@@ -268,9 +393,26 @@ export default function ContractConstellation() {
     setSelectedNodeId(node.id);
   };
 
-  const removeNodeByUserAction = useCallback((nodeId: string) => {
+  const removeNodeByUserAction = useCallback((nodeId: string, source: 'drop_zone' | 'click_zone' | 'action_delete') => {
     const targetNode = nodes.find((node) => node.id === nodeId);
     if (!targetNode || targetNode.id === 'root') return;
+    const basePayload: Record<string, string | number> = {
+      node_type: targetNode.type,
+      risk_level: targetNode.riskLevel,
+      layout_w: layoutWidth,
+      layout_h: layoutHeight,
+      canvas_w: width,
+      canvas_h: height,
+    };
+    if (source === 'drop_zone' || source === 'click_zone') {
+      basePayload.x = Math.round(trashCenterX);
+      basePayload.y = Math.round(trashCenterY);
+    }
+    track('node_deleted', {
+      componentId: source,
+      nodeId,
+      payload: basePayload,
+    });
     if (targetNode.type === 'sub') {
       removeNodeCascade(nodeId);
       if (selectedNodeId === nodeId) setSelectedNodeId(null);
@@ -281,13 +423,13 @@ export default function ContractConstellation() {
       setUsedTemplateIds((prev) => prev.filter((id) => id !== targetNode.templateId));
     }
     if (selectedNodeId === nodeId) setSelectedNodeId(null);
-  }, [nodes, removeNodeCascade, selectedNodeId]);
+  }, [height, layoutHeight, layoutWidth, nodes, removeNodeCascade, selectedNodeId, track, trashCenterX, trashCenterY, width]);
 
   const endNodeDrag = useCallback(
     (shouldDelete: boolean) => {
       if (!draggingNodeId) return;
       if (shouldDelete) {
-        removeNodeByUserAction(draggingNodeId);
+        removeNodeByUserAction(draggingNodeId, 'drop_zone');
       }
       setDraggingNodeId(null);
       setDraggingNode(null);
@@ -374,17 +516,27 @@ export default function ContractConstellation() {
     exportTimerRef.current = window.setTimeout(() => {
       console.info('[Demo] Contract exported successfully', exportPayload);
       setExportState('success');
+      track('export_success', {
+        componentId: 'side_panel_export',
+        payload: {
+          clause_count: exportPayload.clauses.length,
+          link_count: exportPayload.links.length,
+          x: width + SIDE_PANEL_WIDTH / 2,
+          y: height - 34,
+          layout_w: layoutWidth,
+          layout_h: layoutHeight,
+        },
+      });
       exportTimerRef.current = window.setTimeout(() => {
         setExportState('idle');
       }, 2200);
     }, 900);
-  }, [exportState, links, nodes]);
+  }, [exportState, height, layoutHeight, layoutWidth, links, nodes, track, width]);
 
   useEffect(() => {
     return () => {
-      if (exportTimerRef.current) {
-        window.clearTimeout(exportTimerRef.current);
-      }
+      if (exportTimerRef.current) window.clearTimeout(exportTimerRef.current);
+      if (bulkApplyDoneTimerRef.current != null) window.clearTimeout(bulkApplyDoneTimerRef.current);
     };
   }, []);
 
@@ -393,21 +545,42 @@ export default function ContractConstellation() {
       const didComplete = completeNodeAction(nodeId, actionId, replacement);
       if (didComplete) {
         setLastAppliedAction({ nodeId, actionId, actionType: 'revise' });
+        track('action_executed', {
+          componentId: 'side_panel_action',
+          nodeId,
+          payload: {
+            action_id: actionId,
+            action_type: 'revise',
+            x: width + SIDE_PANEL_WIDTH / 2,
+            y: height * 0.66,
+            layout_w: layoutWidth,
+            layout_h: layoutHeight,
+          },
+        });
       }
     },
-    [completeNodeAction],
+    [completeNodeAction, height, layoutHeight, layoutWidth, track, width],
   );
 
   const handleDeleteNodeAction = useCallback((nodeId: string, actionId: string) => {
     const node = nodes.find((item) => item.id === nodeId);
     if (!node || node.id === 'root') return;
-    removeNodeCascade(nodeId);
-    if (node.templateId) {
-      setUsedTemplateIds((prev) => prev.filter((id) => id !== node.templateId));
-    }
+    removeNodeByUserAction(nodeId, 'action_delete');
     setSelectedNodeId(null);
     setLastAppliedAction({ nodeId, actionId, actionType: 'delete' });
-  }, [nodes, removeNodeCascade]);
+    track('action_executed', {
+      componentId: 'side_panel_action',
+      nodeId,
+      payload: {
+        action_id: actionId,
+        action_type: 'delete',
+        x: width + SIDE_PANEL_WIDTH / 2,
+        y: height * 0.66,
+        layout_w: layoutWidth,
+        layout_h: layoutHeight,
+      },
+    });
+  }, [height, layoutHeight, layoutWidth, nodes, removeNodeByUserAction, track, width]);
 
   const handleAddSupplementAction = useCallback((nodeId: string, actionId: string, draft?: string) => {
     addSupplementClause(nodeId, draft);
@@ -419,17 +592,276 @@ export default function ContractConstellation() {
       const didComplete = completeNodeAction(nodeId, actionId, mergedContent);
       if (didComplete) {
         setLastAppliedAction({ nodeId, actionId, actionType: 'add_clause' });
+        track('action_executed', {
+          componentId: 'side_panel_action',
+          nodeId,
+          payload: {
+            action_id: actionId,
+            action_type: 'add_clause',
+            x: width + SIDE_PANEL_WIDTH / 2,
+            y: height * 0.66,
+            layout_w: layoutWidth,
+            layout_h: layoutHeight,
+          },
+        });
       }
     }
-  }, [addSupplementClause, completeNodeAction, nodes]);
+  }, [addSupplementClause, completeNodeAction, height, layoutHeight, layoutWidth, nodes, track, width]);
+
+  type BulkTask = { nodeId: string; action: NodeActionItem; node: GraphNode };
+  const handleBulkApply = useCallback(() => {
+    if (!selectedNodeId || !selectedNode || selectedNode.id === 'root') return;
+    const childrenBySource = getStructuralChildrenBySource(links);
+    const subtreeIds = getSubtreeDfsOrder(selectedNodeId, childrenBySource);
+    const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+    const revises: BulkTask[] = [];
+    const addClauses: BulkTask[] = [];
+    const deletes: BulkTask[] = [];
+    subtreeIds.forEach((nodeId) => {
+      const node = nodeMap.get(nodeId);
+      if (!node || !node.actions) return;
+      const pending = node.actions.filter((a) => a.status !== 'completed');
+      const hasDelete = pending.some((a) => a.type === 'delete');
+      pending.forEach((action) => {
+        const task: BulkTask = { nodeId, action, node };
+        if (action.type === 'delete') deletes.push(task);
+        else if (!hasDelete) {
+          if (action.type === 'revise') revises.push(task);
+          else if (action.type === 'add_clause') addClauses.push(task);
+        }
+      });
+    });
+    const totalTasks = revises.length + addClauses.length + deletes.length;
+    if (totalTasks === 0) return;
+    const message = `将递归执行：${subtreeIds.length} 个节点，共 ${totalTasks} 项操作（先删除 ${deletes.length}，再修订 ${revises.length}、补充 ${addClauses.length}）。确认执行？`;
+    if (!window.confirm(message)) return;
+    setIsBulkApplying(true);
+    const removedIds = new Set<string>();
+    const run = () => {
+      const applyRevise = (t: BulkTask) => {
+        if (removedIds.has(t.nodeId)) return;
+        completeNodeAction(t.nodeId, t.action.id, t.action.suggestionText ?? t.node.content);
+      };
+      const applyAddClause = (t: BulkTask) => {
+        if (removedIds.has(t.nodeId)) return;
+        addSupplementClause(t.nodeId, t.action.supplementDraft);
+        const merged = t.action.supplementDraft?.trim()
+          ? `${t.node.content} ${t.action.supplementDraft.trim()}`
+          : t.node.content;
+        completeNodeAction(t.nodeId, t.action.id, merged);
+      };
+      const applyDelete = (t: BulkTask) => {
+        if (removedIds.has(t.nodeId)) return;
+        const desc = getDescendantIds(t.nodeId, childrenBySource);
+        removedIds.add(t.nodeId);
+        desc.forEach((id) => removedIds.add(id));
+        removeNodeCascade(t.nodeId);
+      };
+      deletes.forEach(applyDelete);
+      revises.forEach(applyRevise);
+      addClauses.forEach(applyAddClause);
+      if (removedIds.has(selectedNodeId)) setSelectedNodeId(null);
+      setLastAppliedAction(null);
+      track('action_executed', {
+        componentId: 'side_panel_action',
+        nodeId: selectedNodeId,
+        payload: {
+          source: 'modify_bulk_apply',
+          node_count: subtreeIds.length,
+          revise_count: revises.length,
+          add_clause_count: addClauses.length,
+          delete_count: deletes.length,
+          x: width + SIDE_PANEL_WIDTH / 2,
+          y: height * 0.66,
+          layout_w: layoutWidth,
+          layout_h: layoutHeight,
+        },
+      });
+      setIsBulkApplying(false);
+      setBulkApplyDoneCount(totalTasks);
+      if (bulkApplyDoneTimerRef.current != null) window.clearTimeout(bulkApplyDoneTimerRef.current);
+      bulkApplyDoneTimerRef.current = window.setTimeout(() => {
+        setBulkApplyDoneCount(null);
+        bulkApplyDoneTimerRef.current = null;
+      }, 2500);
+    };
+    run();
+  }, [
+    links,
+    nodes,
+    selectedNode,
+    selectedNodeId,
+    completeNodeAction,
+    addSupplementClause,
+    removeNodeCascade,
+    track,
+    width,
+    height,
+    layoutWidth,
+    layoutHeight,
+  ]);
+
   const deletableSelectedNode = selectedNode && selectedNode.id !== 'root' ? selectedNode : null;
   const handleDeleteSelectedNode = useCallback(() => {
     if (!deletableSelectedNode) return;
-    removeNodeByUserAction(deletableSelectedNode.id);
+    removeNodeByUserAction(deletableSelectedNode.id, 'click_zone');
   }, [deletableSelectedNode, removeNodeByUserAction]);
 
+  const handleSelectNode = useCallback((
+    nodeId: string | null,
+    meta?: { clientX: number; clientY: number; source: 'canvas_click' | 'node_click' },
+  ) => {
+    setSelectedNodeId(nodeId);
+    const canvasPoint = meta ? getCanvasPointFromClient(meta.clientX, meta.clientY) : null;
+    if (canvasPoint) {
+      track('canvas_interaction', {
+        componentId: 'canvas',
+        nodeId: nodeId ?? undefined,
+        payload: {
+          x: Math.round(canvasPoint.x),
+          y: Math.round(canvasPoint.y),
+          source: meta?.source ?? 'canvas_click',
+          canvas_w: width,
+          canvas_h: height,
+          layout_w: layoutWidth,
+          layout_h: layoutHeight,
+        },
+      });
+    }
+    if (nodeId) {
+      const selected = nodes.find((node) => node.id === nodeId);
+      track('node_selected', {
+        componentId: 'canvas',
+        nodeId,
+        payload: selected
+          ? {
+            x: Math.round(selected.x),
+            y: Math.round(selected.y),
+            canvas_w: width,
+            canvas_h: height,
+            layout_w: layoutWidth,
+            layout_h: layoutHeight,
+          }
+          : undefined,
+      });
+    }
+  }, [getCanvasPointFromClient, height, layoutHeight, layoutWidth, nodes, track, width]);
+
+  const trackDimensionPanelInteraction = useCallback(
+    (
+      source: 'semantic_pull' | 'risk_pull' | 'time_pull',
+      sliderIndex: 0 | 1 | 2,
+      value: number,
+      force = false,
+    ) => {
+      const now = Date.now();
+      if (!force && now - sliderSampleAtRef.current < SLIDER_SAMPLE_INTERVAL_MS) return;
+      sliderSampleAtRef.current = now;
+      const panelLeft = width - 16 - CONTROLS_PANEL_WIDTH;
+      const panelCenterY = height - 16 - CONTROLS_PANEL_HEIGHT / 2;
+      const sliderCenterX = panelLeft + CONTROLS_PANEL_WIDTH * ((sliderIndex * 2 + 1) / 6);
+      track('canvas_interaction', {
+        componentId: 'analysis_controls',
+        payload: {
+          x: Math.round(sliderCenterX),
+          y: Math.round(panelCenterY),
+          source,
+          value: Number(value.toFixed(2)),
+          heat_weight: SLIDER_HEAT_WEIGHT,
+          canvas_w: width,
+          canvas_h: height,
+          layout_w: layoutWidth,
+          layout_h: layoutHeight,
+        },
+      });
+    },
+    [height, layoutHeight, layoutWidth, track, width],
+  );
+
+  const handleSemanticBiasChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const value = Number(event.target.value);
+    setSemanticBiasStrength(value);
+    trackDimensionPanelInteraction('semantic_pull', 0, value);
+  }, [trackDimensionPanelInteraction]);
+
+  const handleRiskBiasChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const value = Number(event.target.value);
+    setRiskBiasStrength(value);
+    trackDimensionPanelInteraction('risk_pull', 1, value);
+  }, [trackDimensionPanelInteraction]);
+
+  const handleTimeBiasChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const value = Number(event.target.value);
+    setTimeBiasStrength(value);
+    trackDimensionPanelInteraction('time_pull', 2, value);
+  }, [trackDimensionPanelInteraction]);
+
+  const handleSemanticBiasCommit = useCallback((event: PointerEvent<HTMLInputElement>) => {
+    trackDimensionPanelInteraction('semantic_pull', 0, Number((event.target as HTMLInputElement).value), true);
+  }, [trackDimensionPanelInteraction]);
+
+  const handleRiskBiasCommit = useCallback((event: PointerEvent<HTMLInputElement>) => {
+    trackDimensionPanelInteraction('risk_pull', 1, Number((event.target as HTMLInputElement).value), true);
+  }, [trackDimensionPanelInteraction]);
+
+  const handleTimeBiasCommit = useCallback((event: PointerEvent<HTMLInputElement>) => {
+    trackDimensionPanelInteraction('time_pull', 2, Number((event.target as HTMLInputElement).value), true);
+  }, [trackDimensionPanelInteraction]);
+
+  const handleLayoutPointerMoveCapture = useCallback((event: PointerEvent<HTMLDivElement>) => {
+    if (draggingNodeId) return;
+    const now = Date.now();
+    if (now - hoverSampleAtRef.current < HOVER_SAMPLE_INTERVAL_MS) return;
+    const layoutPoint = getLayoutPointFromClient(event.clientX, event.clientY);
+    if (!layoutPoint) return;
+    hoverSampleAtRef.current = now;
+    track('canvas_interaction', {
+      componentId: 'layout_hover',
+      payload: {
+        x: Math.round(layoutPoint.x),
+        y: Math.round(layoutPoint.y),
+        source: 'hover_sample',
+        heat_weight: HOVER_HEAT_WEIGHT,
+        layout_w: layoutWidth,
+        layout_h: layoutHeight,
+        canvas_w: width,
+        canvas_h: height,
+      },
+    });
+  }, [draggingNodeId, getLayoutPointFromClient, layoutHeight, layoutWidth, track, width, height]);
+
+  const handleModifyHoverSample = useCallback(
+    (meta: { clientX: number; clientY: number; ratioY: number }) => {
+      const now = Date.now();
+      if (now - modifySampleAtRef.current < MODIFY_SAMPLE_INTERVAL_MS) return;
+      modifySampleAtRef.current = now;
+      const layoutPoint = getLayoutPointFromClient(meta.clientX, meta.clientY);
+      if (!layoutPoint) return;
+      track('canvas_interaction', {
+        componentId: 'side_panel_action',
+        payload: {
+          x: Math.round(layoutPoint.x),
+          y: Math.round(layoutPoint.y),
+          source: 'modify_hover',
+          area_tag: 'modify_expanded',
+          modify_ratio_y: Number(meta.ratioY.toFixed(3)),
+          heat_weight: MODIFY_HEAT_WEIGHT,
+          layout_w: layoutWidth,
+          layout_h: layoutHeight,
+          canvas_w: width,
+          canvas_h: height,
+        },
+      });
+    },
+    [getLayoutPointFromClient, layoutHeight, layoutWidth, track, width, height],
+  );
+
   return (
-    <div className="flex h-full w-full overflow-hidden border border-slate-200 bg-[#F7F9FC]">
+    <div
+      ref={rootRef}
+      className="flex h-full w-full overflow-hidden border border-slate-200 bg-[#F7F9FC]"
+      onPointerMoveCapture={handleLayoutPointerMoveCapture}
+    >
       <div className="relative flex-1 select-none border-r border-slate-200 bg-white">
         <div
           className="pointer-events-none absolute inset-0"
@@ -522,7 +954,8 @@ export default function ContractConstellation() {
                   max={1}
                   step={0.01}
                   value={semanticBiasStrength}
-                  onChange={(event) => setSemanticBiasStrength(Number(event.target.value))}
+                  onChange={handleSemanticBiasChange}
+                  onPointerUp={handleSemanticBiasCommit}
                   className="analysis-slider analysis-slider--semantic"
                 />
               </div>
@@ -537,7 +970,8 @@ export default function ContractConstellation() {
                   max={1}
                   step={0.01}
                   value={riskBiasStrength}
-                  onChange={(event) => setRiskBiasStrength(Number(event.target.value))}
+                  onChange={handleRiskBiasChange}
+                  onPointerUp={handleRiskBiasCommit}
                   className="analysis-slider analysis-slider--risk"
                 />
               </div>
@@ -552,7 +986,8 @@ export default function ContractConstellation() {
                   max={1}
                   step={0.01}
                   value={timeBiasStrength}
-                  onChange={(event) => setTimeBiasStrength(Number(event.target.value))}
+                  onChange={handleTimeBiasChange}
+                  onPointerUp={handleTimeBiasCommit}
                   className="analysis-slider analysis-slider--time"
                 />
               </div>
@@ -572,7 +1007,7 @@ export default function ContractConstellation() {
           revealStage={revealStage}
           selectedNode={selectedNode}
           svgRef={svgRef}
-          onSelectNode={setSelectedNodeId}
+          onSelectNode={handleSelectNode}
           onNodePointerDown={handleNodePointerDown}
           onDrop={handleDrop}
           onPointerMove={handleCanvasPointerMove}
@@ -596,11 +1031,16 @@ export default function ContractConstellation() {
         lastAppliedAction={lastAppliedAction}
         exportState={exportState}
         sidePanelBg={sidePanelBg}
+        isBulkApplying={isBulkApplying}
+        bulkApplySummary={bulkApplySummary}
+        bulkApplyDoneCount={bulkApplyDoneCount}
         onDragStart={handleDragStart}
         onReviseNode={handleApplySuggestion}
         onDeleteNode={handleDeleteNodeAction}
         onAddSupplement={handleAddSupplementAction}
+        onBulkApply={handleBulkApply}
         onExport={handleExportContract}
+        onModifyHoverSample={handleModifyHoverSample}
       />
     </div>
   );

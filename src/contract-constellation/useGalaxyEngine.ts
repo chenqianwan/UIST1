@@ -138,23 +138,29 @@ export function useGalaxyEngine(
           { id: `${baseId}_4`, label: 'Demo Healthy End', type: 'leaf' as const, riskLevel: 'none' as const, r: 7, content: 'Chain node 5: healthy.' },
         ];
         const spacing = 68;
-        const chainNodes: GraphNode[] = chain.map((item, index) => ({
-          id: item.id,
-          label: item.label,
-          type: item.type,
-          color: getRiskColor(item.riskLevel),
-          x: x + spacing * index,
-          y,
-          vx: 0,
-          vy: 0,
-          r: item.r,
-          content: item.content,
-          riskLevel: item.riskLevel,
-          timePhase: 'execution',
-          templateId: template.id,
-          parentId: index === 0 ? undefined : chain[index - 1].id,
-          actions: undefined,
-        }));
+        const chainNodes: GraphNode[] = chain.map((item, index) => {
+          const actions =
+            item.riskLevel === 'none'
+              ? undefined
+              : normalizeActions(getFallbackActionsByRisk(item.riskLevel, item.id));
+          return {
+            id: item.id,
+            label: item.label,
+            type: item.type,
+            color: getRiskColor(item.riskLevel),
+            x: x + spacing * index,
+            y,
+            vx: 0,
+            vy: 0,
+            r: item.r,
+            content: item.content,
+            riskLevel: item.riskLevel,
+            timePhase: 'execution',
+            templateId: template.id,
+            parentId: index === 0 ? undefined : chain[index - 1].id,
+            actions,
+          };
+        });
         const chainLinks: GraphLink[] = [
           { source: 'root', target: chainNodes[0].id, type: 'root-link' },
           { source: chainNodes[0].id, target: chainNodes[1].id, type: 'child-link' },
