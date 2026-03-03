@@ -3,7 +3,7 @@ import type { GraphLink, GraphNode, TemplateItem } from './types';
 import { getRiskColor, seededRandom } from './utils';
 
 function getIndependentRiskLevel(seed: string): GraphNode['riskLevel'] {
-  // TODO(upstream): Remove this local fallback once upstream always provides riskLevel for sub/leaf nodes.
+  // TODO(upstream): Remove this local fallback once upstream always provides riskLevel for sub nodes.
   const v = seededRandom(seed);
   if (v < 0.25) return 'none';
   if (v < 0.5) return 'low';
@@ -133,9 +133,9 @@ export function useGalaxyEngine(
         const chain = [
           { id: `${baseId}_0`, label: 'Demo Healthy Start', type: 'main' as const, riskLevel: 'none' as const, r: 18, content: 'Chain node 1: healthy.' },
           { id: `${baseId}_1`, label: 'Demo Low Risk', type: 'sub' as const, riskLevel: 'low' as const, r: 10, content: 'Chain node 2: low risk.' },
-          { id: `${baseId}_2`, label: 'Demo Medium Risk', type: 'leaf' as const, riskLevel: 'medium' as const, r: 7, content: 'Chain node 3: medium risk.' },
-          { id: `${baseId}_3`, label: 'Demo High Risk', type: 'leaf' as const, riskLevel: 'high' as const, r: 7, content: 'Chain node 4: high risk.' },
-          { id: `${baseId}_4`, label: 'Demo Healthy End', type: 'leaf' as const, riskLevel: 'none' as const, r: 7, content: 'Chain node 5: healthy.' },
+          { id: `${baseId}_2`, label: 'Demo Medium Risk', type: 'sub' as const, riskLevel: 'medium' as const, r: 7, content: 'Chain node 3: medium risk.' },
+          { id: `${baseId}_3`, label: 'Demo High Risk', type: 'sub' as const, riskLevel: 'high' as const, r: 7, content: 'Chain node 4: high risk.' },
+          { id: `${baseId}_4`, label: 'Demo Healthy End', type: 'sub' as const, riskLevel: 'none' as const, r: 7, content: 'Chain node 5: healthy.' },
         ];
         const spacing = 68;
         const chainNodes: GraphNode[] = chain.map((item, index) => {
@@ -233,15 +233,15 @@ export function useGalaxyEngine(
         const uy = Math.sin(satAngle);
 
         return details.slice(0, 1).map((detail, detailIndex) => {
-          // TODO(upstream): Replace local risk/action fallback with upstream-provided fields for generated leaf nodes.
-          const riskLevel = getIndependentRiskLevel(`${template.id}::leaf::${detail.label}::${detail.content}`);
-          const actions = normalizeActions(getFallbackActionsByRisk(riskLevel, `${template.id}::leaf-action::${detail.label}`));
+          // TODO(upstream): Replace local risk/action fallback with upstream-provided fields for generated sub nodes.
+          const riskLevel = getIndependentRiskLevel(`${template.id}::sub::${detail.label}::${detail.content}`);
+          const actions = normalizeActions(getFallbackActionsByRisk(riskLevel, `${template.id}::sub-action::${detail.label}`));
           const timePhase = detail.timePhase ?? inferTimePhaseFromText(`${detail.label}. ${detail.content}`);
           return {
-            id: `leaf_${id}_${index}_${detailIndex}`,
+            id: `sub_${id}_${index}_${detailIndex}`,
             references: detail.references,
             label: detail.label,
-            type: 'leaf' as const,
+            type: 'sub' as const,
             color: getRiskColor(riskLevel),
             x: satX + ux * 34,
             y: satY + uy * 34,
@@ -264,9 +264,9 @@ export function useGalaxyEngine(
         target: sat.id,
         type: 'child-link',
       }));
-      const detailLinks: GraphLink[] = detailNodes.map((leaf) => ({
-        source: leaf.parentId ?? id,
-        target: leaf.id,
+      const detailLinks: GraphLink[] = detailNodes.map((subNode) => ({
+        source: subNode.parentId ?? id,
+        target: subNode.id,
         type: 'detail-link',
       }));
 
@@ -384,7 +384,7 @@ export function useGalaxyEngine(
     const childIndex = nodesRef.current.filter((node) => node.parentId === parentNode.id).length;
     const angle = (childIndex % 6) * (Math.PI / 3);
     const radius = isParentMain ? 62 : 38;
-    const newType: GraphNode['type'] = isParentMain ? 'sub' : 'leaf';
+    const newType: GraphNode['type'] = 'sub';
     const newRadius = isParentMain ? 10 : 7;
     const content = (draft && draft.trim()) || `Supplement for "${parentNode.label}".`;
     const riskLevel: GraphNode['riskLevel'] = 'none';

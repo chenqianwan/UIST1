@@ -1,4 +1,4 @@
-export type NodeKind = 'root' | 'main' | 'sub' | 'leaf';
+export type NodeKind = 'root' | 'main' | 'sub';
 export type LinkKind = 'root-link' | 'child-link' | 'detail-link' | 'reference-link';
 export type RiskLevel = 'none' | 'low' | 'medium' | 'high';
 export type NodeActionType = 'delete' | 'revise' | 'add_clause';

@@ -21,7 +21,7 @@
 
 当前前端已有以下能力，可作为未来全流程的中间层：
 
-- 图结构编辑：`root/main/sub/leaf` 节点层级 + 多种 link 类型
+- 图结构编辑：`root/main/sub` 节点层级 + 多种 link 类型
 - 风险维度可视分析：风险颜色、risk pull
 - 语义维度可视分析：semantic pull（Python embedding 优先，内置向量兜底）
 - 建议交互：Delete / Revise / Add Supplement 动作流
@@ -61,7 +61,7 @@
 
 处理：
 
-- 生成节点类型与层级映射（main/sub/leaf）
+- 生成节点类型与层级映射（main/sub）
 - 推断关系边（依赖、冲突、补充、引用、流程先后）
 - 生成每个节点的风险估计与解释片段
 
@@ -153,7 +153,7 @@
 - `id`
 - `label`
 - `content`
-- `type` (`root/main/sub/leaf`)
+- `type` (`root/main/sub`)
 - `riskLevel` (`none/low/medium/high`)
 - `actionType` (`delete/revise/add_clause`)
 - `actionReason`

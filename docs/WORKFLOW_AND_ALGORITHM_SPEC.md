@@ -19,25 +19,25 @@
 
 | 类型 / 枚举 | 取值 | 含义 |
 |-------------|------|------|
-| `NodeKind` | `'root' \| 'main' \| 'sub' \| 'leaf'` | 节点层级：根 / 主条款 / 子条款 / 叶子（最细粒度） |
-| `LinkKind` | `'root-link' \| 'smart-link' \| 'child-link' \| 'detail-link'` | 边类型：根→主条款、主条款间「智能关联」、主→子、子→叶子 |
+| `NodeKind` | `'root' \| 'main' \| 'sub'` | 节点层级：根 / 主条款 / 子条款（支持嵌套） |
+| `LinkKind` | `'root-link' \| 'smart-link' \| 'child-link' \| 'detail-link'` | 边类型：根→主条款、主条款间「智能关联」、主→子、子→子 |
 | `RiskLevel` | `'none' \| 'low' \| 'medium' \| 'high'` | 条款风险等级，决定节点颜色与图例 |
 
 ### 2.2 图节点 `GraphNode`
 
 ```ts
 interface GraphNode {
-  id: string;           // 唯一 ID，主节点 node_${timestamp}，子/叶 sub_/leaf_ 前缀
+  id: string;           // 唯一 ID，主节点 node_${timestamp}，子节点 sub_ 前缀
   label: string;        // 展示名称（如 "Standard Payment Terms"）
   type: NodeKind;
   color: string;        // 由 riskLevel 映射的 hex 颜色
   x, y: number;        // 画布坐标（力导向更新）
   vx, vy: number;      // 速度（力导向用）
-  r: number;           // 显示半径（root=30, main=18, sub=10, leaf=7）
+  r: number;           // 显示半径（root=30, main=18, sub=10 或 7）
   content: string;     // 条款正文（用于右侧详情与导出）
   riskLevel: RiskLevel;
   templateId?: string;  // 来源于哪条 NODE_LIBRARY 模板
-  parentId?: string;   // 仅 sub/leaf 有，指向直接父节点 id
+  parentId?: string;   // 仅 sub 有，指向直接父节点 id
 }
 ```
 
@@ -56,8 +56,8 @@ interface GraphLink {
 - **模板** `TemplateItem`：来自常量 `NODE_LIBRARY`，包含 `id, label, description, type, riskLevel, content`，以及可选的 **satellites**（子条款数组）。
 - **子条款** `TemplateSubItem`：`label, content`，以及可选的 **details**（再一层子项）。
 - **层级映射**：  
-  - 1 个 template → 1 个 **main** 节点 + 若干 **sub**（satellites）+ 若干 **leaf**（satellites[].details，当前实现每个 sub 只取 `details[0]` 生成 1 个 leaf）。
-- 当前 **main** 与 **root** 之间固定建一条 `root-link`；**main↔main** 由「智能关联」算法生成若干 `smart-link`（见下）；**main→sub** 为 `child-link`，**sub→leaf** 为 `detail-link`。
+  - 1 个 template → 1 个 **main** 节点 + 若干 **sub**（satellites + satellites[].details）。
+- 当前 **main** 与 **root** 之间固定建一条 `root-link`；**main↔main** 由「智能关联」算法生成若干 `smart-link`（见下）；**main→sub** 为 `child-link` 或 `detail-link`。
 
 ---
 
@@ -71,7 +71,7 @@ interface GraphLink {
    - 新建 1 个 **main** 节点（位置 `(x,y)`），并建 **root → main** 的 `root-link`。
    - 为该 main 找 **smart-link** 目标（见 4.2）。
    - 根据 `template.satellites` 生成 **sub** 节点（围绕 main 初始角度分布），并建 **main → sub** 的 `child-link`。
-   - 根据每个 sub 的 `details[0]` 生成 **leaf** 节点（沿 sub 方向外扩），并建 **sub → leaf** 的 `detail-link`。
+   - 根据每个 sub 的 `details[0]` 生成 **sub** 节点（沿上级 sub 方向外扩），并建 **sub → sub** 的 `detail-link`。
 4. 该 template 的 `id` 加入 `usedTemplateIds`，节点库中不再显示该条。
 
 ### 3.2 选中与焦点（BFS 出度展开）
@@ -88,7 +88,7 @@ interface GraphLink {
 
 1. **拖拽**：非 root 节点可 `pointerdown` 开始拖拽；`pointermove` 更新节点位置（`updateNodePosition`），并检测是否悬停在「Drop Here」垃圾桶区域。
 2. **放下**：`pointerup` 时若在垃圾桶上则调用 `endNodeDrag(true)`：
-   - **sub**：仅删除该 sub 及其后继（如 leaf），主条款保留。
+   - **sub**：仅删除该 sub 及其后继，主条款保留。
    - **main**：删除整棵子树并从 `usedTemplateIds` 移除对应 template。
 3. **删除实现**：`removeNodeCascade(nodeId)` 从该节点起递归删除所有「父节点已被删」的节点与相关边。
 
@@ -206,7 +206,7 @@ interface GraphLink {
 ## 8. 已知行为与可选改进
 
 - **第三级（及更深）叶子**：因 `shouldShowLabel` 对叶子要求 `depth <= 1`，其标签默认不显示；可放宽为 `depth <= 2` 或按需配置。
-- **子条款 details**：当前每个 sub 只取 `details[0]` 生成 1 个 leaf；若模板有多 detail，需扩展生成与边逻辑。
+- **子条款 details**：当前每个 sub 只取 `details[0]` 生成 1 个 sub 节点；若模板有多 detail，需扩展生成与边逻辑。
 - **性能**：节点/边较多时，每帧全量斥力 + 全边弹簧可能成为瓶颈；可考虑空间划分或 LOD。
 
 ---

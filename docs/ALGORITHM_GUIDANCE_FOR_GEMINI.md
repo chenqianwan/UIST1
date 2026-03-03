@@ -18,7 +18,7 @@
 ### 2.1 前端现状（已存在）
 
 - React + TypeScript 可视图编辑
-- 节点层级：`root/main/sub/leaf`
+- 节点层级：`root/main/sub`
 - 维度控制：`Semantic Pull`、`Risk Pull`
 - 建议动作：`delete / revise / add_clause`
 - Python embedding 服务优先，前端内置向量兜底
@@ -145,7 +145,7 @@ interface GraphNode {
   id: string;
   label: string;
   content: string;
-  type: 'root' | 'main' | 'sub' | 'leaf';
+  type: 'root' | 'main' | 'sub';
   riskLevel: RiskLevel;
   riskScore?: number;        // 0~1
   riskReason?: string;
@@ -207,7 +207,7 @@ interface GraphLink {
 请基于下面项目约束，输出一份“可实现”的算法指导文档，而不是概念综述。
 
 约束：
-1) 前端已有可视化图编辑（root/main/sub/leaf），不要推翻 UI。  
+1) 前端已有可视化图编辑（root/main/sub），不要推翻 UI。  
 2) 需要从合同文本自动生成图关系与修改建议。  
 3) 需要支持 visual-to-text 的双向协同编辑。  
 4) 建议需可解释（reason + evidence + confidence）。  

@@ -257,7 +257,10 @@ export function GraphCanvas({
       {nodes.map((node) => {
         const selected = node.id === selectedNodeId;
         const isRoot = node.id === 'root';
-        const isLeaf = node.type === 'leaf';
+        const isLeaf = node.type === 'sub';
+        const parentNode = node.parentId ? nodeById.get(node.parentId) : null;
+        const isFirstLevelLeaf = isLeaf && parentNode?.type === 'main';
+
         const depth = focusDepthMap?.get(node.id);
         const isIncoming = incomingNodeIds.has(node.id);
         const isFocused = !selectedNodeId || depth !== undefined || isIncoming;
@@ -289,8 +292,8 @@ export function GraphCanvas({
               : 0.26;
         const shouldShowLabel =
           !isLeaf
-            ? !selectedNodeId || selected || isIncoming || (depth !== undefined && depth <= 1)
-            : selected || (depth !== undefined && depth <= 1 && revealStage === 2);
+            ? true
+            : selected || (selectedNodeId && depth !== undefined) || isIncoming || (!selectedNodeId && isFirstLevelLeaf);
         const isDragging = node.id === draggingNodeId;
         const badge = actionBadge(node);
 
