@@ -209,8 +209,8 @@ export function useGalaxyEngine(
           label: item.label,
           type: 'sub' as const,
           color: getRiskColor(riskLevel),
-          x: x + Math.cos(angle) * 56,
-          y: y + Math.sin(angle) * 56,
+          x: x + Math.cos(angle) * 30, // 减小生成半径 (原 56)
+          y: y + Math.sin(angle) * 30,
           vx: 0,
           vy: 0,
           r: 10,
@@ -227,12 +227,15 @@ export function useGalaxyEngine(
         if (details.length === 0) return [];
         const satId = `sub_${id}_${index}`;
         const satAngle = (index / Math.max(arr.length, 1)) * Math.PI * 2;
-        const satX = x + Math.cos(satAngle) * 56;
-        const satY = y + Math.sin(satAngle) * 56;
-        const ux = Math.cos(satAngle);
-        const uy = Math.sin(satAngle);
+        const satX = x + Math.cos(satAngle) * 30; // 与上面保持一致
+        const satY = y + Math.sin(satAngle) * 30;
 
-        return details.slice(0, 1).map((detail, detailIndex) => {
+        return details.map((detail, detailIndex) => {
+          // 核心优化：初始生成位置在圆周上均匀分布，防止重叠
+          const detailAngle = satAngle + ((detailIndex - (details.length - 1) / 2) * (Math.PI / 4));
+          const ux = Math.cos(detailAngle);
+          const uy = Math.sin(detailAngle);
+
           // TODO(upstream): Replace local risk/action fallback with upstream-provided fields for generated sub nodes.
           const riskLevel = getIndependentRiskLevel(`${template.id}::sub::${detail.label}::${detail.content}`);
           const actions = normalizeActions(getFallbackActionsByRisk(riskLevel, `${template.id}::sub-action::${detail.label}`));
@@ -243,8 +246,8 @@ export function useGalaxyEngine(
             label: detail.label,
             type: 'sub' as const,
             color: getRiskColor(riskLevel),
-            x: satX + ux * 34,
-            y: satY + uy * 34,
+            x: satX + ux * 80, // 增加初始生成距离 (原 20)
+            y: satY + uy * 80,
             vx: 0,
             vy: 0,
             r: 7,
@@ -439,18 +442,18 @@ export function useGalaxyEngine(
         return;
       }
 
-      const repulsion = 7600;
-      const damping = 0.88;
-      const centerPull = 0.0036;
-      const rootSpring = 0.02;
-      const referenceSpring = 0.06;
-      const childSpring = 0.12;
-      const detailSpring = 0.14;
-      const spreadFactor = localNodes.length <= 12 ? 1.58 : localNodes.length <= 22 ? 1.28 : 1.05;
-      const rootLen = 188 * spreadFactor;
-      const referenceLen = 156 * spreadFactor;
-      const childLen = 70 * spreadFactor;
-      const detailLen = 44 * spreadFactor;
+      const repulsion = 4500;
+      const damping = 0.85;
+      const centerPull = 0.005;
+      const rootSpring = 0.04;
+      const referenceSpring = 0.08;
+      const childSpring = 0.15;
+      const detailSpring = 0.18;
+      const spreadFactor = localNodes.length <= 12 ? 1.2 : localNodes.length <= 22 ? 1.1 : 1.0;
+      const rootLen = 140 * spreadFactor;
+      const referenceLen = 120 * spreadFactor;
+      const childLen = 100 * spreadFactor;
+      const detailLen = 80 * spreadFactor;
 
       const forces = localNodes.map(() => ({ fx: 0, fy: 0 }));
 
@@ -465,8 +468,29 @@ export function useGalaxyEngine(
           const dy = a.y - b.y;
           const d2 = dx * dx + dy * dy || 1;
           const d = Math.sqrt(d2);
-          if (d > 420) continue;
-          const f = repulsion / d2;
+          if (d > 500) continue;
+
+          // 基础排斥力
+          let f = repulsion / d2;
+
+          // 核心优化 1：标签感知排斥 (Label-Aware Repulsion)
+          // 显著增加 X 轴方向的排斥权重，防止横向文字重叠
+          const xWeight = 2.5; // 降低权重以防震荡 (原 4.5)
+          const weightedDist = Math.sqrt((dx / xWeight) ** 2 + dy ** 2);
+          if (weightedDist < 100) { // 缩小感知范围 (原 150)
+            f *= (100 / (weightedDist + 1)) * 1.5; // 降低力度 (原 3.5)
+          }
+
+          // 核心优化 2：同级节点（如 a-g）强力互斥
+          if (a.parentId && b.parentId && a.parentId === b.parentId) {
+            f *= 3.0; // 降低系数以防死循环 (原 8.0)
+          }
+
+          // 核心优化 4：针对三级节点（Detail）的特殊排斥
+          if (a.type === 'sub' && b.type === 'sub' && a.parentId === b.parentId) {
+            f *= 1.2; // 降低系数 (原 1.5)
+          }
+
           const fx = (dx / d) * f;
           const fy = (dy / d) * f;
           forces[i].fx += fx;
@@ -491,14 +515,23 @@ export function useGalaxyEngine(
         const dx = target.x - source.x;
         const dy = target.y - source.y;
         const d = Math.sqrt(dx * dx + dy * dy) || 1;
+
+        // 核心优化 3：动态拉伸拥挤节点的间距
+        // 如果子节点很多，显著拉长连线，为横向文字腾出空间
+        const siblingCount = localNodes.filter(n => n.parentId === source.id).length;
+        let extraLen = 0;
+        if (siblingCount > 3) {
+          extraLen = (siblingCount - 3) * 40; // 极大增加间距 (原 25)
+        }
+
         const len =
-          link.type === 'root-link'
+          (link.type === 'root-link'
             ? rootLen
             : link.type === 'child-link'
               ? childLen
               : link.type === 'detail-link'
                 ? detailLen
-                : referenceLen;
+                : referenceLen) + extraLen;
         const k =
           link.type === 'root-link'
             ? rootSpring
@@ -569,8 +602,12 @@ export function useGalaxyEngine(
         }
         forces[i].fx += (width / 2 - node.x) * centerPull;
         forces[i].fy += (height / 2 - node.y) * centerPull;
-        node.vx = (node.vx + forces[i].fx) * damping;
-        node.vy = (node.vy + forces[i].fy) * damping;
+        
+        // 增加速度上限 (Speed limit) 防止震荡导致的死循环
+        const maxV = 15;
+        node.vx = Math.max(-maxV, Math.min(maxV, (node.vx + forces[i].fx) * damping));
+        node.vy = Math.max(-maxV, Math.min(maxV, (node.vy + forces[i].fy) * damping));
+        
         node.x += node.vx;
         node.y += node.vy;
         node.x = Math.max(margin, Math.min(width - margin, node.x));
