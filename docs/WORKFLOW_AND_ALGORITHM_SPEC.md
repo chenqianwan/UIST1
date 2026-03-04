@@ -158,8 +158,9 @@ interface GraphLink {
 
 | 项目 | 现状 | 建议算法/设计方向 |
 |------|------|-------------------|
-| **风险等级** | 模板与节点来自 `NODE_LIBRARY` 的静态 `riskLevel`，无运行时评估 | 条款风险分类模型（规则/ML/LLM）：输入 `content`+上下文，输出 `RiskLevel` 或分数 |
-| **AI 建议** | `getAiSuggestion(node)` 按 `riskLevel` 返回固定文案 | 真实 NLG/LLM：输入条款与风险，输出 `title, reason, replacement`；可带引用与置信度 |
+| **结构抽取** | 当前无独立上游结构阶段 | 新增 Stage A：先稳定输出结构节点（`id/content/type/parentId/timePhase`） |
+| **风险等级** | 模板与节点来自 `NODE_LIBRARY` 的静态 `riskLevel`，无运行时评估 | Stage B 风险推理：输入结构节点+上下文，输出 `RiskLevel` + 解释 + 证据 |
+| **AI 建议** | `getAiSuggestion(node)` 按 `riskLevel` 返回固定文案 | Stage B 建议生成：策略约束下输出 `actions[]` + `confidence` |
 | **智能关联** | 仅几何距离 < 260 的最近 2 个 main | 语义相似度、共现、或规则（类型/关键词）；数量与阈值可配置 |
 | **导出** | 仅内存对象 + console，无文件/API | 导出格式（JSON/Markdown/Word）、模板、可选异步上传与版本 |
 | **模板库** | 固定 `NODE_LIBRARY` 数组 | 从配置/后端加载；支持用户自定义模板与层级深度 |
@@ -180,11 +181,18 @@ interface GraphLink {
 - **输出**：0~N 个目标 main 的 id 列表（用于创建 smart-link）。
 - **当前约束**：N≤2，且仅考虑距离 < 260；可改为基于语义或配置。
 
-### 6.3 风险与 AI 建议（选中节点时）
+### 6.3 上游三阶段接口（推荐）
 
-- **输入**：选中节点（含 `content, label, riskLevel, type`），可选整图或邻接信息。
-- **输出（风险）**：若做运行时评估，可为 `RiskLevel` 或连续分数 + 解释。
-- **输出（AI 建议）**：`{ title, reason, replacement }` 或带置信度/多方案；`replacement` 用于直接替换 `content` 并可将节点标为已缓解。
+- **Stage A 输入**：`original_contract_text`
+- **Stage A 输出**：`nodes_stage_a[]`（仅结构字段：`id,label,content,type,parentId,timePhase`）
+- **Stage A 约束**：`content` 逐字复制原文；层级树完整；ID 唯一
+- **Stage B 输入**：`nodes_stage_a[] + original_contract_text`
+- **Stage B 输出**：`nodes_enriched[]`（补全 `references/riskLevel/riskReason/evidenceSpans/actions`）
+- **Stage B 约束**：不得改写 Stage A 的结构字段；`delete` 与 `revise/add_clause` 互斥；`add_clause` 仅输出意图不直接新增节点
+- **Stage C 输入**：`nodes_stage_a[] + nodes_enriched[]`
+- **Stage C 输出**：`nodes_final[] + patch_log[]`
+- **Stage C 约束**：程序侧确定性执行 `revise/delete/add_clause`，处理新节点 ID、parent 归属与冲突
+- **后处理**：证据坐标映射、引用合法性过滤、字段不可变校验、patch 可回放校验
 
 ### 6.4 导出
 

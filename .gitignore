@@ -7,3 +7,8 @@ python/__pycache__/
 src/md/
 src/v1.md
 src/vite-env.d.ts
+.env
+.env.*
+!.env.example
+python/.env
+python/.env.*
