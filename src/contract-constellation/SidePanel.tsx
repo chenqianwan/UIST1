@@ -20,6 +20,9 @@ function getTemplateIcon(type: TemplateItem['type']) {
 
 interface SidePanelProps {
   availableTemplates: TemplateItem[];
+  graphPresetOptions: Array<{ id: 'standard' | 'simple1'; label: string }>;
+  selectedGraphPresetId: 'standard' | 'simple1';
+  onGraphPresetChange: (presetId: 'standard' | 'simple1') => void;
   selectedNode: GraphNode | null;
   aiSuggestion: AiSuggestion | null;
   lastAppliedAction: { nodeId: string; actionId: string; actionType: NodeActionType } | null;
@@ -39,6 +42,9 @@ interface SidePanelProps {
 
 export function SidePanel({
   availableTemplates,
+  graphPresetOptions,
+  selectedGraphPresetId,
+  onGraphPresetChange,
   selectedNode,
   aiSuggestion,
   lastAppliedAction,
@@ -120,6 +126,22 @@ export function SidePanel({
           <Link2 size={14} className="text-blue-600" />
           Node Library
         </h3>
+        <div className="mt-2">
+          <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            Graph Template
+          </label>
+          <select
+            className="w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 focus:border-blue-400 focus:outline-none"
+            value={selectedGraphPresetId}
+            onChange={(event) => onGraphPresetChange(event.target.value as 'standard' | 'simple1')}
+          >
+            {graphPresetOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
         <p className="mt-1 text-xs text-slate-500">Drag nodes into the main canvas to auto-generate links</p>
       </div>
 

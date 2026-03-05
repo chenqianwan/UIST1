@@ -1,6 +1,34 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { GraphLink, GraphNode, TemplateItem } from './types';
 import { getRiskColor, seededRandom } from './utils';
+import stageAData from '../../docs/simple1.stage_a.json';
+import stageBData from '../../docs/simple1.stage_b.json';
+
+type StageANode = {
+  id: string;
+  label: string;
+  content: string;
+  type: 'main' | 'sub';
+  parentId?: string | null;
+  timePhase?: GraphNode['timePhase'];
+};
+
+type StageBAction = {
+  id: string;
+  type: 'delete' | 'revise' | 'add_clause';
+  status?: 'pending' | 'completed';
+  reason?: string;
+  confidence?: number;
+  suggestionText?: string;
+  supplementDraft?: string;
+};
+
+type StageBNode = {
+  id: string;
+  references?: string[];
+  riskLevel?: GraphNode['riskLevel'];
+  actions?: StageBAction[];
+};
 
 function getIndependentRiskLevel(seed: string): GraphNode['riskLevel'] {
   // TODO(upstream): Remove this local fallback once upstream always provides riskLevel for sub nodes.
@@ -83,6 +111,74 @@ function buildReferenceLinks(nodes: GraphNode[]): GraphLink[] {
 function mergeLinksWithReferences(baseLinks: GraphLink[], nodes: GraphNode[]): GraphLink[] {
   const nonReference = baseLinks.filter((link) => link.type !== 'reference-link');
   return [...nonReference, ...buildReferenceLinks(nodes)];
+}
+
+function buildGraphFromStageData(
+  stageANodes: StageANode[],
+  stageBNodes: StageBNode[],
+  width: number,
+  height: number,
+): { nodes: GraphNode[]; links: GraphLink[] } | null {
+  if (stageANodes.length === 0) return null;
+
+  const byIdB = new Map(stageBNodes.map((n) => [n.id, n]));
+  const byIdA = new Map(stageANodes.map((n) => [n.id, n]));
+  const rootA = stageANodes.find((n) => n.id === 'root');
+  const rootX = width / 2;
+  const rootY = height / 2;
+
+  const nodes: GraphNode[] = stageANodes.map((n, idx) => {
+    const b = byIdB.get(n.id);
+    const riskLevel = b?.riskLevel ?? 'none';
+    const actions = b?.actions?.map((action) => ({
+      ...action,
+      status: action.status ?? 'pending',
+    }));
+    const isRoot = n.id === 'root';
+    const parent = n.parentId ? byIdA.get(n.parentId) : undefined;
+    const isSubOfSub = n.type === 'sub' && parent?.type === 'sub';
+    const angle = ((idx + 1) / Math.max(stageANodes.length, 1)) * Math.PI * 2;
+    const ring = n.type === 'main' ? 190 : isSubOfSub ? 78 : 120;
+    const x = isRoot ? rootX : rootX + Math.cos(angle) * ring;
+    const y = isRoot ? rootY : rootY + Math.sin(angle) * ring;
+    return {
+      id: n.id,
+      label: isRoot ? (rootA?.label ?? 'Master Contract') : n.label,
+      type: isRoot ? 'root' : n.type,
+      color: isRoot ? '#cbd5e1' : getRiskColor(riskLevel),
+      x,
+      y,
+      vx: 0,
+      vy: 0,
+      r: isRoot ? 30 : n.type === 'main' ? 18 : isSubOfSub ? 7 : 10,
+      content: n.content,
+      riskLevel: isRoot ? 'none' : riskLevel,
+      timePhase: n.timePhase ?? 'execution',
+      parentId: isRoot ? undefined : (n.parentId ?? undefined),
+      references: b?.references,
+      actions,
+    };
+  });
+
+  const links: GraphLink[] = [];
+  const byIdNode = new Map(nodes.map((n) => [n.id, n]));
+  nodes.forEach((n) => {
+    if (!n.parentId) return;
+    const parent = byIdNode.get(n.parentId);
+    if (!parent) return;
+    if (parent.id === 'root') {
+      links.push({ source: 'root', target: n.id, type: 'root-link' });
+      return;
+    }
+    links.push({
+      source: parent.id,
+      target: n.id,
+      type: parent.type === 'main' ? 'child-link' : 'detail-link',
+    });
+  });
+
+  const merged = mergeLinksWithReferences(links, nodes);
+  return { nodes, links: merged };
 }
 
 export function useGalaxyEngine(
@@ -419,6 +515,30 @@ export function useGalaxyEngine(
     setLinks(nextLinks);
   }, []);
 
+  const loadGraphPreset = useCallback((presetId: 'blank' | 'simple1') => {
+    if (presetId === 'blank') {
+      nodesRef.current = [rootNode];
+      linksRef.current = [];
+      setNodes([rootNode]);
+      setLinks([]);
+      return;
+    }
+    const stageANodes = (stageAData as { nodes?: StageANode[] }).nodes ?? [];
+    const stageBNodes = (stageBData as { nodes?: StageBNode[] }).nodes ?? [];
+    const graph = buildGraphFromStageData(stageANodes, stageBNodes, width, height);
+    if (!graph) {
+      nodesRef.current = [rootNode];
+      linksRef.current = [];
+      setNodes([rootNode]);
+      setLinks([]);
+      return;
+    }
+    nodesRef.current = graph.nodes;
+    linksRef.current = graph.links;
+    setNodes(graph.nodes);
+    setLinks(graph.links);
+  }, [height, rootNode, width]);
+
   const setDraggingNode = useCallback((nodeId: string | null) => {
     draggingNodeIdRef.current = nodeId;
   }, []);
@@ -439,18 +559,22 @@ export function useGalaxyEngine(
         return;
       }
 
-      const repulsion = 7600;
-      const damping = 0.88;
-      const centerPull = 0.0036;
+      const repulsion = 5600;
+      const damping = 0.82;
+      const centerPull = 0.0044;
       const rootSpring = 0.02;
       const referenceSpring = 0.06;
       const childSpring = 0.12;
       const detailSpring = 0.14;
-      const spreadFactor = localNodes.length <= 12 ? 1.58 : localNodes.length <= 22 ? 1.28 : 1.05;
-      const rootLen = 188 * spreadFactor;
-      const referenceLen = 156 * spreadFactor;
-      const childLen = 70 * spreadFactor;
-      const detailLen = 44 * spreadFactor;
+      // Slightly compact layout for better readability in medium/large graphs.
+      const spreadFactor = localNodes.length <= 12 ? 1.34 : localNodes.length <= 22 ? 1.14 : 0.96;
+      const rootLen = 162 * spreadFactor;
+      const referenceLen = 138 * spreadFactor;
+      const childLen = 60 * spreadFactor;
+      const detailLen = 38 * spreadFactor;
+      const maxPairForce = 3.6;
+      const maxSpringForce = 2.8;
+      const maxSpeed = 4.4;
 
       const forces = localNodes.map(() => ({ fx: 0, fy: 0 }));
 
@@ -466,7 +590,7 @@ export function useGalaxyEngine(
           const d2 = dx * dx + dy * dy || 1;
           const d = Math.sqrt(d2);
           if (d > 420) continue;
-          const f = repulsion / d2;
+          const f = Math.min(repulsion / d2, maxPairForce);
           const fx = (dx / d) * f;
           const fy = (dy / d) * f;
           forces[i].fx += fx;
@@ -507,7 +631,7 @@ export function useGalaxyEngine(
               : link.type === 'detail-link'
                 ? detailSpring
                 : referenceSpring;
-        const f = (d - len) * k;
+        const f = Math.max(-maxSpringForce, Math.min(maxSpringForce, (d - len) * k));
         const fx = (dx / d) * f;
         const fy = (dy / d) * f;
         forces[si].fx += fx;
@@ -569,8 +693,14 @@ export function useGalaxyEngine(
         }
         forces[i].fx += (width / 2 - node.x) * centerPull;
         forces[i].fy += (height / 2 - node.y) * centerPull;
-        node.vx = (node.vx + forces[i].fx) * damping;
-        node.vy = (node.vy + forces[i].fy) * damping;
+        const fx = Math.max(-maxPairForce, Math.min(maxPairForce, forces[i].fx));
+        const fy = Math.max(-maxPairForce, Math.min(maxPairForce, forces[i].fy));
+        node.vx = (node.vx + fx) * damping;
+        node.vy = (node.vy + fy) * damping;
+        node.vx = Math.max(-maxSpeed, Math.min(maxSpeed, node.vx));
+        node.vy = Math.max(-maxSpeed, Math.min(maxSpeed, node.vy));
+        if (Math.abs(node.vx) < 0.004) node.vx = 0;
+        if (Math.abs(node.vy) < 0.004) node.vy = 0;
         node.x += node.vx;
         node.y += node.vy;
         node.x = Math.max(margin, Math.min(width - margin, node.x));
@@ -594,6 +724,7 @@ export function useGalaxyEngine(
     updateNodePosition,
     removeNodeCascade,
     addSupplementClause,
+    loadGraphPreset,
     setDraggingNode,
   };
 }

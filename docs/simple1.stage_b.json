@@ -1,0 +1,477 @@
+{
+  "nodes": [
+    {
+      "id": "root",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "parties_lessor",
+      "references": [],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "action_1",
+          "type": "revise",
+          "status": "pending",
+          "reason": "出租人信息不完整，缺少必要的身份证明和联系方式",
+          "confidence": 0.8,
+          "suggestionText": "建议在签署前确保出租人的所有信息字段已填写完整，包括证件号码、通讯地址和联系电话"
+        }
+      ]
+    },
+    {
+      "id": "parties_tenant",
+      "references": [],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "action_2",
+          "type": "revise",
+          "status": "pending",
+          "reason": "承租人信息不完整，缺少证件号码、委托代理人信息和联系电话",
+          "confidence": 0.8,
+          "suggestionText": "建议在签署前确保承租人的所有信息字段已填写完整"
+        }
+      ]
+    },
+    {
+      "id": "preamble",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "article_1",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "article_1_1",
+      "references": [],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "action_3",
+          "type": "revise",
+          "status": "pending",
+          "reason": "房屋地址包含脱敏符号'*******'，使用面积和公摊面积未填写",
+          "confidence": 0.9,
+          "suggestionText": "建议补全房屋完整地址、使用面积和公摊面积的具体数值"
+        }
+      ]
+    },
+    {
+      "id": "article_1_2",
+      "references": [],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "action_4",
+          "type": "revise",
+          "status": "pending",
+          "reason": "房屋权属状况中，甲方持有的证明文件类型未勾选，房屋是否设定抵押未确认",
+          "confidence": 0.85,
+          "suggestionText": "建议明确甲方持有的房屋权属证明文件类型，并确认房屋是否存在抵押"
+        }
+      ]
+    },
+    {
+      "id": "article_1_3",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "article_1_4",
+      "references": [],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "action_5",
+          "type": "revise",
+          "status": "pending",
+          "reason": "房屋内附属设施情况未勾选确认",
+          "confidence": 0.7,
+          "suggestionText": "建议勾选房屋是否有附属设施设备，如有应附《房屋交付确认书》"
+        }
+      ]
+    },
+    {
+      "id": "article_2",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "article_2_1",
+      "references": [],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "action_6",
+          "type": "revise",
+          "status": "pending",
+          "reason": "租赁期限起始日期为2025年12月1日，但当前日期应早于此，存在时间逻辑问题；租赁期限计算有误（显示1年0个月但应为12个月）",
+          "confidence": 0.9,
+          "suggestionText": "建议核实租赁期限的起始日期和期限长度，确保时间逻辑正确"
+        }
+      ]
+    },
+    {
+      "id": "article_2_2",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "article_3",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "article_3_1",
+      "references": [],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "action_7",
+          "type": "revise",
+          "status": "pending",
+          "reason": "月租金250元（贰佰伍拾元整）明显过低，不符合深圳市前海卓越金融中心办公用房的市场价格，存在重大风险",
+          "confidence": 0.95,
+          "suggestionText": "建议重新核实租金金额，确保与市场价格相符且双方真实意思表示一致"
+        }
+      ]
+    },
+    {
+      "id": "article_3_2",
+      "references": [],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "action_8",
+          "type": "revise",
+          "status": "pending",
+          "reason": "租金支付日期未填写（'每月    日前'），甲方账户信息未提供",
+          "confidence": 0.85,
+          "suggestionText": "建议明确租金支付的具体日期和甲方的收款账户信息"
+        }
+      ]
+    },
+    {
+      "id": "article_3_3",
+      "references": [],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "action_9",
+          "type": "revise",
+          "status": "pending",
+          "reason": "支付方式未勾选，甲方账户信息（户名、开户行、账号）未填写",
+          "confidence": 0.85,
+          "suggestionText": "建议确认租金支付方式并填写完整的甲方账户信息"
+        }
+      ]
+    },
+    {
+      "id": "article_3_4",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "article_4",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "article_4_1",
+      "references": [],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "action_10",
+          "type": "revise",
+          "status": "pending",
+          "reason": "押金月数和金额均未填写（显示'\\   月'和'\\    元'），无法确定押金具体数额",
+          "confidence": 0.95,
+          "suggestionText": "建议明确押金为几个月租金（不超过两个月）及具体金额"
+        }
+      ]
+    },
+    {
+      "id": "article_4_2",
+      "references": [],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "action_11",
+          "type": "revise",
+          "status": "pending",
+          "reason": "第(3)项及其子项a、b、c存在严重问题：条款表述不清、逻辑混乱，特别是'复合社会主义建设'等表述不规范且无法理解，可能导致合同无效或纠纷",
+          "confidence": 0.95,
+          "suggestionText": "建议删除或重新表述第(3)项及其子项，仅保留合理的押金退还条件"
+        }
+      ]
+    },
+    {
+      "id": "article_5",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "article_5_1",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "article_5_2",
+      "references": [],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "action_12",
+          "type": "revise",
+          "status": "pending",
+          "reason": "各项费用的计费标准未填写（显示'\\       元/吨'等），无法确定乙方应承担的具体费用",
+          "confidence": 0.85,
+          "suggestionText": "建议填写水费、电费、燃气费、物业管理费等的具体计费标准"
+        }
+      ]
+    },
+    {
+      "id": "article_5_3",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "article_6",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "article_6_1",
+      "references": [
+        "article_2_1"
+      ],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "action_13",
+          "type": "revise",
+          "status": "pending",
+          "reason": "房屋交付日期为2025年12月1日，与租赁期限起始日期相同，但当前日期应早于此，存在时间逻辑问题；且要求保证空气质量但未明确检测标准",
+          "confidence": 0.85,
+          "suggestionText": "建议核实交付日期，并明确空气质量的检测标准和方法"
+        }
+      ]
+    },
+    {
+      "id": "article_6_2",
+      "references": [],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "action_14",
+          "type": "revise",
+          "status": "pending",
+          "reason": "条款要求签署《房屋交付确认书》但未明确其具体内容和双方的检查范围",
+          "confidence": 0.6,
+          "suggestionText": "建议在附件三中详细列明《房屋交付确认书》应包含的内容"
+        }
+      ]
+    },
+    {
+      "id": "article_6_3",
+      "references": [],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "action_15",
+          "type": "revise",
+          "status": "pending",
+          "reason": "条款规定未签署《房屋交付确认书》但乙方已进场装修即视为交付完成，存在重大风险，可能导致房屋状况无法确认和纠纷",
+          "confidence": 0.9,
+          "suggestionText": "建议修改为必须签署《房屋交付确认书》才能视为交付完成，以保护双方权益"
+        }
+      ]
+    },
+    {
+      "id": "article_7",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "article_7_1",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "article_8",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "article_8_1",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "article_8_2",
+      "references": [],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "action_16",
+          "type": "revise",
+          "status": "pending",
+          "reason": "条款中关于维修期限和费用承担的规定较为复杂，建议明确甲方维修义务的具体范围和时限",
+          "confidence": 0.6,
+          "suggestionText": "建议进一步明确哪些维修由甲方承担，哪些由乙方承担，以及维修期限的具体要求"
+        }
+      ]
+    },
+    {
+      "id": "article_8_3",
+      "references": [],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "action_17",
+          "type": "revise",
+          "status": "pending",
+          "reason": "条款规定甲方可在物业协助下进入房屋进行紧急维修，但未明确补偿的具体标准",
+          "confidence": 0.65,
+          "suggestionText": "建议明确甲方进入房屋进行紧急维修时的补偿标准和计算方法"
+        }
+      ]
+    },
+    {
+      "id": "article_9",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "article_9_1",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "article_9_2",
+      "references": [],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "action_18",
+          "type": "revise",
+          "status": "pending",
+          "reason": "续租申请的提前通知期限为30日，但未明确续租条件和新租金的确定方式",
+          "confidence": 0.65,
+          "suggestionText": "建议明确续租时新租金的确定方式和其他续租条件"
+        }
+      ]
+    },
+    {
+      "id": "article_9_3",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "article_10",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "article_10_1",
+      "references": [],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "action_19",
+          "type": "revise",
+          "status": "pending",
+          "reason": "条款规定房屋返还期限为3日，但未明确'结算及交接手续'的具体内容和时间要求",
+          "confidence": 0.7,
+          "suggestionText": "建议明确房屋返还的具体流程、结算方式和交接手续的详细要求"
+        }
+      ]
+    },
+    {
+      "id": "article_10_2",
+      "references": [],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "action_20",
+          "type": "revise",
+          "status": "pending",
+          "reason": "条款规定乙方遗留物品视为放弃所有权，但未明确甲方处理遗留物的具体程序和时间限制",
+          "confidence": 0.75,
+          "suggestionText": "建议明确甲方处理遗留物的具体程序、保管期限和处置方式"
+        }
+      ]
+    },
+    {
+      "id": "article_10_3",
+      "references": [],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "action_21",
+          "type": "revise",
+          "status": "pending",
+          "reason": "条款要求签署《房屋交还确认书》但未明确其具体内容",
+          "confidence": 0.6,
+          "suggestionText": "建议在附件四中详细列明《房屋交还确认书》应包含的内容"
+        }
+      ]
+    },
+    {
+      "id": "article_11",
+      "references": [],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "action_22",
+          "type": "revise",
+          "status": "pending",
+          "reason": "第十一条仅有标题，合同解除的具体条件、程序和违约责任未规定，存在重大缺陷",
+          "confidence": 0.95,
+          "suggestionText": "建议补充合同解除的具体条件、解除程序、违约责任、赔偿标准等内容"
+        }
+      ]
+    },
+    {
+      "id": "signature_block",
+      "references": [],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "action_23",
+          "type": "revise",
+          "status": "pending",
+          "reason": "签署日期未填写，无法确定合同生效日期",
+          "confidence": 0.85,
+          "suggestionText": "建议在签署时填写完整的签署日期"
+        }
+      ]
+    }
+  ]
+}

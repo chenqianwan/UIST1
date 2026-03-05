@@ -1,4 +1,11 @@
 {
+  "meta": {
+    "stageA": "docs/simple1.stage_a.json",
+    "stageB": "docs/simple1.stage_b.json",
+    "nodeCount": 44,
+    "missingInStageB": [],
+    "extraInStageB": []
+  },
   "nodes": [
     {
       "id": "root",
@@ -6,7 +13,10 @@
       "content": "房屋租赁合同",
       "type": "main",
       "parentId": null,
-      "timePhase": "pre_sign"
+      "timePhase": "pre_sign",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
     },
     {
       "id": "parties_lessor",
@@ -14,7 +24,19 @@
       "content": "出租人（甲方）：                     \n证件类型： □居民身份证□护照□统一社会信用代码□其他         \n证件号码：                            \n房屋信息编码卡号码：                \n通讯地址：                                                   \n□委托代理人/□法定代表人：                             \n证件类型： □居民身份证□护照□统一社会信用代码□其他         \n证件号码：                                                   \n通讯地址：                                                   \n联系电话：",
       "type": "main",
       "parentId": "root",
-      "timePhase": "pre_sign"
+      "timePhase": "pre_sign",
+      "references": [],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "action_1",
+          "type": "revise",
+          "status": "pending",
+          "reason": "出租人信息不完整，缺少必要的身份证明和联系方式",
+          "confidence": 0.8,
+          "suggestionText": "建议在签署前确保出租人的所有信息字段已填写完整，包括证件号码、通讯地址和联系电话"
+        }
+      ]
     },
     {
       "id": "parties_tenant",
@@ -22,7 +44,19 @@
       "content": "承租人（乙方）： \n证件类型： □居民身份证□护照☐统一社会信用代码□其他\n证件号码：                         \n通讯地址：深圳市南山区桂湾片区二单元前海卓越金融中心（一期）8 号楼 1001 号\n□委托代理人/☐法定代表人：\n证件类型： □居民身份证□护照□统一社会信用代码□其他         \n证件号码：                                                   \n通讯地址：                                                   \n联系电话：",
       "type": "main",
       "parentId": "root",
-      "timePhase": "pre_sign"
+      "timePhase": "pre_sign",
+      "references": [],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "action_2",
+          "type": "revise",
+          "status": "pending",
+          "reason": "承租人信息不完整，缺少证件号码、委托代理人信息和联系电话",
+          "confidence": 0.8,
+          "suggestionText": "建议在签署前确保承租人的所有信息字段已填写完整"
+        }
+      ]
     },
     {
       "id": "preamble",
@@ -30,7 +64,10 @@
       "content": "根据《中华人民共和国民法典》《中华人民共和国城市房地产管理法》《商品房屋租赁管理办法》《深圳市人民代表大会常务委员会关于加强房屋租赁安全责任的决定》等相关法律法规文件的规定，甲、乙双方在平等、 自愿、公平以及诚实信用的基础上，就房屋租赁相关事宜协商一致，共同订立本合同。",
       "type": "main",
       "parentId": "root",
-      "timePhase": "pre_sign"
+      "timePhase": "pre_sign",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
     },
     {
       "id": "article_1",
@@ -38,7 +75,10 @@
       "content": "第一条 租赁房屋基本情况",
       "type": "main",
       "parentId": "root",
-      "timePhase": "effective"
+      "timePhase": "effective",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
     },
     {
       "id": "article_1_1",
@@ -46,7 +86,19 @@
       "content": "甲方出租给乙方的房屋坐落于深圳市 南山区桂湾片区二单元前海卓越金融中心（一期）8 号楼 1001-*******，租赁形式：□整租/□部分出租，房屋建筑面积：  5    平方米，使用面积： \\ 平方米，公摊面积： \\    平方米（详见附件二房屋平面图），房屋租赁用途：   办公    ，房屋编码： /  。",
       "type": "sub",
       "parentId": "article_1",
-      "timePhase": "effective"
+      "timePhase": "effective",
+      "references": [],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "action_3",
+          "type": "revise",
+          "status": "pending",
+          "reason": "房屋地址包含脱敏符号'*******'，使用面积和公摊面积未填写",
+          "confidence": 0.9,
+          "suggestionText": "建议补全房屋完整地址、使用面积和公摊面积的具体数值"
+        }
+      ]
     },
     {
       "id": "article_1_2",
@@ -54,7 +106,19 @@
       "content": "房屋权属状况：\n不动产权利人或合法使用人为  深圳市前海风尚行物业管理有限公司    ，甲方持有： ( □房屋所有权证或不动产权证书/□房屋买卖合同/□房屋租赁合同/ □其他房屋来源证明文件），房屋所有权证或不动产权证书编号：0193818 号  ，房屋 (□是 / □否）设定了抵押。",
       "type": "sub",
       "parentId": "article_1",
-      "timePhase": "effective"
+      "timePhase": "effective",
+      "references": [],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "action_4",
+          "type": "revise",
+          "status": "pending",
+          "reason": "房屋权属状况中，甲方持有的证明文件类型未勾选，房屋是否设定抵押未确认",
+          "confidence": 0.85,
+          "suggestionText": "建议明确甲方持有的房屋权属证明文件类型，并确认房屋是否存在抵押"
+        }
+      ]
     },
     {
       "id": "article_1_3",
@@ -62,7 +126,10 @@
       "content": "房屋装修情况：已装修（装修具体情况可由甲、乙双方在本合同附件二中补充列明）。",
       "type": "sub",
       "parentId": "article_1",
-      "timePhase": "effective"
+      "timePhase": "effective",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
     },
     {
       "id": "article_1_4",
@@ -70,7 +137,19 @@
       "content": "房屋内附属设施情况：\n\n□房屋内无任何设施设备，是空房。\n□房屋内安装有设施设备，详见附件三《房屋交付确认书》。",
       "type": "sub",
       "parentId": "article_1",
-      "timePhase": "effective"
+      "timePhase": "effective",
+      "references": [],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "action_5",
+          "type": "revise",
+          "status": "pending",
+          "reason": "房屋内附属设施情况未勾选确认",
+          "confidence": 0.7,
+          "suggestionText": "建议勾选房屋是否有附属设施设备，如有应附《房屋交付确认书》"
+        }
+      ]
     },
     {
       "id": "article_2",
@@ -78,7 +157,10 @@
       "content": "第二条 租赁期限",
       "type": "main",
       "parentId": "root",
-      "timePhase": "effective"
+      "timePhase": "effective",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
     },
     {
       "id": "article_2_1",
@@ -86,7 +168,19 @@
       "content": "乙方租赁房屋的期限自 2025 年 12  月 1  日至 2026 年 11  月 30  日止,共计 1\n年  0   个月（不得超过法律、法规规定的最长期限,单个产业用房租赁合同期限原则上不得少于 1 年）。",
       "type": "sub",
       "parentId": "article_2",
-      "timePhase": "effective"
+      "timePhase": "effective",
+      "references": [],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "action_6",
+          "type": "revise",
+          "status": "pending",
+          "reason": "租赁期限起始日期为2025年12月1日，但当前日期应早于此，存在时间逻辑问题；租赁期限计算有误（显示1年0个月但应为12个月）",
+          "confidence": 0.9,
+          "suggestionText": "建议核实租赁期限的起始日期和期限长度，确保时间逻辑正确"
+        }
+      ]
     },
     {
       "id": "article_2_2",
@@ -94,7 +188,10 @@
       "content": "免租期：\n☑乙方不享有免租期， 自甲方交付房屋之日起开始计算租金、管理费及其他各项费用。",
       "type": "sub",
       "parentId": "article_2",
-      "timePhase": "effective"
+      "timePhase": "effective",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
     },
     {
       "id": "article_3",
@@ -102,7 +199,10 @@
       "content": "第三条 租金",
       "type": "main",
       "parentId": "root",
-      "timePhase": "execution"
+      "timePhase": "execution",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
     },
     {
       "id": "article_3_1",
@@ -110,7 +210,19 @@
       "content": "租赁房屋按□套内建筑面积/□建筑面积计算租金，月租金总额为人民币 250 元（大写： 贰佰伍拾元整）。",
       "type": "sub",
       "parentId": "article_3",
-      "timePhase": "execution"
+      "timePhase": "execution",
+      "references": [],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "action_7",
+          "type": "revise",
+          "status": "pending",
+          "reason": "月租金250元（贰佰伍拾元整）明显过低，不符合深圳市前海卓越金融中心办公用房的市场价格，存在重大风险",
+          "confidence": 0.95,
+          "suggestionText": "建议重新核实租金金额，确保与市场价格相符且双方真实意思表示一致"
+        }
+      ]
     },
     {
       "id": "article_3_2",
@@ -118,7 +230,19 @@
       "content": "租金支付时间：租金按月支付，乙方应当于每月    日前向甲方支付租金。甲方在收取乙方租金时，应当向乙方开具收款凭证。",
       "type": "sub",
       "parentId": "article_3",
-      "timePhase": "execution"
+      "timePhase": "execution",
+      "references": [],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "action_8",
+          "type": "revise",
+          "status": "pending",
+          "reason": "租金支付日期未填写（'每月    日前'），甲方账户信息未提供",
+          "confidence": 0.85,
+          "suggestionText": "建议明确租金支付的具体日期和甲方的收款账户信息"
+        }
+      ]
     },
     {
       "id": "article_3_3",
@@ -126,7 +250,19 @@
       "content": "租金支付方式：乙方应当在约定的支付租金日期前以□现金支付/□银行转账/□其他                       方式将租金交付于甲方。\n以转账方式支付时，乙方应当将租金付至甲方指定的如下账户：\n户  名：                                                       \n开户行：                                                   \n账  号：",
       "type": "sub",
       "parentId": "article_3",
-      "timePhase": "execution"
+      "timePhase": "execution",
+      "references": [],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "action_9",
+          "type": "revise",
+          "status": "pending",
+          "reason": "支付方式未勾选，甲方账户信息（户名、开户行、账号）未填写",
+          "confidence": 0.85,
+          "suggestionText": "建议确认租金支付方式并填写完整的甲方账户信息"
+        }
+      ]
     },
     {
       "id": "article_3_4",
@@ -134,7 +270,10 @@
       "content": "房屋租赁合同期内，甲方不得单方面提高租金。",
       "type": "sub",
       "parentId": "article_3",
-      "timePhase": "execution"
+      "timePhase": "execution",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
     },
     {
       "id": "article_4",
@@ -142,7 +281,10 @@
       "content": "第四条 租赁押金",
       "type": "main",
       "parentId": "root",
-      "timePhase": "pre_sign"
+      "timePhase": "pre_sign",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
     },
     {
       "id": "article_4_1",
@@ -150,7 +292,19 @@
       "content": "本合同签署后5 日内，乙方应当向甲方支付相当于  \\   月（不超过两个月）租金的押金共计人民币  \\    元（大写：    \\        元整）。甲方收取乙方押金时，应当向乙方开具收款凭证。",
       "type": "sub",
       "parentId": "article_4",
-      "timePhase": "pre_sign"
+      "timePhase": "pre_sign",
+      "references": [],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "action_10",
+          "type": "revise",
+          "status": "pending",
+          "reason": "押金月数和金额均未填写（显示'\\   月'和'\\    元'），无法确定押金具体数额",
+          "confidence": 0.95,
+          "suggestionText": "建议明确押金为几个月租金（不超过两个月）及具体金额"
+        }
+      ]
     },
     {
       "id": "article_4_2",
@@ -158,7 +312,19 @@
       "content": "乙方支付的押金并非乙方预付的租金或其他费用，仅是乙方履行本合同约定义务的保证，甲方不得无故扣留乙方押金，拒不退还。租赁期限届满或合同解除后 5 日内，同时满足以下条件时， 甲方应当在扣除乙方应承担的租金、费用以及违约赔偿金后，将租赁押金剩余部分无息退还给乙方（如有租金余额一并予以退还）：\n（1）乙方未对租赁房屋造成损坏或已经将损坏的房屋修复；\n（2）乙方按照本合同约定的方式将租赁房屋（包括附属设施）交还给甲方；\n（3）乙方使用租赁房屋地址办理工商注册的，已将工商注册地址迁移，并办理完毕法律及政府规定的其他手续。且满足以下标准\n    a: 乙方使用租赁房屋地址办理工商注册的且是合理的\n    b: 乙方使用租赁房屋地址办理工商注册的且未到期\n    c: 乙方使用租赁房屋地址办理工商注册的且复合社会主义建设",
       "type": "sub",
       "parentId": "article_4",
-      "timePhase": "termination"
+      "timePhase": "termination",
+      "references": [],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "action_11",
+          "type": "revise",
+          "status": "pending",
+          "reason": "第(3)项及其子项a、b、c存在严重问题：条款表述不清、逻辑混乱，特别是'复合社会主义建设'等表述不规范且无法理解，可能导致合同无效或纠纷",
+          "confidence": 0.95,
+          "suggestionText": "建议删除或重新表述第(3)项及其子项，仅保留合理的押金退还条件"
+        }
+      ]
     },
     {
       "id": "article_5",
@@ -166,7 +332,10 @@
       "content": "第五条 其他费用",
       "type": "main",
       "parentId": "root",
-      "timePhase": "execution"
+      "timePhase": "execution",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
     },
     {
       "id": "article_5_1",
@@ -174,7 +343,10 @@
       "content": "租赁期间，甲方负责支付法律、法规规定应由甲方交纳的房屋租赁相关的税费。",
       "type": "sub",
       "parentId": "article_5",
-      "timePhase": "execution"
+      "timePhase": "execution",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
     },
     {
       "id": "article_5_2",
@@ -182,7 +354,19 @@
       "content": "租赁期间，因乙方使用租赁房屋所产生的□水费/□电费/□燃气费/□物业管理费/\n□电视费/□电话费/□网络费用/□      \\         等其他费用，由乙方承担。计费标准如下（如公用事业单位或物业服务企业依法调整收费标准的，随其调整）：\n水费：    \\       元/吨；电费：      \\     元/度；\n燃气费：     \\     元/立方米；物业管理费：   \\     元/平方米/月；\n其他：               \\              。",
       "type": "sub",
       "parentId": "article_5",
-      "timePhase": "execution"
+      "timePhase": "execution",
+      "references": [],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "action_12",
+          "type": "revise",
+          "status": "pending",
+          "reason": "各项费用的计费标准未填写（显示'\\       元/吨'等），无法确定乙方应承担的具体费用",
+          "confidence": 0.85,
+          "suggestionText": "建议填写水费、电费、燃气费、物业管理费等的具体计费标准"
+        }
+      ]
     },
     {
       "id": "article_5_3",
@@ -190,7 +374,10 @@
       "content": "乙方应当自收到缴费通知或甲方提供的收费凭据后按要求及时缴交费用，否则因此产生的滞纳金、违约金及相关法律后果均由乙方承担。",
       "type": "sub",
       "parentId": "article_5",
-      "timePhase": "execution"
+      "timePhase": "execution",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
     },
     {
       "id": "article_6",
@@ -198,7 +385,10 @@
       "content": "第六条 房屋的交付与验收",
       "type": "main",
       "parentId": "root",
-      "timePhase": "acceptance"
+      "timePhase": "acceptance",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
     },
     {
       "id": "article_6_1",
@@ -206,7 +396,21 @@
       "content": "甲方应于  2025   年  12  月 1  日前将租赁房屋交付给乙方，并保证房屋及其附属设施安全、合格（含空气质量）。",
       "type": "sub",
       "parentId": "article_6",
-      "timePhase": "acceptance"
+      "timePhase": "acceptance",
+      "references": [
+        "article_2_1"
+      ],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "action_13",
+          "type": "revise",
+          "status": "pending",
+          "reason": "房屋交付日期为2025年12月1日，与租赁期限起始日期相同，但当前日期应早于此，存在时间逻辑问题；且要求保证空气质量但未明确检测标准",
+          "confidence": 0.85,
+          "suggestionText": "建议核实交付日期，并明确空气质量的检测标准和方法"
+        }
+      ]
     },
     {
       "id": "article_6_2",
@@ -214,7 +418,19 @@
       "content": "乙方应在甲方交付租赁房屋时入内检查租赁房屋的现有设备及设施，双方应当共同签署《房屋交付确认书》（见附件三）完成交付。",
       "type": "sub",
       "parentId": "article_6",
-      "timePhase": "acceptance"
+      "timePhase": "acceptance",
+      "references": [],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "action_14",
+          "type": "revise",
+          "status": "pending",
+          "reason": "条款要求签署《房屋交付确认书》但未明确其具体内容和双方的检查范围",
+          "confidence": 0.6,
+          "suggestionText": "建议在附件三中详细列明《房屋交付确认书》应包含的内容"
+        }
+      ]
     },
     {
       "id": "article_6_3",
@@ -222,7 +438,19 @@
       "content": "双方特别确认：未签署《房屋交付确认书》但乙方已进场装修的，视为租赁房屋交付已完成。",
       "type": "sub",
       "parentId": "article_6",
-      "timePhase": "acceptance"
+      "timePhase": "acceptance",
+      "references": [],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "action_15",
+          "type": "revise",
+          "status": "pending",
+          "reason": "条款规定未签署《房屋交付确认书》但乙方已进场装修即视为交付完成，存在重大风险，可能导致房屋状况无法确认和纠纷",
+          "confidence": 0.9,
+          "suggestionText": "建议修改为必须签署《房屋交付确认书》才能视为交付完成，以保护双方权益"
+        }
+      ]
     },
     {
       "id": "article_7",
@@ -230,7 +458,10 @@
       "content": "第七条 装饰装修",
       "type": "main",
       "parentId": "root",
-      "timePhase": "execution"
+      "timePhase": "execution",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
     },
     {
       "id": "article_7_1",
@@ -238,7 +469,10 @@
       "content": "甲方不同意乙方对租赁房屋进行装饰装修。",
       "type": "sub",
       "parentId": "article_7",
-      "timePhase": "execution"
+      "timePhase": "execution",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
     },
     {
       "id": "article_8",
@@ -246,7 +480,10 @@
       "content": "第八条 房屋使用及维护",
       "type": "main",
       "parentId": "root",
-      "timePhase": "execution"
+      "timePhase": "execution",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
     },
     {
       "id": "article_8_1",
@@ -254,7 +491,10 @@
       "content": "租赁期间，乙方应当正常、合理地使用租赁房屋及其附属设施，安全用水、用电，未经甲方同意，不得擅自改变租赁用途。",
       "type": "sub",
       "parentId": "article_8",
-      "timePhase": "execution"
+      "timePhase": "execution",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
     },
     {
       "id": "article_8_2",
@@ -262,7 +502,19 @@
       "content": "租赁期间，乙方发现租赁房屋及其附属设施有损坏或故障时，应当及时通知甲方修复。 甲方应当在接到乙方通知后的5 日内进行维修。无法通知甲方或甲方接到通知逾期不维修的，或者因情况紧急必须立即进行维修的，乙方有权代为维修，费用由甲方承担。因维修房屋影响乙方使用的，应相应减少租金或延长租赁期限。若维修工作影响乙方的正常使用，甲方应根据影响的程度减少租金或延长租赁期限，以弥补乙方因此产生的损失。\n因乙方故意或使用不当而造成租赁房屋或附属设施（包括乙方对房屋的装饰装修和增加的设施、设备）出现损坏或故障，由乙方负责维修，甲方不承担维修义务。\n在租赁期内，因甲方或乙方不及时履行本合同约定的维修、养护以及其他义务造成对方或第三方人身损害、财产损失的，责任方应当承担赔偿责任。",
       "type": "sub",
       "parentId": "article_8",
-      "timePhase": "execution"
+      "timePhase": "execution",
+      "references": [],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "action_16",
+          "type": "revise",
+          "status": "pending",
+          "reason": "条款中关于维修期限和费用承担的规定较为复杂，建议明确甲方维修义务的具体范围和时限",
+          "confidence": 0.6,
+          "suggestionText": "建议进一步明确哪些维修由甲方承担，哪些由乙方承担，以及维修期限的具体要求"
+        }
+      ]
     },
     {
       "id": "article_8_3",
@@ -270,7 +522,19 @@
       "content": "发生需紧急维修但又无法通知乙方或虽通知但乙方不能在场的情形时， 甲方可在物业管理等部门的协助下，进入租赁房屋进行紧急维修施工作业，由此给乙方造成的损失， 甲方应当给予补偿。",
       "type": "sub",
       "parentId": "article_8",
-      "timePhase": "execution"
+      "timePhase": "execution",
+      "references": [],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "action_17",
+          "type": "revise",
+          "status": "pending",
+          "reason": "条款规定甲方可在物业协助下进入房屋进行紧急维修，但未明确补偿的具体标准",
+          "confidence": 0.65,
+          "suggestionText": "建议明确甲方进入房屋进行紧急维修时的补偿标准和计算方法"
+        }
+      ]
     },
     {
       "id": "article_9",
@@ -278,7 +542,10 @@
       "content": "第九条 转租、续租及优先权",
       "type": "main",
       "parentId": "root",
-      "timePhase": "execution"
+      "timePhase": "execution",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
     },
     {
       "id": "article_9_1",
@@ -286,7 +553,10 @@
       "content": "转租\n乙方不得转租。",
       "type": "sub",
       "parentId": "article_9",
-      "timePhase": "execution"
+      "timePhase": "execution",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
     },
     {
       "id": "article_9_2",
@@ -294,7 +564,19 @@
       "content": "续租\n本合同租赁期限届满，乙方需继续租用租赁房屋的，应于租赁期限届满之日前   30  日向甲方提出书面续租申请。双方就续租事宜达成一致的，应重新订立租赁合同或者签订租赁期限变更协议。在同等条件下，乙方享有优先续租权。",
       "type": "sub",
       "parentId": "article_9",
-      "timePhase": "termination"
+      "timePhase": "termination",
+      "references": [],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "action_18",
+          "type": "revise",
+          "status": "pending",
+          "reason": "续租申请的提前通知期限为30日，但未明确续租条件和新租金的确定方式",
+          "confidence": 0.65,
+          "suggestionText": "建议明确续租时新租金的确定方式和其他续租条件"
+        }
+      ]
     },
     {
       "id": "article_9_3",
@@ -302,7 +584,10 @@
       "content": "优先权\n甲方在租赁期间出售租赁房屋，应当提前通知乙方，乙方在价格、付款方式同等条件下有优先购买权。若甲方出售的是连同租赁房屋在内的整栋房屋或与其他房屋连为一体的整体房屋，乙方不享有优先购买权。",
       "type": "sub",
       "parentId": "article_9",
-      "timePhase": "execution"
+      "timePhase": "execution",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
     },
     {
       "id": "article_10",
@@ -310,7 +595,10 @@
       "content": "第十条 房屋返还",
       "type": "main",
       "parentId": "root",
-      "timePhase": "post_termination"
+      "timePhase": "post_termination",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
     },
     {
       "id": "article_10_1",
@@ -318,7 +606,19 @@
       "content": "租赁期限届满或本合同解除之日起  3   日内，乙方应当及时清空搬离租赁房屋，在完成结算及交接手续后将房屋及附属设施交还甲方。甲方应先以本合同约定送达方式向乙方发出书面通知并给予不少于 7 日的宽限期；宽限期届满乙方仍未处理且确实无法联系的，甲方应对遗留物进行清点、拍照、录像并制作清单后妥善保管  30 日，保管期间产生的合理保管费用由乙方承担并可在押金中抵扣，甲方不得擅自将遗留物作为废弃物处理；保管期届满乙方仍未取回的，甲方可依法委托第三方处置或通过拍卖、变卖方式处置，处置所得在扣除合理处置费用、保管费用及乙方应付未付费用后余额应返还乙方，不足部分乙方仍应补足，甲方按前述程序处置的，不视为侵权或违约。",
       "type": "sub",
       "parentId": "article_10",
-      "timePhase": "post_termination"
+      "timePhase": "post_termination",
+      "references": [],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "action_19",
+          "type": "revise",
+          "status": "pending",
+          "reason": "条款规定房屋返还期限为3日，但未明确'结算及交接手续'的具体内容和时间要求",
+          "confidence": 0.7,
+          "suggestionText": "建议明确房屋返还的具体流程、结算方式和交接手续的详细要求"
+        }
+      ]
     },
     {
       "id": "article_10_2",
@@ -326,7 +626,19 @@
       "content": "乙方返还房屋后遗留的物品，视为乙方放弃所有权，甲方有权将其作为废弃物处理。甲方因处理乙方遗留废弃物产生的费用，有权要求乙方承担。",
       "type": "sub",
       "parentId": "article_10",
-      "timePhase": "post_termination"
+      "timePhase": "post_termination",
+      "references": [],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "action_20",
+          "type": "revise",
+          "status": "pending",
+          "reason": "条款规定乙方遗留物品视为放弃所有权，但未明确甲方处理遗留物的具体程序和时间限制",
+          "confidence": 0.75,
+          "suggestionText": "建议明确甲方处理遗留物的具体程序、保管期限和处置方式"
+        }
+      ]
     },
     {
       "id": "article_10_3",
@@ -334,7 +646,19 @@
       "content": "房屋返还时，双方当事人应当对房屋和附属物品、设施设备及水电气等使用情况进行交验，并在《房屋交还确认书》（见附件四）中签字或盖章。",
       "type": "sub",
       "parentId": "article_10",
-      "timePhase": "post_termination"
+      "timePhase": "post_termination",
+      "references": [],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "action_21",
+          "type": "revise",
+          "status": "pending",
+          "reason": "条款要求签署《房屋交还确认书》但未明确其具体内容",
+          "confidence": 0.6,
+          "suggestionText": "建议在附件四中详细列明《房屋交还确认书》应包含的内容"
+        }
+      ]
     },
     {
       "id": "article_11",
@@ -342,7 +666,19 @@
       "content": "第十一条 合同的解除",
       "type": "main",
       "parentId": "root",
-      "timePhase": "termination"
+      "timePhase": "termination",
+      "references": [],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "action_22",
+          "type": "revise",
+          "status": "pending",
+          "reason": "第十一条仅有标题，合同解除的具体条件、程序和违约责任未规定，存在重大缺陷",
+          "confidence": 0.95,
+          "suggestionText": "建议补充合同解除的具体条件、解除程序、违约责任、赔偿标准等内容"
+        }
+      ]
     },
     {
       "id": "signature_block",
@@ -350,7 +686,19 @@
       "content": "甲方(签章)：                         乙方(签章)：\n\n委托代理人(签章)：                  委托代理人(签章)：\n\n签订日期： 年  月  日          签订日期：  年   月  日",
       "type": "main",
       "parentId": "root",
-      "timePhase": "pre_sign"
+      "timePhase": "pre_sign",
+      "references": [],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "action_23",
+          "type": "revise",
+          "status": "pending",
+          "reason": "签署日期未填写，无法确定合同生效日期",
+          "confidence": 0.85,
+          "suggestionText": "建议在签署时填写完整的签署日期"
+        }
+      ]
     }
   ]
 }

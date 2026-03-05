@@ -181,18 +181,15 @@ interface GraphLink {
 - **输出**：0~N 个目标 main 的 id 列表（用于创建 smart-link）。
 - **当前约束**：N≤2，且仅考虑距离 < 260；可改为基于语义或配置。
 
-### 6.3 上游三阶段接口（推荐）
+### 6.3 上游两阶段接口（推荐）
 
 - **Stage A 输入**：`original_contract_text`
 - **Stage A 输出**：`nodes_stage_a[]`（仅结构字段：`id,label,content,type,parentId,timePhase`）
 - **Stage A 约束**：`content` 逐字复制原文；层级树完整；ID 唯一
 - **Stage B 输入**：`nodes_stage_a[] + original_contract_text`
-- **Stage B 输出**：`nodes_enriched[]`（补全 `references/riskLevel/riskReason/evidenceSpans/actions`）
-- **Stage B 约束**：不得改写 Stage A 的结构字段；`delete` 与 `revise/add_clause` 互斥；`add_clause` 仅输出意图不直接新增节点
-- **Stage C 输入**：`nodes_stage_a[] + nodes_enriched[]`
-- **Stage C 输出**：`nodes_final[] + patch_log[]`
-- **Stage C 约束**：程序侧确定性执行 `revise/delete/add_clause`，处理新节点 ID、parent 归属与冲突
-- **后处理**：证据坐标映射、引用合法性过滤、字段不可变校验、patch 可回放校验
+- **Stage B 输出**：`nodes_enriched[]`（补全 `references/riskLevel/actions`，动作结构直接给前端消费）
+- **Stage B 约束**：不得改写 Stage A 的结构字段；`delete` 与 `revise/add_clause` 互斥；`add_clause` 至少提供 `supplementDraft`
+- **后处理**：引用合法性过滤、字段不可变校验
 
 ### 6.4 导出
 

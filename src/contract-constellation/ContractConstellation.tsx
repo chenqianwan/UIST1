@@ -11,11 +11,14 @@ import {
 import { Trash2 } from 'lucide-react';
 import canvasBg from '../../static/canvas_bg.png';
 import sidePanelBg from '../../static/side_panel.png';
+import stageAData from '../../docs/simple1.stage_a.json';
+import stageBData from '../../docs/simple1.stage_b.json';
 import { NODE_LIBRARY } from './constants';
 import { GraphCanvas, CANVAS_WIDTH, CANVAS_HEIGHT } from './GraphCanvas';
 import { SidePanel } from './SidePanel';
 import type { GraphNode, GraphLink, NodeActionType } from './types';
 import type { NodeActionItem } from './types';
+import type { TemplateItem } from './types';
 import { getRiskColor, getAiSuggestion } from './utils';
 import { getSemanticTargetXMap } from './semanticEmbedding';
 import { useGalaxyEngine } from './useGalaxyEngine';
@@ -57,6 +60,32 @@ const SLIDER_SAMPLE_INTERVAL_MS = 220;
 const SLIDER_HEAT_WEIGHT = 0.4;
 const MODIFY_SAMPLE_INTERVAL_MS = 220;
 const MODIFY_HEAT_WEIGHT = 0.45;
+const GRAPH_PRESET_OPTIONS: Array<{ id: 'standard' | 'simple1'; label: string }> = [
+  { id: 'standard', label: 'Standard' },
+  { id: 'simple1', label: 'Simple1 (Stage A + B)' },
+];
+
+type StageANode = {
+  id: string;
+  label: string;
+  content: string;
+  type: 'main' | 'sub';
+  parentId?: string | null;
+  timePhase?: GraphNode['timePhase'];
+};
+
+type StageBNode = {
+  id: string;
+  references?: string[];
+  riskLevel?: GraphNode['riskLevel'];
+  actions?: NodeActionItem[];
+};
+
+function toTemplateType(riskLevel: GraphNode['riskLevel']): TemplateItem['type'] {
+  if (riskLevel === 'high' || riskLevel === 'medium') return 'risk';
+  if (riskLevel === 'low') return 'obligation';
+  return 'asset';
+}
 
 /** Structural links only (child-link, detail-link); exclude reference-link. */
 function getStructuralChildrenBySource(links: GraphLink[]): Map<string, string[]> {
@@ -107,6 +136,7 @@ export default function ContractConstellation() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isDragOverCanvas, setIsDragOverCanvas] = useState(false);
   const [usedTemplateIds, setUsedTemplateIds] = useState<string[]>([]);
+  const [graphPresetId, setGraphPresetId] = useState<'standard' | 'simple1'>('standard');
   const [lastAppliedAction, setLastAppliedAction] = useState<{ nodeId: string; actionId: string; actionType: NodeActionType } | null>(null);
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
   const [isOverTrash, setIsOverTrash] = useState(false);
@@ -161,6 +191,7 @@ export default function ContractConstellation() {
     removeNodeCascade,
     addSupplementClause,
     setDraggingNode,
+    loadGraphPreset,
   } = useGalaxyEngine(
     width,
     height,
@@ -171,9 +202,79 @@ export default function ContractConstellation() {
     timeTargetXById,
   );
 
+  const handleGraphPresetChange = useCallback((presetId: 'standard' | 'simple1') => {
+    setGraphPresetId(presetId);
+  }, []);
+
+  useEffect(() => {
+    loadGraphPreset('blank');
+    setUsedTemplateIds([]);
+    setSelectedNodeId(null);
+  }, [graphPresetId, loadGraphPreset]);
+
+  const simple1Templates = useMemo<TemplateItem[]>(() => {
+    const aNodes = (stageAData as { nodes?: StageANode[] }).nodes ?? [];
+    const bNodes = (stageBData as { nodes?: StageBNode[] }).nodes ?? [];
+    const bMap = new Map(bNodes.map((n) => [n.id, n]));
+    const byIdA = new Map(aNodes.map((n) => [n.id, n]));
+    const childrenByParent = new Map<string, StageANode[]>();
+
+    aNodes.forEach((node) => {
+      if (node.id === 'root') return;
+      const parentKey = node.parentId ?? 'root';
+      const list = childrenByParent.get(parentKey) ?? [];
+      list.push(node);
+      childrenByParent.set(parentKey, list);
+    });
+
+    const mapReferences = (nodeId: string) =>
+      (bMap.get(nodeId)?.references ?? [])
+        .filter((refId) => byIdA.has(refId))
+        .map((refId) => `simple1::${refId}`);
+
+    const buildSatellite = (node: StageANode) => {
+      const grandchildren = childrenByParent.get(node.id) ?? [];
+      return {
+        label: node.label,
+        content: node.content,
+        timePhase: node.timePhase ?? 'execution',
+        references: mapReferences(node.id),
+        details: grandchildren.map((detail) => ({
+          label: detail.label,
+          content: detail.content,
+          timePhase: detail.timePhase ?? 'execution',
+          references: mapReferences(detail.id),
+        })),
+      };
+    };
+
+    const mainNodes = childrenByParent.get('root') ?? [];
+    return mainNodes.map((mainNode) => {
+      const b = bMap.get(mainNode.id);
+      const riskLevel = b?.riskLevel ?? 'none';
+      const children = childrenByParent.get(mainNode.id) ?? [];
+      return {
+        id: `simple1::${mainNode.id}`,
+        label: mainNode.label,
+        description: mainNode.content.replace(/\s+/g, ' ').slice(0, 72) || 'Imported from Simple1',
+        type: toTemplateType(riskLevel),
+        riskLevel,
+        content: mainNode.content,
+        timePhase: mainNode.timePhase ?? 'execution',
+        actions: b?.actions,
+        satellites: children.map(buildSatellite),
+      };
+    });
+  }, []);
+
+  const activeTemplatePool = useMemo(() => {
+    if (graphPresetId === 'simple1') return simple1Templates;
+    return NODE_LIBRARY;
+  }, [graphPresetId, simple1Templates]);
+
   const availableTemplates = useMemo(
-    () => NODE_LIBRARY.filter((item) => !usedTemplateIds.includes(item.id)),
-    [usedTemplateIds],
+    () => activeTemplatePool.filter((item) => !usedTemplateIds.includes(item.id)),
+    [activeTemplatePool, usedTemplateIds],
   );
 
   const selectedNode = useMemo(
@@ -360,7 +461,8 @@ export default function ContractConstellation() {
     setIsDragOverCanvas(false);
     const templateId = event.dataTransfer.getData('text/plain');
     if (usedTemplateIds.includes(templateId)) return;
-    const template = NODE_LIBRARY.find((item) => item.id === templateId);
+    if (nodes.some((node) => node.id === templateId)) return;
+    const template = activeTemplatePool.find((item) => item.id === templateId);
     if (!template || !svgRef.current) return;
     const rect = svgRef.current.getBoundingClientRect();
     const x = ((event.clientX - rect.left) / rect.width) * width;
@@ -1026,6 +1128,9 @@ export default function ContractConstellation() {
 
       <SidePanel
         availableTemplates={availableTemplates}
+        graphPresetOptions={GRAPH_PRESET_OPTIONS}
+        selectedGraphPresetId={graphPresetId}
+        onGraphPresetChange={handleGraphPresetChange}
         selectedNode={selectedNode}
         aiSuggestion={aiSuggestion}
         lastAppliedAction={lastAppliedAction}
