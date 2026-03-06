@@ -299,8 +299,9 @@ export function useGalaxyEngine(
         const riskLevel = getIndependentRiskLevel(`${template.id}::sat::${item.label}::${item.content}`);
         const actions = normalizeActions(getFallbackActionsByRisk(riskLevel, `${template.id}::sat-action::${item.label}`));
         const timePhase = item.timePhase ?? inferTimePhaseFromText(`${item.label}. ${item.content}`);
+        const satelliteId = item.id ?? `sub_${id}_${index}`;
         return {
-          id: `sub_${id}_${index}`,
+          id: satelliteId,
           references: item.references,
           label: item.label,
           type: 'sub' as const,
@@ -321,20 +322,21 @@ export function useGalaxyEngine(
       const detailNodes = (template.satellites ?? []).flatMap((item, index, arr) => {
         const details = item.details ?? [];
         if (details.length === 0) return [];
-        const satId = `sub_${id}_${index}`;
+        const satId = item.id ?? `sub_${id}_${index}`;
         const satAngle = (index / Math.max(arr.length, 1)) * Math.PI * 2;
         const satX = x + Math.cos(satAngle) * 56;
         const satY = y + Math.sin(satAngle) * 56;
         const ux = Math.cos(satAngle);
         const uy = Math.sin(satAngle);
 
-        return details.slice(0, 1).map((detail, detailIndex) => {
+        return details.map((detail, detailIndex) => {
           // TODO(upstream): Replace local risk/action fallback with upstream-provided fields for generated sub nodes.
           const riskLevel = getIndependentRiskLevel(`${template.id}::sub::${detail.label}::${detail.content}`);
           const actions = normalizeActions(getFallbackActionsByRisk(riskLevel, `${template.id}::sub-action::${detail.label}`));
           const timePhase = detail.timePhase ?? inferTimePhaseFromText(`${detail.label}. ${detail.content}`);
+          const detailId = detail.id ?? `sub_${id}_${index}_${detailIndex}`;
           return {
-            id: `sub_${id}_${index}_${detailIndex}`,
+            id: detailId,
             references: detail.references,
             label: detail.label,
             type: 'sub' as const,

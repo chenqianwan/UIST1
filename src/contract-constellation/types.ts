@@ -16,6 +16,7 @@ export interface NodeActionItem {
 }
 
 export interface TemplateDetailItem {
+  id?: string;
   label: string;
   content: string;
   timePhase?: TimePhase;
@@ -23,6 +24,7 @@ export interface TemplateDetailItem {
 }
 
 export interface TemplateSubItem {
+  id?: string;
   label: string;
   content: string;
   details?: TemplateDetailItem[];

@@ -1,0 +1,522 @@
+{
+  "nodes": [
+    {
+      "id": "root",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "parties_lessor",
+      "references": [],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "parties_lessor_1",
+          "type": "revise",
+          "status": "pending",
+          "suggestionText": "出租人信息不完整，缺少必要的身份证明和联系方式，建议补充完整信息以确保合同有效性",
+          "supplementDraft": "出租人（甲方）应填写完整的身份信息、证件号码、通讯地址和联系电话，确保合同双方身份明确"
+        }
+      ]
+    },
+    {
+      "id": "parties_lessee",
+      "references": [],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "parties_lessee_1",
+          "type": "revise",
+          "status": "pending",
+          "suggestionText": "承租人部分信息缺失，建议补充完整的证件号码和联系电话",
+          "supplementDraft": "承租人（乙方）应补充完整的证件号码、通讯地址和联系电话信息"
+        }
+      ]
+    },
+    {
+      "id": "preamble",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "1",
+      "references": [
+        "1.1",
+        "1.2",
+        "1.3",
+        "1.4"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "1.1",
+      "references": [
+        "6.2"
+      ],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "1.1_1",
+          "type": "revise",
+          "status": "pending",
+          "suggestionText": "房屋面积信息不完整（使用面积和公摊面积未填写），建议补充完整以避免后续纠纷",
+          "supplementDraft": "房屋建筑面积、使用面积和公摊面积应明确填写，并与附件二房屋平面图保持一致"
+        }
+      ]
+    },
+    {
+      "id": "1.2",
+      "references": [],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "1.2_1",
+          "type": "revise",
+          "status": "pending",
+          "suggestionText": "房屋权属存在重大风险：不动产权利人为物业管理公司而非甲方，甲方出租权属不明确，建议甲方提供合法的房屋租赁授权证明或所有权证书",
+          "supplementDraft": "甲方应明确其对该房屋的合法出租权，提供房屋所有权证书或合法的租赁授权文件，确保乙方的租赁权益受保护"
+        }
+      ]
+    },
+    {
+      "id": "1.3",
+      "references": [],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "1.3_1",
+          "type": "revise",
+          "status": "pending",
+          "suggestionText": "装修情况描述不具体，建议在附件二中详细列明装修内容、质量状况和维护责任",
+          "supplementDraft": "应在附件二中详细列明房屋装修的具体情况、装修质量、装修时间和装修材料等信息"
+        }
+      ]
+    },
+    {
+      "id": "1.4",
+      "references": [
+        "6.2"
+      ],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "1.4_1",
+          "type": "revise",
+          "status": "pending",
+          "suggestionText": "附属设施情况未确定，建议明确选择并在附件三中详细列明所有设施设备清单",
+          "supplementDraft": "应明确房屋内是否配备设施设备，如有应在附件三《房屋交付确认书》中详细列明所有设施设备及其状况"
+        }
+      ]
+    },
+    {
+      "id": "2",
+      "references": [
+        "2.1",
+        "2.2"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "2.1",
+      "references": [
+        "3.2",
+        "6.1"
+      ],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "2.1_1",
+          "type": "revise",
+          "status": "pending",
+          "suggestionText": "租赁期限为2025年12月1日至2026年11月30日，但当前日期已超过此期限，建议更新为合理的租赁期限",
+          "supplementDraft": "租赁期限应根据实际签署日期调整，确保合同生效日期合理"
+        }
+      ]
+    },
+    {
+      "id": "2.2",
+      "references": [
+        "6.2",
+        "6.3"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "3",
+      "references": [
+        "3.1",
+        "3.2",
+        "3.3",
+        "3.4"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "3.1",
+      "references": [
+        "4.1",
+        "8.2"
+      ],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "3.1_1",
+          "type": "revise",
+          "status": "pending",
+          "suggestionText": "月租金仅250元，与深圳市前海商业地产市场价格严重不符，建议确认是否为笔误或特殊协议",
+          "supplementDraft": "月租金应根据房屋位置、面积、装修状况等因素合理确定，建议补充说明低价租赁的原因"
+        }
+      ]
+    },
+    {
+      "id": "3.2",
+      "references": [],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "3.2_1",
+          "type": "revise",
+          "status": "pending",
+          "suggestionText": "租金支付日期未填写（每月__日），建议明确具体的支付日期以避免纠纷",
+          "supplementDraft": "应明确填写租金支付的具体日期，例如每月1日、15日等"
+        }
+      ]
+    },
+    {
+      "id": "3.3",
+      "references": [],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "3.3_1",
+          "type": "revise",
+          "status": "pending",
+          "suggestionText": "租金支付方式和甲方账户信息未完整填写，建议补充完整的支付方式和账户信息",
+          "supplementDraft": "应明确选择支付方式（现金/银行转账/其他），如选择银行转账应填写完整的账户信息（户名、开户行、账号）"
+        }
+      ]
+    },
+    {
+      "id": "3.4",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "4",
+      "references": [
+        "4.1",
+        "4.2"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "4.1",
+      "references": [
+        "3.1"
+      ],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "4.1_1",
+          "type": "revise",
+          "status": "pending",
+          "suggestionText": "押金金额和缴纳时间未填写，建议明确押金为不超过两个月租金的具体金额和缴纳期限",
+          "supplementDraft": "应明确填写押金月数（不超过2个月）和具体金额，以及缴纳期限（合同签署后5日内）"
+        }
+      ]
+    },
+    {
+      "id": "4.2",
+      "references": [
+        "10.3"
+      ],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "4.2_1",
+          "type": "revise",
+          "status": "pending",
+          "suggestionText": "第4.2条第(3)项关于工商注册的条款存在逻辑混乱和不合理的标准（标准a、b、c表述不清），建议删除或重新表述",
+          "supplementDraft": "建议删除或重新表述第(3)项中关于工商注册的条款，特别是标准a、b、c的表述应明确清晰，避免歧义"
+        }
+      ]
+    },
+    {
+      "id": "5",
+      "references": [
+        "5.1",
+        "5.2",
+        "5.3"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "5.1",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "5.2",
+      "references": [
+        "4.2"
+      ],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "5.2_1",
+          "type": "revise",
+          "status": "pending",
+          "suggestionText": "各项费用的计费标准未填写（水费、电费、燃气费、物业管理费等），建议补充完整的计费标准",
+          "supplementDraft": "应明确填写各项费用的具体计费标准，包括水费（元/吨）、电费（元/度）、燃气费（元/立方米）、物业管理费（元/平方米/月）等"
+        }
+      ]
+    },
+    {
+      "id": "5.3",
+      "references": [],
+      "riskLevel": "low",
+      "actions": []
+    },
+    {
+      "id": "6",
+      "references": [
+        "6.1",
+        "6.2",
+        "6.3"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "6.1",
+      "references": [
+        "2.1"
+      ],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "6.1_1",
+          "type": "revise",
+          "status": "pending",
+          "suggestionText": "房屋交付日期为2025年12月1日已过期，建议更新为合理的交付日期",
+          "supplementDraft": "应根据实际合同签署日期调整房屋交付日期，确保交付期限合理"
+        }
+      ]
+    },
+    {
+      "id": "6.2",
+      "references": [
+        "1.4"
+      ],
+      "riskLevel": "low",
+      "actions": []
+    },
+    {
+      "id": "6.3",
+      "references": [],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "6.3_1",
+          "type": "revise",
+          "status": "pending",
+          "suggestionText": "第6.3条规定未签署《房屋交付确认书》但乙方已进场装修视为交付完成，但第7.1条禁止装修，两条存在矛盾，建议协调",
+          "supplementDraft": "应协调第6.3条和第7.1条的关系，明确房屋交付的认定标准和装修权限"
+        }
+      ]
+    },
+    {
+      "id": "7",
+      "references": [
+        "7.1"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "7.1",
+      "references": [
+        "8.2",
+        "8.3"
+      ],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "7.1_1",
+          "type": "revise",
+          "status": "pending",
+          "suggestionText": "第7.1条绝对禁止装修，但第6.3条允许进场装修视为交付，两条存在矛盾，建议明确装修权限",
+          "supplementDraft": "应明确乙方是否可以进行装修，如不允许应删除第6.3条中关于进场装修的内容；如允许应在第7.1条中明确装修范围和要求"
+        }
+      ]
+    },
+    {
+      "id": "8",
+      "references": [
+        "8.1",
+        "8.2",
+        "8.3"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "8.1",
+      "references": [
+        "10.1",
+        "10.3"
+      ],
+      "riskLevel": "low",
+      "actions": []
+    },
+    {
+      "id": "8.2",
+      "references": [
+        "3.1"
+      ],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "8.2_1",
+          "type": "revise",
+          "status": "pending",
+          "suggestionText": "第8.2条中关于维修导致租金减少或期限延长的表述重复，建议精简表述",
+          "supplementDraft": "应精简第8.2条中重复的表述，明确维修影响使用时的租金减少或期限延长的具体计算方式"
+        }
+      ]
+    },
+    {
+      "id": "8.3",
+      "references": [],
+      "riskLevel": "low",
+      "actions": []
+    },
+    {
+      "id": "9",
+      "references": [
+        "9.1",
+        "9.2",
+        "9.3"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "9.1",
+      "references": [
+        "11"
+      ],
+      "riskLevel": "low",
+      "actions": []
+    },
+    {
+      "id": "9.2",
+      "references": [],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "9.2_1",
+          "type": "revise",
+          "status": "pending",
+          "suggestionText": "续租申请提前通知期限为30日，建议明确是否足够，并补充续租条件协商的具体程序",
+          "supplementDraft": "应明确续租申请的具体程序、条件协商的期限和方式，以及未达成一致时的处理方式"
+        }
+      ]
+    },
+    {
+      "id": "9.3",
+      "references": [
+        "10.1"
+      ],
+      "riskLevel": "low",
+      "actions": []
+    },
+    {
+      "id": "10",
+      "references": [
+        "10.1",
+        "10.2",
+        "10.3"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "10.1",
+      "references": [],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "10.1_1",
+          "type": "revise",
+          "status": "pending",
+          "suggestionText": "第10.1条关于遗留物处理的程序过于复杂且可能存在法律风险，建议简化并明确甲方的责任边界",
+          "supplementDraft": "应明确遗留物处理的具体程序、保管期限、处置方式和费用承担，确保符合法律规定并保护双方权益"
+        }
+      ]
+    },
+    {
+      "id": "10.2",
+      "references": [],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "10.2_1",
+          "type": "revise",
+          "status": "pending",
+          "suggestionText": "第10.2条与第10.1条关于遗留物处理的规定存在重复和矛盾，建议统一表述",
+          "supplementDraft": "应统一第10.1条和第10.2条关于遗留物处理的规定，避免重复和矛盾"
+        }
+      ]
+    },
+    {
+      "id": "10.3",
+      "references": [
+        "4.2",
+        "8.1"
+      ],
+      "riskLevel": "low",
+      "actions": []
+    },
+    {
+      "id": "11",
+      "references": [
+        "9.1"
+      ],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "11_1",
+          "type": "revise",
+          "status": "pending",
+          "suggestionText": "第十一条合同解除条款内容缺失，应补充合同解除的条件、程序、违约责任等重要内容",
+          "supplementDraft": "应补充第十一条的完整内容，包括合同解除的条件（如乙方违反转租禁止、甲方违反维修义务等）、解除程序、违约责任、赔偿标准等"
+        }
+      ]
+    },
+    {
+      "id": "signature",
+      "references": [],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "signature_1",
+          "type": "revise",
+          "status": "pending",
+          "suggestionText": "签署日期未填写，建议补充完整的签署日期以确保合同生效",
+          "supplementDraft": "应填写完整的签署日期（年、月、日），确保合同双方签署日期一致或明确说明原因"
+        }
+      ]
+    }
+  ]
+}

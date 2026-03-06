@@ -13,6 +13,8 @@ import canvasBg from '../../static/canvas_bg.png';
 import sidePanelBg from '../../static/side_panel.png';
 import stageAData from '../../docs/simple1.stage_a.json';
 import stageBData from '../../docs/simple1.stage_b.json';
+import reneStageAData from '../../docs/reneHouseTemplate.stage_a.json';
+import reneStageBData from '../../docs/reneHouseTemplate.stage_b.json';
 import { NODE_LIBRARY } from './constants';
 import { GraphCanvas, CANVAS_WIDTH, CANVAS_HEIGHT } from './GraphCanvas';
 import { SidePanel } from './SidePanel';
@@ -61,9 +63,12 @@ const SLIDER_SAMPLE_INTERVAL_MS = 220;
 const SLIDER_HEAT_WEIGHT = 0.4;
 const MODIFY_SAMPLE_INTERVAL_MS = 220;
 const MODIFY_HEAT_WEIGHT = 0.45;
-const GRAPH_PRESET_OPTIONS: Array<{ id: 'standard' | 'simple1'; label: string }> = [
+type GraphPresetId = 'standard' | 'simple1' | 'reneHouseTemplate';
+
+const GRAPH_PRESET_OPTIONS: Array<{ id: GraphPresetId; label: string }> = [
   { id: 'standard', label: 'Standard' },
   { id: 'simple1', label: 'Simple1 (Stage A + B)' },
+  { id: 'reneHouseTemplate', label: 'reneHouseTemplate (Stage A + B)' },
 ];
 
 type StageANode = {
@@ -81,6 +86,66 @@ type StageBNode = {
   riskLevel?: GraphNode['riskLevel'];
   actions?: NodeActionItem[];
 };
+
+function buildStageTemplates(
+  stageANodes: StageANode[],
+  stageBNodes: StageBNode[],
+  templatePrefix: string,
+  importedLabel: string,
+): TemplateItem[] {
+  const bMap = new Map(stageBNodes.map((n) => [n.id, n]));
+  const byIdA = new Map(stageANodes.map((n) => [n.id, n]));
+  const childrenByParent = new Map<string, StageANode[]>();
+
+  stageANodes.forEach((node) => {
+    if (node.id === 'root') return;
+    const parentKey = node.parentId ?? 'root';
+    const list = childrenByParent.get(parentKey) ?? [];
+    list.push(node);
+    childrenByParent.set(parentKey, list);
+  });
+
+  const mapReferences = (nodeId: string) =>
+    (bMap.get(nodeId)?.references ?? [])
+      .filter((refId) => byIdA.has(refId))
+      .map((refId) => `${templatePrefix}::${refId}`);
+
+  const buildSatellite = (node: StageANode) => {
+    const grandchildren = childrenByParent.get(node.id) ?? [];
+    return {
+      id: `${templatePrefix}::${node.id}`,
+      label: node.label,
+      content: node.content,
+      timePhase: node.timePhase ?? 'execution',
+      references: mapReferences(node.id),
+      details: grandchildren.map((detail) => ({
+        id: `${templatePrefix}::${detail.id}`,
+        label: detail.label,
+        content: detail.content,
+        timePhase: detail.timePhase ?? 'execution',
+        references: mapReferences(detail.id),
+      })),
+    };
+  };
+
+  const mainNodes = childrenByParent.get('root') ?? [];
+  return mainNodes.map((mainNode) => {
+    const b = bMap.get(mainNode.id);
+    const riskLevel = b?.riskLevel ?? 'none';
+    const children = childrenByParent.get(mainNode.id) ?? [];
+    return {
+      id: `${templatePrefix}::${mainNode.id}`,
+      label: mainNode.label,
+      description: mainNode.content.replace(/\s+/g, ' ').slice(0, 72) || importedLabel,
+      type: toTemplateType(riskLevel),
+      riskLevel,
+      content: mainNode.content,
+      timePhase: mainNode.timePhase ?? 'execution',
+      actions: b?.actions,
+      satellites: children.map(buildSatellite),
+    };
+  });
+}
 
 function toTemplateType(riskLevel: GraphNode['riskLevel']): TemplateItem['type'] {
   if (riskLevel === 'high' || riskLevel === 'medium') return 'risk';
@@ -154,7 +219,7 @@ export default function ContractConstellation() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isDragOverCanvas, setIsDragOverCanvas] = useState(false);
   const [usedTemplateIds, setUsedTemplateIds] = useState<string[]>([]);
-  const [graphPresetId, setGraphPresetId] = useState<'standard' | 'simple1'>('standard');
+  const [graphPresetId, setGraphPresetId] = useState<GraphPresetId>('standard');
   const [lastAppliedAction, setLastAppliedAction] = useState<{ nodeId: string; actionId: string; actionType: NodeActionType } | null>(null);
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
   const [isOverTrash, setIsOverTrash] = useState(false);
@@ -222,7 +287,7 @@ export default function ContractConstellation() {
     timeTargetXById,
   );
 
-  const handleGraphPresetChange = useCallback((presetId: 'standard' | 'simple1') => {
+  const handleGraphPresetChange = useCallback((presetId: GraphPresetId) => {
     setGraphPresetId(presetId);
   }, []);
 
@@ -241,62 +306,20 @@ export default function ContractConstellation() {
   const simple1Templates = useMemo<TemplateItem[]>(() => {
     const aNodes = (stageAData as { nodes?: StageANode[] }).nodes ?? [];
     const bNodes = (stageBData as { nodes?: StageBNode[] }).nodes ?? [];
-    const bMap = new Map(bNodes.map((n) => [n.id, n]));
-    const byIdA = new Map(aNodes.map((n) => [n.id, n]));
-    const childrenByParent = new Map<string, StageANode[]>();
+    return buildStageTemplates(aNodes, bNodes, 'simple1', 'Imported from Simple1');
+  }, []);
 
-    aNodes.forEach((node) => {
-      if (node.id === 'root') return;
-      const parentKey = node.parentId ?? 'root';
-      const list = childrenByParent.get(parentKey) ?? [];
-      list.push(node);
-      childrenByParent.set(parentKey, list);
-    });
-
-    const mapReferences = (nodeId: string) =>
-      (bMap.get(nodeId)?.references ?? [])
-        .filter((refId) => byIdA.has(refId))
-        .map((refId) => `simple1::${refId}`);
-
-    const buildSatellite = (node: StageANode) => {
-      const grandchildren = childrenByParent.get(node.id) ?? [];
-      return {
-        label: node.label,
-        content: node.content,
-        timePhase: node.timePhase ?? 'execution',
-        references: mapReferences(node.id),
-        details: grandchildren.map((detail) => ({
-          label: detail.label,
-          content: detail.content,
-          timePhase: detail.timePhase ?? 'execution',
-          references: mapReferences(detail.id),
-        })),
-      };
-    };
-
-    const mainNodes = childrenByParent.get('root') ?? [];
-    return mainNodes.map((mainNode) => {
-      const b = bMap.get(mainNode.id);
-      const riskLevel = b?.riskLevel ?? 'none';
-      const children = childrenByParent.get(mainNode.id) ?? [];
-      return {
-        id: `simple1::${mainNode.id}`,
-        label: mainNode.label,
-        description: mainNode.content.replace(/\s+/g, ' ').slice(0, 72) || 'Imported from Simple1',
-        type: toTemplateType(riskLevel),
-        riskLevel,
-        content: mainNode.content,
-        timePhase: mainNode.timePhase ?? 'execution',
-        actions: b?.actions,
-        satellites: children.map(buildSatellite),
-      };
-    });
+  const reneHouseTemplates = useMemo<TemplateItem[]>(() => {
+    const aNodes = (reneStageAData as { nodes?: StageANode[] }).nodes ?? [];
+    const bNodes = (reneStageBData as { nodes?: StageBNode[] }).nodes ?? [];
+    return buildStageTemplates(aNodes, bNodes, 'reneHouseTemplate', 'Imported from reneHouseTemplate');
   }, []);
 
   const activeTemplatePool = useMemo(() => {
     if (graphPresetId === 'simple1') return simple1Templates;
+    if (graphPresetId === 'reneHouseTemplate') return reneHouseTemplates;
     return NODE_LIBRARY;
-  }, [graphPresetId, simple1Templates]);
+  }, [graphPresetId, simple1Templates, reneHouseTemplates]);
 
   const availableTemplates = useMemo(
     () => activeTemplatePool.filter((item) => !usedTemplateIds.includes(item.id)),
