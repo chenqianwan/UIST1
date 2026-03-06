@@ -477,7 +477,11 @@ export function useGalaxyEngine(
     if (!parentNode || parentNode.id === 'root') return;
 
     const isParentMain = parentNode.type === 'main';
-    const childIndex = nodesRef.current.filter((node) => node.parentId === parentNode.id).length;
+    const siblingIds = nodesRef.current
+      .filter((node) => node.parentId === parentNode.id)
+      .map((node) => node.id);
+    const childIndex = siblingIds.length;
+    const insertAfterId = siblingIds.length > 0 ? siblingIds[siblingIds.length - 1] : undefined;
     const angle = (childIndex % 6) * (Math.PI / 3);
     const radius = isParentMain ? 62 : 38;
     const newType: GraphNode['type'] = 'sub';
@@ -500,6 +504,7 @@ export function useGalaxyEngine(
       timePhase: 'execution',
       templateId: parentNode.templateId,
       parentId: parentNode.id,
+      insertAfterId,
     };
     const newLink: GraphLink = {
       source: parentNode.id,

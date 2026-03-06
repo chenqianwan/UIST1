@@ -54,6 +54,7 @@ const TRASH_ZONE_WIDTH = 192;
 const TRASH_ZONE_HEIGHT = 96;
 const TRASH_ZONE_LEFT = 16;
 const TRASH_ZONE_BOTTOM = 16;
+const DOWNSTREAM_API_BASE = import.meta.env.VITE_SEMANTIC_API_BASE ?? 'http://127.0.0.1:8008';
 const HOVER_SAMPLE_INTERVAL_MS = 320;
 const HOVER_HEAT_WEIGHT = 0.12;
 const SLIDER_SAMPLE_INTERVAL_MS = 220;
@@ -85,6 +86,23 @@ function toTemplateType(riskLevel: GraphNode['riskLevel']): TemplateItem['type']
   if (riskLevel === 'high' || riskLevel === 'medium') return 'risk';
   if (riskLevel === 'low') return 'obligation';
   return 'asset';
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function toHtmlWithBreaks(value: string): string {
+  return escapeHtml(value).replace(/\n/g, '<br/>');
+}
+
+function isUserAddedSupplementNode(node: GraphNode): boolean {
+  return /^sub_.+_\d{10,}$/.test(node.id);
 }
 
 /** Structural links only (child-link, detail-link); exclude reference-link. */
@@ -141,6 +159,8 @@ export default function ContractConstellation() {
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
   const [isOverTrash, setIsOverTrash] = useState(false);
   const [exportState, setExportState] = useState<'idle' | 'exporting' | 'success'>('idle');
+  const [modifiedNodeIds, setModifiedNodeIds] = useState<string[]>([]);
+  const [deletedClauses, setDeletedClauses] = useState<Array<{ id: string; label: string; content: string }>>([]);
   const [isBulkApplying, setIsBulkApplying] = useState(false);
   const [bulkApplyDoneCount, setBulkApplyDoneCount] = useState<number | null>(null);
   const bulkApplyDoneTimerRef = useRef<number | null>(null);
@@ -206,10 +226,16 @@ export default function ContractConstellation() {
     setGraphPresetId(presetId);
   }, []);
 
+  const markNodeModified = useCallback((nodeId: string) => {
+    setModifiedNodeIds((prev) => (prev.includes(nodeId) ? prev : [...prev, nodeId]));
+  }, []);
+
   useEffect(() => {
     loadGraphPreset('blank');
     setUsedTemplateIds([]);
     setSelectedNodeId(null);
+    setModifiedNodeIds([]);
+    setDeletedClauses([]);
   }, [graphPresetId, loadGraphPreset]);
 
   const simple1Templates = useMemo<TemplateItem[]>(() => {
@@ -498,6 +524,26 @@ export default function ContractConstellation() {
   const removeNodeByUserAction = useCallback((nodeId: string, source: 'drop_zone' | 'click_zone' | 'action_delete') => {
     const targetNode = nodes.find((node) => node.id === nodeId);
     if (!targetNode || targetNode.id === 'root') return;
+    const toDelete = new Set<string>([nodeId]);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      nodes.forEach((node) => {
+        if (node.parentId && toDelete.has(node.parentId) && !toDelete.has(node.id)) {
+          toDelete.add(node.id);
+          changed = true;
+        }
+      });
+    }
+    const deletedItems = nodes
+      .filter((node) => toDelete.has(node.id) && node.id !== 'root')
+      .map((node) => ({ id: node.id, label: node.label, content: node.content }));
+    if (deletedItems.length > 0) {
+      setDeletedClauses((prev) => {
+        const existing = new Set(prev.map((item) => item.id));
+        return [...prev, ...deletedItems.filter((item) => !existing.has(item.id))];
+      });
+    }
     const basePayload: Record<string, string | number> = {
       node_type: targetNode.type,
       risk_level: targetNode.riskLevel,
@@ -593,16 +639,17 @@ export default function ContractConstellation() {
     endNodeDrag(Boolean(shouldDelete));
   };
 
-  const handleExportContract = useCallback(() => {
+  const handleExportContract = useCallback(async () => {
     if (exportState === 'exporting') return;
     if (exportTimerRef.current) {
       window.clearTimeout(exportTimerRef.current);
       exportTimerRef.current = null;
     }
     setExportState('exporting');
-    const exportPayload = {
-      generatedAt: new Date().toISOString(),
-      clauses: nodes
+    try {
+      const root = nodes.find((node) => node.id === 'root');
+      if (!root) throw new Error('Root node missing.');
+      const clauses = nodes
         .filter((node) => node.id !== 'root')
         .map((node) => ({
           id: node.id,
@@ -612,17 +659,201 @@ export default function ContractConstellation() {
           timePhase: node.timePhase,
           content: node.content,
           parentId: node.parentId ?? null,
-        })),
-      links,
-    };
-    exportTimerRef.current = window.setTimeout(() => {
-      console.info('[Demo] Contract exported successfully', exportPayload);
+        }));
+      const modifiedSet = new Set(modifiedNodeIds);
+      const generatedAt = new Date().toISOString();
+      const addedNodeIds = new Set(
+        nodes.filter((node) => node.id !== 'root' && isUserAddedSupplementNode(node)).map((node) => node.id),
+      );
+
+      const toDownstreamNode = (
+        node: {
+          id: string;
+          label: string;
+          content: string;
+          type?: string;
+          parentId?: string | null;
+          timePhase?: string;
+        },
+        extra?: { touched?: boolean; lastOpType?: 'add' | 'delete' | 'revise'; deletedAtVersion?: number | null },
+      ) => ({
+        id: node.id,
+        label: node.label,
+        content: node.content,
+        type: node.type,
+        parentId: node.parentId ?? null,
+        timePhase: node.timePhase,
+        touched: extra?.touched ?? false,
+        subtreeDirty: false,
+        touchVersion: extra?.touched ? 1 : undefined,
+        lastOpType: extra?.lastOpType,
+        deletedAtVersion: extra?.deletedAtVersion ?? null,
+      });
+
+      const rootDownstream = toDownstreamNode(root, { touched: false });
+      const currentTreeNodes = [
+        rootDownstream,
+        ...nodes
+          .filter((node) => node.id !== 'root')
+          .map((node) => toDownstreamNode(node, {
+            touched: modifiedSet.has(node.id) || addedNodeIds.has(node.id),
+            lastOpType: addedNodeIds.has(node.id) ? 'add' : (modifiedSet.has(node.id) ? 'revise' : undefined),
+          })),
+      ];
+
+      const baseCoreNodes = nodes
+        .filter((node) => node.id !== 'root' && !addedNodeIds.has(node.id))
+        .map((node) => toDownstreamNode(node, {
+          touched: modifiedSet.has(node.id),
+          lastOpType: modifiedSet.has(node.id) ? 'revise' : undefined,
+        }));
+
+      const baseDeletedNodes = deletedClauses
+        .filter((item) => !nodes.some((node) => node.id === item.id))
+        .map((item) => toDownstreamNode({
+          id: item.id,
+          label: item.label,
+          content: item.content,
+          type: 'sub',
+          parentId: 'root',
+          timePhase: 'execution',
+        }, {
+          touched: true,
+          lastOpType: 'delete',
+          deletedAtVersion: 1,
+        }));
+
+      const diffResp = await fetch(`${DOWNSTREAM_API_BASE}/downstream/diff`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          base_tree: { nodes: [rootDownstream, ...baseCoreNodes, ...baseDeletedNodes] },
+          current_tree: { nodes: currentTreeNodes },
+          baseVersion: 'v1',
+          currentVersion: 'v2',
+        }),
+      });
+      if (!diffResp.ok) {
+        const detail = await diffResp.text();
+        throw new Error(`Diff API failed: ${diffResp.status} ${detail}`);
+      }
+      const diffData = await diffResp.json();
+
+      const originalContractText = [rootDownstream, ...baseCoreNodes, ...baseDeletedNodes]
+        .filter((node) => node.id !== 'root')
+        .map((node) => `${node.label}\n${node.content}`.trim())
+        .join('\n\n');
+
+      const compileResp = await fetch(`${DOWNSTREAM_API_BASE}/downstream/compile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          original_contract_text: originalContractText,
+          base_tree: { nodes: [rootDownstream, ...baseCoreNodes, ...baseDeletedNodes] },
+          normalized_diff: diffData,
+        }),
+      });
+      if (!compileResp.ok) {
+        const detail = await compileResp.text();
+        throw new Error(`Compile API failed: ${compileResp.status} ${detail}`);
+      }
+      const compileData = (await compileResp.json()) as {
+        draft_v1?: string;
+        ordered_clause_ids?: string[];
+        normalized_diff?: unknown;
+        compile_report?: unknown[];
+      };
+      const draftV1 = typeof compileData.draft_v1 === 'string'
+        ? compileData.draft_v1
+        : clauses.map((clause) => `${clause.label}\n${clause.content}`.trim()).join('\n\n');
+      const clauseById = new Map(clauses.map((clause) => [clause.id, clause]));
+      const orderedClauses = Array.isArray(compileData.ordered_clause_ids)
+        ? compileData.ordered_clause_ids
+          .map((id) => clauseById.get(id))
+          .filter((clause): clause is (typeof clauses)[number] => Boolean(clause))
+        : [];
+      const displayClauses = orderedClauses.length > 0 ? orderedClauses : clauses;
+
+      const finalizeResp = await fetch(`${DOWNSTREAM_API_BASE}/downstream/finalize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          original_contract_text: originalContractText,
+          draft_v1: draftV1,
+          normalized_diff: compileData.normalized_diff ?? diffData,
+          compile_report: compileData.compile_report ?? [],
+        }),
+      });
+      if (!finalizeResp.ok) {
+        const detail = await finalizeResp.text();
+        throw new Error(`Finalize API failed: ${finalizeResp.status} ${detail}`);
+      }
+      const finalized = (await finalizeResp.json()) as { final_text?: string; change_report?: unknown[] };
+      const finalText = typeof finalized.final_text === 'string' ? finalized.final_text : draftV1;
+
+      const htmlRows = displayClauses.map((clause) => {
+        const node = nodes.find((item) => item.id === clause.id);
+        const highlight = modifiedSet.has(clause.id) || (node ? isUserAddedSupplementNode(node) : false);
+        return `
+          <div style="margin-bottom:14px;">
+            <div style="font-weight:700; margin-bottom:4px;">${toHtmlWithBreaks(clause.label)}</div>
+            <div style="color:${highlight ? '#d32f2f' : '#1f2937'}; line-height:1.65;">${toHtmlWithBreaks(clause.content)}</div>
+          </div>
+        `;
+      });
+      const deletedSection = deletedClauses.length > 0
+        ? `
+        <hr style="margin:20px 0;border:0;border-top:1px solid #e5e7eb;"/>
+        <div style="font-weight:700; margin-bottom:8px;">Deleted Clauses</div>
+        ${deletedClauses.map((item) => `
+          <div style="margin-bottom:10px;color:#d32f2f;line-height:1.65;">
+            <div style="font-weight:700;">${toHtmlWithBreaks(item.label)}</div>
+            <div>${toHtmlWithBreaks(item.content)}</div>
+          </div>
+        `).join('')}
+        `
+        : '';
+      const wordHtml = `
+        <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Contract Export</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; padding: 24px; color: #111827;">
+          <h2 style="margin:0 0 8px 0;">Contract Export</h2>
+          <div style="font-size:12px;color:#6b7280;margin-bottom:16px;">Generated at: ${escapeHtml(generatedAt)}</div>
+          <div style="font-size:12px;color:#6b7280;margin-bottom:8px;">Finalized via downstream finalize model call.</div>
+          <div style="margin:0 0 14px 0;padding:10px;border:1px solid #e5e7eb;background:#fafafa;line-height:1.65;white-space:pre-wrap;">${toHtmlWithBreaks(finalText)}</div>
+          <hr style="margin:20px 0;border:0;border-top:1px solid #e5e7eb;"/>
+          <div style="font-weight:700; margin-bottom:10px;">Clause View (Modified Clauses in Red)</div>
+          ${htmlRows.join('')}
+          ${deletedSection}
+        </body>
+        </html>
+      `;
+      const blob = new Blob(['\ufeff', wordHtml], { type: 'application/msword;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const stamp = new Date().toISOString().replace(/:/g, '-').replace(/\./g, '-');
+      link.href = url;
+      link.download = `contract_export_${stamp}.doc`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      console.info('[Demo] Contract exported successfully', {
+        generatedAt,
+        clauses,
+        displayClauses,
+        links,
+      });
       setExportState('success');
       track('export_success', {
         componentId: 'side_panel_export',
         payload: {
-          clause_count: exportPayload.clauses.length,
-          link_count: exportPayload.links.length,
+          clause_count: displayClauses.length,
+          link_count: links.length,
           x: width + SIDE_PANEL_WIDTH / 2,
           y: height - 34,
           layout_w: layoutWidth,
@@ -632,8 +863,12 @@ export default function ContractConstellation() {
       exportTimerRef.current = window.setTimeout(() => {
         setExportState('idle');
       }, 2200);
-    }, 900);
-  }, [exportState, height, layoutHeight, layoutWidth, links, nodes, track, width]);
+    } catch (error) {
+      console.error('[Export] failed', error);
+      setExportState('idle');
+      window.alert('Export failed. Please check downstream backend and XHUB settings.');
+    }
+  }, [deletedClauses, exportState, height, layoutHeight, layoutWidth, links, modifiedNodeIds, nodes, track, width]);
 
   useEffect(() => {
     return () => {
@@ -646,6 +881,7 @@ export default function ContractConstellation() {
     (nodeId: string, actionId: string, replacement: string) => {
       const didComplete = completeNodeAction(nodeId, actionId, replacement);
       if (didComplete) {
+        markNodeModified(nodeId);
         setLastAppliedAction({ nodeId, actionId, actionType: 'revise' });
         track('action_executed', {
           componentId: 'side_panel_action',
@@ -661,7 +897,7 @@ export default function ContractConstellation() {
         });
       }
     },
-    [completeNodeAction, height, layoutHeight, layoutWidth, track, width],
+    [completeNodeAction, height, layoutHeight, layoutWidth, markNodeModified, track, width],
   );
 
   const handleDeleteNodeAction = useCallback((nodeId: string, actionId: string) => {
@@ -693,6 +929,7 @@ export default function ContractConstellation() {
         : targetNode.content;
       const didComplete = completeNodeAction(nodeId, actionId, mergedContent);
       if (didComplete) {
+        markNodeModified(nodeId);
         setLastAppliedAction({ nodeId, actionId, actionType: 'add_clause' });
         track('action_executed', {
           componentId: 'side_panel_action',
@@ -708,7 +945,7 @@ export default function ContractConstellation() {
         });
       }
     }
-  }, [addSupplementClause, completeNodeAction, height, layoutHeight, layoutWidth, nodes, track, width]);
+  }, [addSupplementClause, completeNodeAction, height, layoutHeight, layoutWidth, markNodeModified, nodes, track, width]);
 
   type BulkTask = { nodeId: string; action: NodeActionItem; node: GraphNode };
   const handleBulkApply = useCallback(() => {
@@ -735,7 +972,7 @@ export default function ContractConstellation() {
     });
     const totalTasks = revises.length + addClauses.length + deletes.length;
     if (totalTasks === 0) return;
-    const message = `将递归执行：${subtreeIds.length} 个节点，共 ${totalTasks} 项操作（先删除 ${deletes.length}，再修订 ${revises.length}、补充 ${addClauses.length}）。确认执行？`;
+    const message = `Recursive execution will apply to ${subtreeIds.length} nodes, with a total of ${totalTasks} actions (Delete: ${deletes.length}, Revise: ${revises.length}, Supplement: ${addClauses.length}). Proceed?`;
     if (!window.confirm(message)) return;
     setIsBulkApplying(true);
     const removedIds = new Set<string>();
@@ -743,6 +980,7 @@ export default function ContractConstellation() {
       const applyRevise = (t: BulkTask) => {
         if (removedIds.has(t.nodeId)) return;
         completeNodeAction(t.nodeId, t.action.id, t.action.suggestionText ?? t.node.content);
+        markNodeModified(t.nodeId);
       };
       const applyAddClause = (t: BulkTask) => {
         if (removedIds.has(t.nodeId)) return;
@@ -751,6 +989,7 @@ export default function ContractConstellation() {
           ? `${t.node.content} ${t.action.supplementDraft.trim()}`
           : t.node.content;
         completeNodeAction(t.nodeId, t.action.id, merged);
+        markNodeModified(t.nodeId);
       };
       const applyDelete = (t: BulkTask) => {
         if (removedIds.has(t.nodeId)) return;
@@ -796,6 +1035,7 @@ export default function ContractConstellation() {
     completeNodeAction,
     addSupplementClause,
     removeNodeCascade,
+    markNodeModified,
     track,
     width,
     height,

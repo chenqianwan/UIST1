@@ -25,6 +25,17 @@ cleanup() {
 
 trap cleanup EXIT INT TERM
 
+load_env_if_exists() {
+  local env_file="$1"
+  if [[ -f "${env_file}" ]]; then
+    # shellcheck disable=SC1090
+    set -a
+    source "${env_file}"
+    set +a
+    echo "Loaded env: ${env_file}"
+  fi
+}
+
 require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
     echo "Missing required command: $1"
@@ -99,6 +110,14 @@ wait_for_trycloudflare_url() {
 require_cmd python3
 require_cmd npm
 require_cmd cloudflared
+
+# Auto-load local environment files for backend model calls.
+load_env_if_exists "${ROOT_DIR}/.env"
+load_env_if_exists "${ROOT_DIR}/python/.env"
+
+if [[ -z "${XHUB_API_KEY:-}" ]]; then
+  echo "Warning: XHUB_API_KEY is not set. Downstream finalize model calls will fail."
+fi
 
 ensure_port_free "${FRONTEND_PORT}"
 

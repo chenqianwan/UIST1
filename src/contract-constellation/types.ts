@@ -58,6 +58,7 @@ export interface GraphNode {
   timePhase: TimePhase;
   templateId?: string;
   parentId?: string;
+  insertAfterId?: string;
   actions?: NodeActionItem[];
 }
 

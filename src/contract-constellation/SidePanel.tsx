@@ -235,14 +235,14 @@ export function SidePanel({
                     {isBulkApplying ? (
                       <>
                         <Loader2 size={14} className="animate-spin" />
-                        处理中…
+                        Processing...
                       </>
                     ) : (
-                      <>一键递归修改（{bulkApplySummary.total} 项）</>
+                      <>Bulk Apply ({bulkApplySummary.total} items)</>
                     )}
                   </button>
                   {bulkApplyDoneCount != null && (
-                    <p className="mt-1 text-center text-[11px] font-semibold text-emerald-600">已递归执行 {bulkApplyDoneCount} 项</p>
+                    <p className="mt-1 text-center text-[11px] font-semibold text-emerald-600">Applied {bulkApplyDoneCount} actions recursively</p>
                   )}
                 </>
               )}
