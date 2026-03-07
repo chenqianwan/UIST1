@@ -180,6 +180,25 @@ function toHtmlWithBreaks(value: string): string {
   return escapeHtml(value).replace(/\n/g, '<br/>');
 }
 
+function normalizeInlineText(value: string): string {
+  return value.replace(/\s+/g, ' ').trim();
+}
+
+function hasDistinctClauseBody(label: string, content: string): boolean {
+  const normalizedContent = normalizeInlineText(content);
+  if (!normalizedContent) return false;
+  return normalizeInlineText(label) !== normalizedContent;
+}
+
+function buildClauseExportText(label: string, content: string): string {
+  const normalizedLabel = normalizeInlineText(label);
+  const normalizedContent = normalizeInlineText(content);
+  if (!normalizedLabel && !normalizedContent) return '';
+  if (!normalizedContent) return label.trim();
+  if (normalizedLabel === normalizedContent) return content.trim();
+  return `${label}\n${content}`.trim();
+}
+
 function sanitizeTemplateId(rawName: string): string {
   const normalized = rawName.trim().replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '');
   return normalized || 'uploaded_template';
@@ -903,7 +922,8 @@ export default function ContractConstellation() {
 
       const originalContractText = [rootDownstream, ...baseCoreNodes, ...baseDeletedNodes]
         .filter((node) => node.id !== 'root')
-        .map((node) => `${node.label}\n${node.content}`.trim())
+        .map((node) => buildClauseExportText(node.label, node.content))
+        .filter((text) => text.length > 0)
         .join('\n\n');
 
       const compileResp = await fetch(`${DOWNSTREAM_API_BASE}/downstream/compile`, {
@@ -927,7 +947,10 @@ export default function ContractConstellation() {
       };
       const draftV1 = typeof compileData.draft_v1 === 'string'
         ? compileData.draft_v1
-        : clauses.map((clause) => `${clause.label}\n${clause.content}`.trim()).join('\n\n');
+        : clauses
+          .map((clause) => buildClauseExportText(clause.label, clause.content))
+          .filter((text) => text.length > 0)
+          .join('\n\n');
       const clauseById = new Map(clauses.map((clause) => [clause.id, clause]));
       const orderedClauses = Array.isArray(compileData.ordered_clause_ids)
         ? compileData.ordered_clause_ids
@@ -956,10 +979,13 @@ export default function ContractConstellation() {
       const htmlRows = displayClauses.map((clause) => {
         const node = nodes.find((item) => item.id === clause.id);
         const highlight = modifiedSet.has(clause.id) || (node ? isUserAddedSupplementNode(node) : false);
+        const shouldRenderContent = hasDistinctClauseBody(clause.label, clause.content);
         return `
           <div style="margin-bottom:14px;">
             <div style="font-weight:700; margin-bottom:4px;">${toHtmlWithBreaks(clause.label)}</div>
-            <div style="color:${highlight ? '#d32f2f' : '#1f2937'}; line-height:1.65;">${toHtmlWithBreaks(clause.content)}</div>
+            ${shouldRenderContent
+              ? `<div style="color:${highlight ? '#d32f2f' : '#1f2937'}; line-height:1.65;">${toHtmlWithBreaks(clause.content)}</div>`
+              : ''}
           </div>
         `;
       });
@@ -1090,12 +1116,8 @@ export default function ContractConstellation() {
     addSupplementClause(nodeId, draft);
     const targetNode = nodes.find((node) => node.id === nodeId);
     if (targetNode && targetNode.id !== 'root') {
-      const mergedContent = draft?.trim()
-        ? `${targetNode.content} ${draft.trim()}`
-        : targetNode.content;
-      const didComplete = completeNodeAction(nodeId, actionId, mergedContent);
+      const didComplete = completeNodeAction(nodeId, actionId, targetNode.content);
       if (didComplete) {
-        markNodeModified(nodeId);
         setLastAppliedAction({ nodeId, actionId, actionType: 'add_clause' });
         track('action_executed', {
           componentId: 'side_panel_action',
@@ -1111,7 +1133,7 @@ export default function ContractConstellation() {
         });
       }
     }
-  }, [addSupplementClause, completeNodeAction, height, layoutHeight, layoutWidth, markNodeModified, nodes, track, width]);
+  }, [addSupplementClause, completeNodeAction, height, layoutHeight, layoutWidth, nodes, track, width]);
 
   type BulkTask = { nodeId: string; action: NodeActionItem; node: GraphNode };
   const handleBulkApply = useCallback(() => {
@@ -1151,11 +1173,7 @@ export default function ContractConstellation() {
       const applyAddClause = (t: BulkTask) => {
         if (removedIds.has(t.nodeId)) return;
         addSupplementClause(t.nodeId, t.action.supplementDraft);
-        const merged = t.action.supplementDraft?.trim()
-          ? `${t.node.content} ${t.action.supplementDraft.trim()}`
-          : t.node.content;
-        completeNodeAction(t.nodeId, t.action.id, merged);
-        markNodeModified(t.nodeId);
+        completeNodeAction(t.nodeId, t.action.id, t.node.content);
       };
       const applyDelete = (t: BulkTask) => {
         if (removedIds.has(t.nodeId)) return;
