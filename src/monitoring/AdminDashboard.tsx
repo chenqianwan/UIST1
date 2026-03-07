@@ -1,7 +1,7 @@
-import { Fragment, useMemo, useState, useEffect } from 'react';
-import { listMonitoringEvents, subscribeMonitoringEvents } from './collector';
+import { Fragment, useMemo, useState, useEffect, useRef } from 'react';
 import type { MonitoringEvent } from './types';
 
+const API_BASE = (import.meta.env.VITE_SEMANTIC_API_BASE ?? 'http://127.0.0.1:8008').replace(/\/$/, '');
 const CANVAS_WIDTH = 760;
 const CANVAS_HEIGHT = 620;
 const SIDE_PANEL_WIDTH = 320;
@@ -120,24 +120,74 @@ function percentile(sortedValues: number[], p: number): number {
   return sortedValues[idx];
 }
 
+function readParticipantIdFromLocation(): string | null {
+  const queryParams = new URLSearchParams(window.location.search);
+  const hash = window.location.hash || '';
+  const hashQuery = hash.includes('?') ? hash.slice(hash.indexOf('?') + 1) : '';
+  const hashParams = new URLSearchParams(hashQuery);
+  const raw = queryParams.get('pid')
+    ?? queryParams.get('participant')
+    ?? hashParams.get('pid')
+    ?? hashParams.get('participant');
+  const normalized = raw?.trim();
+  return normalized ? normalized : null;
+}
+
+function mergeByEventId(base: MonitoringEvent[], incoming: MonitoringEvent[]): MonitoringEvent[] {
+  if (incoming.length === 0) return base;
+  const byId = new Map<string, MonitoringEvent>();
+  base.forEach((event) => byId.set(event.id, event));
+  incoming.forEach((event) => byId.set(event.id, event));
+  return Array.from(byId.values())
+    .sort((a, b) => a.ts - b.ts)
+    .slice(-5000);
+}
+
 export default function AdminDashboard() {
-  const [events, setEvents] = useState<MonitoringEvent[]>(() => listMonitoringEvents());
+  const participantId = readParticipantIdFromLocation();
+  const [events, setEvents] = useState<MonitoringEvent[]>([]);
   const [isEventStreamOpen, setIsEventStreamOpen] = useState(false);
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
   const [nowTs, setNowTs] = useState<number>(Date.now());
+  const latestTsRef = useRef<number>(events.length > 0 ? events[events.length - 1].ts : 0);
 
   useEffect(() => {
-    const unsub = subscribeMonitoringEvents({
-      onEvent: (event) => {
-        setEvents((prev) => [...prev, event].slice(-3000));
-      },
-      onReset: () => {
-        setEvents([]);
-        setExpandedEventId(null);
-      },
-    });
-    return unsub;
-  }, []);
+    setEvents([]);
+    latestTsRef.current = 0;
+    setExpandedEventId(null);
+  }, [participantId]);
+
+  useEffect(() => {
+    let stopped = false;
+    const fetchRemote = async () => {
+      const sinceTs = latestTsRef.current;
+      try {
+        const participantQuery = participantId ? `&participant_id=${encodeURIComponent(participantId)}` : '';
+        const response = await fetch(
+          `${API_BASE}/monitoring/events?since_ts=${sinceTs}&limit=3000${participantQuery}`,
+        );
+        if (!response.ok) return;
+        const data = (await response.json()) as { events?: MonitoringEvent[] };
+        const next = Array.isArray(data.events) ? data.events : [];
+        if (next.length === 0 || stopped) return;
+        setEvents((prev) => {
+          const merged = mergeByEventId(prev, next);
+          latestTsRef.current = merged.length > 0 ? merged[merged.length - 1].ts : latestTsRef.current;
+          return merged;
+        });
+      } catch {
+        // Keep local dashboard usable even if backend is temporarily unreachable.
+      }
+    };
+    void fetchRemote();
+    const timer = window.setInterval(() => {
+      void fetchRemote();
+    }, 1000);
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+    };
+  }, [participantId]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNowTs(Date.now()), 1000);

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef } from 'react';
 import { appendMonitoringEvent, clearMonitoringEvents, createMonitoringEvent } from './collector';
 import type { MonitoringEventName } from './types';
 
+const STUDY_ID = import.meta.env.VITE_STUDY_ID ?? 'uist-study';
+
 function getOrCreateSessionId(): string {
   const key = 'uist_monitor_session_id';
   const existing = sessionStorage.getItem(key);
@@ -20,10 +22,39 @@ function getOrCreateTaskId(): string {
   return created;
 }
 
+function readParticipantIdFromLocation(): string | null {
+  const queryParams = new URLSearchParams(window.location.search);
+  const hash = window.location.hash || '';
+  const hashQuery = hash.includes('?') ? hash.slice(hash.indexOf('?') + 1) : '';
+  const hashParams = new URLSearchParams(hashQuery);
+  const raw = queryParams.get('pid')
+    ?? queryParams.get('participant')
+    ?? hashParams.get('pid')
+    ?? hashParams.get('participant');
+  const normalized = raw?.trim();
+  return normalized ? normalized : null;
+}
+
+function getOrCreateParticipantId(): string {
+  const key = 'uist_monitor_participant_id';
+  const fromLocation = readParticipantIdFromLocation();
+  if (fromLocation) {
+    sessionStorage.setItem(key, fromLocation);
+    return fromLocation;
+  }
+  const fromStorage = sessionStorage.getItem(key);
+  if (fromStorage) return fromStorage;
+  const id = 'anonymous';
+  sessionStorage.setItem(key, id);
+  return id;
+}
+
 export function useMonitoring(route: 'main' | 'admin', enabled: boolean) {
   const sessionIdRef = useRef<string>(getOrCreateSessionId());
   const taskIdRef = useRef<string>(getOrCreateTaskId());
+  const clientSeqRef = useRef<number>(0);
   const hiddenAtRef = useRef<number | null>(null);
+  const participantIdRef = useRef<string>(getOrCreateParticipantId());
 
   const track = useCallback(
     (
@@ -39,6 +70,9 @@ export function useMonitoring(route: 'main' | 'admin', enabled: boolean) {
         createMonitoringEvent({
           sessionId: sessionIdRef.current,
           taskId: taskIdRef.current,
+          studyId: STUDY_ID,
+          participantId: participantIdRef.current,
+          clientSeq: ++clientSeqRef.current,
           route,
           eventName,
           componentId: options?.componentId,
@@ -58,6 +92,7 @@ export function useMonitoring(route: 'main' | 'admin', enabled: boolean) {
       sessionStorage.removeItem('uist_monitor_task_id');
       sessionIdRef.current = getOrCreateSessionId();
       taskIdRef.current = getOrCreateTaskId();
+      clientSeqRef.current = 0;
     }
     track('session_start', { componentId: 'app' });
     const onVisibilityChange = () => {

@@ -26,6 +26,7 @@ import { getRiskColor, getAiSuggestion } from './utils';
 import { getSemanticTargetXMap } from './semanticEmbedding';
 import { useGalaxyEngine } from './useGalaxyEngine';
 import { useMonitoring } from '../monitoring/useMonitoring';
+import { flushMonitoringEventsNow } from '../monitoring/collector';
 
 const FALLBACK_X_BY_RISK = {
   none: 0.24,
@@ -1052,6 +1053,7 @@ export default function ContractConstellation() {
           layout_h: layoutHeight,
         },
       });
+      void flushMonitoringEventsNow();
       exportTimerRef.current = window.setTimeout(() => {
         setExportState('idle');
       }, 2200);

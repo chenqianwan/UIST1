@@ -3,6 +3,15 @@ import type { MonitoringEvent, MonitoringEventName } from './types';
 const STORAGE_KEY = 'uist_monitor_events_v1';
 const CHANNEL_NAME = 'uist-monitor-channel';
 const MAX_EVENTS = 5000;
+const FLUSH_INTERVAL_MS = 1000;
+const FLUSH_BATCH_SIZE = 50;
+const IMMEDIATE_FLUSH_THRESHOLD = 20;
+const API_BASE = (import.meta.env.VITE_SEMANTIC_API_BASE ?? 'http://127.0.0.1:8008').replace(/\/$/, '');
+const BATCH_ENDPOINT = `${API_BASE}/monitoring/events/batch`;
+
+let pendingQueue: MonitoringEvent[] = [];
+let isFlushInFlight = false;
+let uploaderStarted = false;
 
 type MonitoringChannelMessage =
   | { type: 'event'; event: MonitoringEvent }
@@ -32,29 +41,87 @@ function getChannel(): BroadcastChannel | null {
   return new BroadcastChannel(CHANNEL_NAME);
 }
 
+async function flushMonitoringEvents(): Promise<void> {
+  if (isFlushInFlight || pendingQueue.length === 0) return;
+  isFlushInFlight = true;
+  const batch = pendingQueue.slice(0, FLUSH_BATCH_SIZE);
+  try {
+    const response = await fetch(BATCH_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ events: batch }),
+      keepalive: true,
+    });
+    if (!response.ok) {
+      throw new Error(`monitoring upload failed with ${response.status}`);
+    }
+    pendingQueue = pendingQueue.slice(batch.length);
+  } catch {
+    // Keep pending queue unchanged for retry on next tick.
+  } finally {
+    isFlushInFlight = false;
+    if (pendingQueue.length >= IMMEDIATE_FLUSH_THRESHOLD) {
+      void flushMonitoringEvents();
+    }
+  }
+}
+
+function flushByBeaconOnPageHide() {
+  if (pendingQueue.length === 0 || typeof navigator.sendBeacon !== 'function') return;
+  const batch = pendingQueue.slice(0, FLUSH_BATCH_SIZE);
+  const payload = JSON.stringify({ events: batch });
+  const sent = navigator.sendBeacon(BATCH_ENDPOINT, new Blob([payload], { type: 'application/json' }));
+  if (sent) {
+    pendingQueue = pendingQueue.slice(batch.length);
+  }
+}
+
+function ensureUploaderStarted() {
+  if (uploaderStarted || typeof window === 'undefined') return;
+  uploaderStarted = true;
+  window.setInterval(() => {
+    void flushMonitoringEvents();
+  }, FLUSH_INTERVAL_MS);
+  window.addEventListener('pagehide', flushByBeaconOnPageHide);
+  window.addEventListener('beforeunload', flushByBeaconOnPageHide);
+}
+
 export function listMonitoringEvents(): MonitoringEvent[] {
   return readEvents();
 }
 
 export function appendMonitoringEvent(event: MonitoringEvent) {
+  ensureUploaderStarted();
   const events = readEvents();
   events.push(event);
   writeEvents(events);
+  pendingQueue.push(event);
   const channel = getChannel();
   channel?.postMessage({ type: 'event', event } satisfies MonitoringChannelMessage);
   channel?.close();
+  if (pendingQueue.length >= IMMEDIATE_FLUSH_THRESHOLD) {
+    void flushMonitoringEvents();
+  }
 }
 
 export function clearMonitoringEvents() {
   writeEvents([]);
+  pendingQueue = [];
   const channel = getChannel();
   channel?.postMessage({ type: 'reset' } satisfies MonitoringChannelMessage);
   channel?.close();
 }
 
+export async function flushMonitoringEventsNow() {
+  await flushMonitoringEvents();
+}
+
 export function createMonitoringEvent(params: {
   sessionId: string;
   taskId: string;
+  studyId?: string;
+  participantId?: string;
+  clientSeq?: number;
   route: 'main' | 'admin';
   eventName: MonitoringEventName;
   componentId?: string;
@@ -66,6 +133,9 @@ export function createMonitoringEvent(params: {
     ts: Date.now(),
     session_id: params.sessionId,
     task_id: params.taskId,
+    study_id: params.studyId,
+    participant_id: params.participantId,
+    client_seq: params.clientSeq,
     route: params.route,
     event_name: params.eventName,
     component_id: params.componentId,

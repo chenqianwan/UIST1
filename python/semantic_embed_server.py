@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import re
+from threading import Lock
 from typing import Any, Dict, List, Literal, Optional, Tuple
 from urllib import error, request
 
@@ -17,7 +18,7 @@ try:
 except ImportError:
     pass
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -57,6 +58,32 @@ class EventBatchResponse(BaseModel):
     accepted: int
     total: int
     stored: int
+
+
+class MonitoringEventRecord(BaseModel):
+    id: str
+    ts: int
+    session_id: str
+    task_id: str
+    study_id: Optional[str] = None
+    participant_id: Optional[str] = None
+    client_seq: Optional[int] = None
+    route: Literal["main", "admin"]
+    event_name: str
+    component_id: Optional[str] = None
+    node_id: Optional[str] = None
+    payload: Optional[Dict[str, Any]] = None
+
+
+class MonitoringEventBatchRequest(BaseModel):
+    events: List[MonitoringEventRecord]
+
+
+class MonitoringEventBatchResponse(BaseModel):
+    accepted: int
+    total: int
+    stored: int
+    deduplicated: int
 
 
 class DownstreamNode(BaseModel):
@@ -169,10 +196,17 @@ app.add_middleware(
 MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 _model: SentenceTransformer | None = None
 _events_store: List[EventRecord] = []
+_monitoring_events_store: List[MonitoringEventRecord] = []
+_monitoring_event_ids: set[str] = set()
+_monitoring_session_files: Dict[str, Path] = {}
+_monitoring_lock = Lock()
 XHUB_API_URL = os.getenv("XHUB_API_URL", "https://api3.xhub.chat/v1/chat/completions")
 XHUB_FINALIZE_MODEL = os.getenv("XHUB_FINALIZE_MODEL", "claude-3-5-sonnet-20241022-thinking")
 XHUB_STAGEA_MODEL = os.getenv("XHUB_STAGEA_MODEL", "claude-3-7-sonnet-20250219-thinking")
 XHUB_STAGEB_MODEL = os.getenv("XHUB_STAGEB_MODEL", "claude-3-7-sonnet-20250219-thinking")
+_ROOT_DIR = Path(__file__).resolve().parents[1]
+_MONITORING_DIR = _ROOT_DIR / ".runtime" / "monitoring"
+_MONITORING_BY_PARTICIPANT_DIR = _MONITORING_DIR / "by_participant"
 
 FINALIZE_SYSTEM_PROMPT = """
 You are a strict legal text mapping engine.
@@ -277,11 +311,81 @@ Output strict JSON only:
 """.strip()
 
 
+def _sanitize_filename_token(value: str) -> str:
+    cleaned = re.sub(r"[^a-zA-Z0-9._-]+", "_", value).strip("._-")
+    return cleaned or "unknown"
+
+
+def _session_start_stamp(ts_ms: int) -> str:
+    dt = datetime.fromtimestamp(max(0, ts_ms) / 1000, timezone.utc)
+    return dt.strftime("%Y%m%d_%H%M%S")
+
+
+def _participant_file_for_event(event: MonitoringEventRecord) -> Path:
+    session_id = event.session_id or "session"
+    existing = _monitoring_session_files.get(session_id)
+    if existing is not None:
+        return existing
+    participant = _sanitize_filename_token(event.participant_id or "unknown")
+    session = _sanitize_filename_token(session_id)
+    stamp = _session_start_stamp(event.ts)
+    path = _MONITORING_BY_PARTICIPANT_DIR / f"{participant}_{stamp}_{session}.ndjson"
+    _monitoring_session_files[session_id] = path
+    return path
+
+
+def _load_monitoring_events_from_disk() -> None:
+    if not _MONITORING_BY_PARTICIPANT_DIR.exists():
+        return
+    try:
+        files = sorted(_MONITORING_BY_PARTICIPANT_DIR.glob("*.ndjson"))
+    except Exception:
+        return
+    for path in files:
+        try:
+            for raw in path.read_text(encoding="utf-8").splitlines():
+                line = raw.strip()
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                    event = MonitoringEventRecord.model_validate(data)
+                except Exception:
+                    continue
+                if event.id in _monitoring_event_ids:
+                    continue
+                _monitoring_event_ids.add(event.id)
+                _monitoring_events_store.append(event)
+                if event.session_id and event.session_id not in _monitoring_session_files:
+                    _monitoring_session_files[event.session_id] = path
+        except Exception:
+            # Skip corrupted files and continue loading the rest.
+            continue
+
+
+def _append_monitoring_events_to_disk(events: List[MonitoringEventRecord]) -> None:
+    if not events:
+        return
+    _MONITORING_BY_PARTICIPANT_DIR.mkdir(parents=True, exist_ok=True)
+    grouped: Dict[Path, List[MonitoringEventRecord]] = {}
+    for event in events:
+        target = _participant_file_for_event(event)
+        grouped.setdefault(target, []).append(event)
+    for path, chunk in grouped.items():
+        with path.open("a", encoding="utf-8") as fh:
+            for event in chunk:
+                fh.write(json.dumps(event.model_dump(), ensure_ascii=False))
+                fh.write("\n")
+            fh.flush()
+
+
 @app.on_event("startup")
 def startup_event():
     global _model
     if SentenceTransformer is not None and _model is None:
         _model = SentenceTransformer(MODEL_NAME)
+    with _monitoring_lock:
+        _load_monitoring_events_from_disk()
 
 
 @app.get("/health")
@@ -290,6 +394,7 @@ def health():
         "ok": _model is not None,
         "model": MODEL_NAME,
         "events": len(_events_store),
+        "monitoring_events": len(_monitoring_events_store),
         "embedding_available": SentenceTransformer is not None,
     }
 
@@ -449,6 +554,53 @@ def append_events(payload: EventBatchRequest):
 @app.get("/downstream/events")
 def list_events():
     return {"events": [event.model_dump() for event in _events_store], "total": len(_events_store)}
+
+
+@app.post("/monitoring/events/batch", response_model=MonitoringEventBatchResponse)
+def append_monitoring_events(payload: MonitoringEventBatchRequest):
+    accepted = 0
+    deduplicated = 0
+    to_persist: List[MonitoringEventRecord] = []
+    with _monitoring_lock:
+        for event in payload.events:
+            if event.id in _monitoring_event_ids:
+                deduplicated += 1
+                continue
+            _monitoring_event_ids.add(event.id)
+            _monitoring_events_store.append(event)
+            to_persist.append(event)
+            accepted += 1
+        _append_monitoring_events_to_disk(to_persist)
+        stored = len(_monitoring_events_store)
+    return MonitoringEventBatchResponse(
+        accepted=accepted,
+        total=len(payload.events),
+        stored=stored,
+        deduplicated=deduplicated,
+    )
+
+
+@app.get("/monitoring/events")
+def list_monitoring_events(
+    since_ts: Optional[int] = Query(default=None),
+    limit: int = Query(default=3000, ge=1, le=10000),
+    participant_id: Optional[str] = Query(default=None),
+    session_id: Optional[str] = Query(default=None),
+    study_id: Optional[str] = Query(default=None),
+):
+    with _monitoring_lock:
+        events = _monitoring_events_store
+        if since_ts is not None:
+            events = [event for event in events if event.ts > since_ts]
+        if participant_id:
+            events = [event for event in events if event.participant_id == participant_id]
+        if session_id:
+            events = [event for event in events if event.session_id == session_id]
+        if study_id:
+            events = [event for event in events if event.study_id == study_id]
+        sliced = events[-limit:]
+        data = [event.model_dump() for event in sliced]
+    return {"events": data, "total": len(data)}
 
 
 @app.post("/upstream/build-template", response_model=UpstreamBuildTemplateResponse)
