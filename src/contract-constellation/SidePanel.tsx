@@ -20,9 +20,9 @@ function getTemplateIcon(type: TemplateItem['type']) {
 
 interface SidePanelProps {
   availableTemplates: TemplateItem[];
-  graphPresetOptions: Array<{ id: 'standard' | 'simple1' | 'reneHouseTemplate'; label: string }>;
-  selectedGraphPresetId: 'standard' | 'simple1' | 'reneHouseTemplate';
-  onGraphPresetChange: (presetId: 'standard' | 'simple1' | 'reneHouseTemplate') => void;
+  graphPresetOptions: Array<{ id: string; label: string }>;
+  selectedGraphPresetId: string;
+  onGraphPresetChange: (presetId: string) => void;
   selectedNode: GraphNode | null;
   aiSuggestion: AiSuggestion | null;
   lastAppliedAction: { nodeId: string; actionId: string; actionType: NodeActionType } | null;
@@ -133,7 +133,7 @@ export function SidePanel({
           <select
             className="w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-700 focus:border-blue-400 focus:outline-none"
             value={selectedGraphPresetId}
-            onChange={(event) => onGraphPresetChange(event.target.value as 'standard' | 'simple1' | 'reneHouseTemplate')}
+            onChange={(event) => onGraphPresetChange(event.target.value)}
           >
             {graphPresetOptions.map((option) => (
               <option key={option.id} value={option.id}>

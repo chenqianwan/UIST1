@@ -38,9 +38,11 @@ const TRASH_PANEL = {
   w: 192,
   h: 96,
 };
-const HEATMAP_GRID_X = 86;
-const HEATMAP_GRID_Y = 50;
-const HEATMAP_BLUR_STD = 1.95;
+const HEATMAP_GRID_X = 108;
+const HEATMAP_GRID_Y = 64;
+const HEATMAP_BLUR_STD = 1.55;
+const HEATMAP_COLOR_LEVELS = 9;
+const HEATMAP_RED_BAND_START = 0.82;
 
 type AreaName = 'Canvas' | 'Modify' | 'Export' | 'Dimension' | 'Trash' | 'Other';
 
@@ -59,6 +61,15 @@ function resolveAreaName(x: number, y: number): AreaName {
 
 function formatTs(ts: number): string {
   return new Date(ts).toLocaleTimeString();
+}
+
+function formatDuration(ms: number): string {
+  if (ms <= 0) return '0s';
+  if (ms < 1000) return `${ms}ms`;
+  if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
+  const min = Math.floor(ms / 60_000);
+  const sec = Math.floor((ms % 60_000) / 1000);
+  return `${min}m ${sec}s`;
 }
 
 function getHeatWeight(event: MonitoringEvent): number {
@@ -113,6 +124,7 @@ export default function AdminDashboard() {
   const [events, setEvents] = useState<MonitoringEvent[]>(() => listMonitoringEvents());
   const [isEventStreamOpen, setIsEventStreamOpen] = useState(false);
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
+  const [nowTs, setNowTs] = useState<number>(Date.now());
 
   useEffect(() => {
     const unsub = subscribeMonitoringEvents({
@@ -125,6 +137,11 @@ export default function AdminDashboard() {
       },
     });
     return unsub;
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowTs(Date.now()), 1000);
+    return () => window.clearInterval(timer);
   }, []);
 
   const metrics = useMemo(() => {
@@ -196,7 +213,7 @@ export default function AdminDashboard() {
       weightedPoints += weight;
     });
 
-    const smoothBucket = smoothHeatBucket(bucket, gridX, gridY, 7);
+    const smoothBucket = smoothHeatBucket(bucket, gridX, gridY, 5);
     const constrainedBucket = smoothBucket.map((value, index) => {
       if (value <= 0) return 0;
       const cellW = TOTAL_LAYOUT_WIDTH / gridX;
@@ -300,6 +317,42 @@ export default function AdminDashboard() {
       .sort((a, b) => b.share - a.share);
   }, [events]);
 
+  const stageTiming = useMemo(() => {
+    const starts = events
+      .filter((event) => event.component_id === 'template_gate' && event.payload?.timer_action === 'start')
+      .sort((a, b) => a.ts - b.ts);
+    const latestStart = starts[starts.length - 1];
+    if (!latestStart) return null;
+
+    const tailEvents = events.filter((event) => event.ts >= latestStart.ts).sort((a, b) => a.ts - b.ts);
+    const firstAction = tailEvents.find((event) => event.event_name === 'action_executed');
+    const exportStart = tailEvents.find(
+      (event) => event.component_id === 'template_gate' && event.payload?.timer_action === 'export_start',
+    );
+    const exportSuccess = tailEvents.find((event) => event.event_name === 'export_success');
+    const endTs = exportSuccess?.ts ?? nowTs;
+
+    const viewingEnd = firstAction?.ts ?? exportStart?.ts ?? endTs;
+    const viewingMs = Math.max(0, viewingEnd - latestStart.ts);
+
+    const modifyingStart = firstAction?.ts;
+    const modifyingEnd = exportStart?.ts ?? endTs;
+    const modifyingMs = modifyingStart ? Math.max(0, modifyingEnd - modifyingStart) : 0;
+
+    const exportingStart = exportStart?.ts;
+    const exportingMs = exportingStart ? Math.max(0, endTs - exportingStart) : 0;
+
+    const totalMs = Math.max(1, viewingMs + modifyingMs + exportingMs);
+    return {
+      startedAt: latestStart.ts,
+      ended: Boolean(exportSuccess),
+      totalMs,
+      viewingMs,
+      modifyingMs,
+      exportingMs,
+    };
+  }, [events, nowTs]);
+
   return (
     <div className="min-h-screen w-screen overflow-y-auto bg-slate-100">
       <div className="mx-auto flex min-h-screen max-w-6xl flex-col gap-4 p-4">
@@ -331,13 +384,65 @@ export default function AdminDashboard() {
 
         <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
           <div className="mb-2 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-slate-700">Task Stage Timeline</h3>
+            {stageTiming ? (
+              <span className="text-xs text-slate-500">
+                {stageTiming.ended ? 'Completed' : 'Running'} · started {formatTs(stageTiming.startedAt)}
+              </span>
+            ) : (
+              <span className="text-xs text-slate-500">No active task</span>
+            )}
+          </div>
+          {stageTiming ? (
+            <>
+              <div className="h-3 w-full overflow-hidden rounded-full border border-slate-200 bg-slate-100">
+                <div className="flex h-full w-full">
+                  <div
+                    className="h-full bg-blue-400"
+                    style={{ width: `${(stageTiming.viewingMs / stageTiming.totalMs) * 100}%` }}
+                    title={`Viewing ${formatDuration(stageTiming.viewingMs)}`}
+                  />
+                  <div
+                    className="h-full bg-violet-400"
+                    style={{ width: `${(stageTiming.modifyingMs / stageTiming.totalMs) * 100}%` }}
+                    title={`Modifying ${formatDuration(stageTiming.modifyingMs)}`}
+                  />
+                  <div
+                    className="h-full bg-emerald-400"
+                    style={{ width: `${(stageTiming.exportingMs / stageTiming.totalMs) * 100}%` }}
+                    title={`Exporting ${formatDuration(stageTiming.exportingMs)}`}
+                  />
+                </div>
+              </div>
+              <div className="mt-2 grid grid-cols-1 gap-2 text-xs text-slate-600 md:grid-cols-3">
+                <div className="rounded border border-slate-200 bg-slate-50 px-2 py-1.5">
+                  <div className="font-semibold text-blue-600">Viewing</div>
+                  <div>{formatDuration(stageTiming.viewingMs)}</div>
+                </div>
+                <div className="rounded border border-slate-200 bg-slate-50 px-2 py-1.5">
+                  <div className="font-semibold text-violet-600">Modifying</div>
+                  <div>{formatDuration(stageTiming.modifyingMs)}</div>
+                </div>
+                <div className="rounded border border-slate-200 bg-slate-50 px-2 py-1.5">
+                  <div className="font-semibold text-emerald-600">Exporting</div>
+                  <div>{formatDuration(stageTiming.exportingMs)}</div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <p className="text-xs text-slate-500">Start from default/upload template to begin timing.</p>
+          )}
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+          <div className="mb-2 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-slate-700">Interaction Heatmap</h3>
             <span className="text-xs text-slate-500">
               {heatmap.points} samples (weighted {heatmap.weightedPoints.toFixed(1)})
             </span>
           </div>
-          <div className="overflow-hidden rounded-lg border border-slate-300 bg-slate-200 p-2">
-            <div className="mx-auto w-full max-w-[980px] rounded-md border border-slate-300 bg-white p-1 shadow-sm">
+          <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-100 p-2">
+            <div className="mx-auto w-full max-w-[980px] rounded-md border border-slate-200 bg-white p-1 shadow-sm">
               <svg viewBox={`0 0 ${TOTAL_LAYOUT_WIDTH} ${CANVAS_HEIGHT}`} className="h-auto w-full">
               <defs>
                 <filter id="heatmap-soft-blur" x="-5%" y="-5%" width="110%" height="110%">
@@ -350,14 +455,14 @@ export default function AdminDashboard() {
                   <path d="M0,0 L8,4 L0,8 z" fill="#7a86a6" />
                 </marker>
               </defs>
-              <rect x={0} y={0} width={TOTAL_LAYOUT_WIDTH} height={CANVAS_HEIGHT} fill="#f8fafc" />
-              <rect x={0.5} y={0.5} width={TOTAL_LAYOUT_WIDTH - 1} height={CANVAS_HEIGHT - 1} fill="none" stroke="#b8c1cf" strokeWidth={1} />
-              <rect x={0} y={0} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} fill="#f1f5f9" />
-              <rect x={CANVAS_WIDTH} y={0} width={SIDE_PANEL_WIDTH} height={CANVAS_HEIGHT} fill="#f1f5f9" />
-              <rect x={LAYOUT_WIDTH} y={0} width={TOTAL_LAYOUT_WIDTH - LAYOUT_WIDTH} height={CANVAS_HEIGHT} fill="#f8fafc" />
-              <rect x={MODIFY_PANEL.x} y={MODIFY_PANEL.y} width={MODIFY_PANEL.w} height={MODIFY_PANEL.h} fill="#f1f5f9" />
-              <line x1={CANVAS_WIDTH} y1={0} x2={CANVAS_WIDTH} y2={CANVAS_HEIGHT} stroke="#cbd5e1" strokeWidth={2} />
-              <line x1={LAYOUT_WIDTH} y1={0} x2={LAYOUT_WIDTH} y2={CANVAS_HEIGHT} stroke="#cbd5e1" strokeWidth={1.5} />
+              <rect x={0} y={0} width={TOTAL_LAYOUT_WIDTH} height={CANVAS_HEIGHT} fill="#f9fbff" />
+              <rect x={0.5} y={0.5} width={TOTAL_LAYOUT_WIDTH - 1} height={CANVAS_HEIGHT - 1} fill="none" stroke="#d6deea" strokeWidth={1} />
+              <rect x={0} y={0} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} fill="#f7faff" />
+              <rect x={CANVAS_WIDTH} y={0} width={SIDE_PANEL_WIDTH} height={CANVAS_HEIGHT} fill="#f7faff" />
+              <rect x={LAYOUT_WIDTH} y={0} width={TOTAL_LAYOUT_WIDTH - LAYOUT_WIDTH} height={CANVAS_HEIGHT} fill="#f9fbff" />
+              <rect x={MODIFY_PANEL.x} y={MODIFY_PANEL.y} width={MODIFY_PANEL.w} height={MODIFY_PANEL.h} fill="#f7faff" />
+              <line x1={CANVAS_WIDTH} y1={0} x2={CANVAS_WIDTH} y2={CANVAS_HEIGHT} stroke="#d4ddea" strokeWidth={1.8} />
+              <line x1={LAYOUT_WIDTH} y1={0} x2={LAYOUT_WIDTH} y2={CANVAS_HEIGHT} stroke="#d4ddea" strokeWidth={1.3} />
               <g filter="url(#heatmap-soft-blur)" clipPath="url(#heatmap-clip)">
                 {heatmap.bucket.map((count, index) => {
                   if (count <= 0 || heatmap.max <= 0 || heatmap.weightedPoints <= 0) return null;
@@ -371,14 +476,26 @@ export default function AdminDashboard() {
                   // Smoothstep keeps more values in the mid-band (yellow/orange) vs hard red/green split.
                   const smooth = normalized * normalized * (3 - 2 * normalized);
                   const intensity = Math.pow(smooth, 0.95);
+                  // Quantize into visible bands so users can distinguish levels more easily.
+                  const levelCount = Math.max(2, HEATMAP_COLOR_LEVELS);
+                  const level = Math.round(intensity * (levelCount - 1));
+                  const band = level / (levelCount - 1);
+                  // Keep red only for peak values; most bands stay blue->yellow.
+                  const redStart = HEATMAP_RED_BAND_START;
+                  const h = band < redStart
+                    ? 220 - (band / redStart) * 170
+                    : 50 - ((band - redStart) / (1 - redStart)) * 46;
+                  const s = 74 + band * 18;
+                  const l = 87 - band * 42;
+                  const a = 0.2 + band * 0.66;
                   return (
                     <rect
                       key={`heat-cell-${index}`}
                       x={x}
                       y={y}
-                      width={cellW + 0.6}
-                      height={cellH + 0.6}
-                      fill={`hsla(${96 - intensity * 92}, 90%, ${74 - intensity * 26}%, ${0.1 + intensity * 0.78})`}
+                      width={cellW + 0.35}
+                      height={cellH + 0.35}
+                      fill={`hsla(${h}, ${s}%, ${l}%, ${a})`}
                     />
                   );
                 })}
@@ -423,27 +540,27 @@ export default function AdminDashboard() {
               </svg>
             </div>
           </div>
-          <p className="mt-1 text-[11px] text-slate-500">
-            Global temperature scale: color reflects each cell's share of total weighted interactions; hover stays low-weight.
-          </p>
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
           <div className="mb-2 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-slate-700">Area Interest Ranking</h3>
-            <span className="text-xs text-slate-500">Share + Density</span>
+            <span className="text-xs text-slate-500">Normalized share and density</span>
           </div>
           <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
             {areaMetrics.map((item) => (
-              <div key={item.area} className="rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2">
+              <div key={item.area} className="rounded-lg border border-slate-200 bg-white px-3 py-2">
                 <p className="text-xs font-semibold text-slate-700">{item.area}</p>
-                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
+                <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-amber-300 via-orange-400 to-rose-500"
-                    style={{ width: `${Math.max(4, Math.round(item.share * 100))}%` }}
+                    className="h-full rounded-full bg-slate-700"
+                    style={{
+                      width: `${Math.max(4, Math.round(item.share * 100))}%`,
+                      opacity: 0.45 + Math.min(0.5, item.share * 1.2),
+                    }}
                   />
                 </div>
-                <p className="text-[11px] text-slate-500">Share {Math.round(item.share * 100)}%</p>
+                <p className="mt-1 text-[11px] text-slate-500">Share {Math.round(item.share * 100)}%</p>
                 <p className="text-[11px] text-slate-500">Density {(item.density * 10000).toFixed(2)}</p>
               </div>
             ))}

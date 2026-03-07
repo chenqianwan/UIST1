@@ -6,6 +6,7 @@ import {
   useState,
   type ChangeEvent,
   type DragEvent,
+  type FormEvent,
   type PointerEvent,
 } from 'react';
 import { Trash2 } from 'lucide-react';
@@ -63,9 +64,9 @@ const SLIDER_SAMPLE_INTERVAL_MS = 220;
 const SLIDER_HEAT_WEIGHT = 0.4;
 const MODIFY_SAMPLE_INTERVAL_MS = 220;
 const MODIFY_HEAT_WEIGHT = 0.45;
-type GraphPresetId = 'standard' | 'simple1' | 'reneHouseTemplate';
+type GraphPresetId = string;
 
-const GRAPH_PRESET_OPTIONS: Array<{ id: GraphPresetId; label: string }> = [
+const BASE_GRAPH_PRESET_OPTIONS: Array<{ id: GraphPresetId; label: string }> = [
   { id: 'standard', label: 'Standard' },
   { id: 'simple1', label: 'Simple1 (Stage A + B)' },
   { id: 'reneHouseTemplate', label: 'reneHouseTemplate (Stage A + B)' },
@@ -85,6 +86,19 @@ type StageBNode = {
   references?: string[];
   riskLevel?: GraphNode['riskLevel'];
   actions?: NodeActionItem[];
+};
+
+type UploadedPreset = {
+  id: string;
+  label: string;
+  templates: TemplateItem[];
+};
+
+type UpstreamBuildTemplateResponse = {
+  template_id: string;
+  template_label: string;
+  stage_a_nodes: StageANode[];
+  stage_b_nodes: StageBNode[];
 };
 
 function buildStageTemplates(
@@ -166,6 +180,11 @@ function toHtmlWithBreaks(value: string): string {
   return escapeHtml(value).replace(/\n/g, '<br/>');
 }
 
+function sanitizeTemplateId(rawName: string): string {
+  const normalized = rawName.trim().replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '');
+  return normalized || 'uploaded_template';
+}
+
 function isUserAddedSupplementNode(node: GraphNode): boolean {
   return /^sub_.+_\d{10,}$/.test(node.id);
 }
@@ -220,6 +239,12 @@ export default function ContractConstellation() {
   const [isDragOverCanvas, setIsDragOverCanvas] = useState(false);
   const [usedTemplateIds, setUsedTemplateIds] = useState<string[]>([]);
   const [graphPresetId, setGraphPresetId] = useState<GraphPresetId>('standard');
+  const [uploadedPresets, setUploadedPresets] = useState<UploadedPreset[]>([]);
+  const [showUploadPrompt, setShowUploadPrompt] = useState(true);
+  const [uploadingTemplate, setUploadingTemplate] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [templateNameInput, setTemplateNameInput] = useState('');
+  const [selectedTemplateFile, setSelectedTemplateFile] = useState<File | null>(null);
   const [lastAppliedAction, setLastAppliedAction] = useState<{ nodeId: string; actionId: string; actionType: NodeActionType } | null>(null);
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
   const [isOverTrash, setIsOverTrash] = useState(false);
@@ -240,6 +265,7 @@ export default function ContractConstellation() {
   const hoverSampleAtRef = useRef<number>(0);
   const sliderSampleAtRef = useRef<number>(0);
   const modifySampleAtRef = useRef<number>(0);
+  const taskStartAtRef = useRef<number | null>(null);
   const { track } = useMonitoring('main', true);
   const layoutWidth = width + SIDE_PANEL_WIDTH;
   const layoutHeight = height;
@@ -291,6 +317,102 @@ export default function ContractConstellation() {
     setGraphPresetId(presetId);
   }, []);
 
+  const handleUseDefaultTemplate = useCallback(() => {
+    const startedAt = Date.now();
+    taskStartAtRef.current = startedAt;
+    setGraphPresetId('standard');
+    setShowUploadPrompt(false);
+    setUploadError(null);
+    track('canvas_interaction', {
+      componentId: 'template_gate',
+      payload: {
+        timer_action: 'start',
+        start_mode: 'default_template',
+        started_at: startedAt,
+      },
+    });
+  }, [track]);
+
+  const handleTemplateFileChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    setSelectedTemplateFile(file);
+    if (file && !templateNameInput.trim()) {
+      const rawName = file.name.replace(/\.txt$/i, '');
+      setTemplateNameInput(sanitizeTemplateId(rawName));
+    }
+    setUploadError(null);
+  }, [templateNameInput]);
+
+  const handleUploadTemplate = useCallback(async (event: FormEvent) => {
+    event.preventDefault();
+    if (!selectedTemplateFile) {
+      setUploadError('Please select a .txt file first.');
+      return;
+    }
+    setUploadingTemplate(true);
+    setUploadError(null);
+    try {
+      const contractText = await selectedTemplateFile.text();
+      const baseName = templateNameInput.trim() || selectedTemplateFile.name.replace(/\.txt$/i, '');
+      const templateName = sanitizeTemplateId(baseName);
+      const resp = await fetch(`${DOWNSTREAM_API_BASE}/upstream/build-template`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contract_text: contractText,
+          template_name: templateName,
+          save_artifacts: true,
+        }),
+      });
+      if (!resp.ok) {
+        const raw = await resp.text();
+        let detail = raw;
+        try {
+          const j = JSON.parse(raw) as { detail?: string };
+          if (typeof j.detail === 'string') detail = j.detail;
+        } catch {
+          /* use raw */
+        }
+        throw new Error(`Build template failed: ${resp.status} ${detail}`);
+      }
+      const data = (await resp.json()) as UpstreamBuildTemplateResponse;
+      const presetId = sanitizeTemplateId(data.template_id || templateName);
+      const presetLabel = data.template_label?.trim()
+        ? `${data.template_label} (Uploaded)`
+        : `${presetId} (Uploaded)`;
+      const templates = buildStageTemplates(
+        data.stage_a_nodes ?? [],
+        data.stage_b_nodes ?? [],
+        presetId,
+        `Imported from ${presetId}`,
+      );
+      setUploadedPresets((prev) => {
+        const withoutSame = prev.filter((preset) => preset.id !== presetId);
+        return [...withoutSame, { id: presetId, label: presetLabel, templates }];
+      });
+      const startedAt = Date.now();
+      taskStartAtRef.current = startedAt;
+      setGraphPresetId(presetId);
+      setShowUploadPrompt(false);
+      setTemplateNameInput('');
+      setSelectedTemplateFile(null);
+      track('canvas_interaction', {
+        componentId: 'template_gate',
+        payload: {
+          timer_action: 'start',
+          start_mode: 'uploaded_template',
+          template_id: presetId,
+          started_at: startedAt,
+        },
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to build template from uploaded txt.';
+      setUploadError(message);
+    } finally {
+      setUploadingTemplate(false);
+    }
+  }, [selectedTemplateFile, templateNameInput, track]);
+
   const markNodeModified = useCallback((nodeId: string) => {
     setModifiedNodeIds((prev) => (prev.includes(nodeId) ? prev : [...prev, nodeId]));
   }, []);
@@ -315,11 +437,21 @@ export default function ContractConstellation() {
     return buildStageTemplates(aNodes, bNodes, 'reneHouseTemplate', 'Imported from reneHouseTemplate');
   }, []);
 
+  const graphPresetOptions = useMemo(
+    () => [
+      ...BASE_GRAPH_PRESET_OPTIONS,
+      ...uploadedPresets.map((preset) => ({ id: preset.id, label: preset.label })),
+    ],
+    [uploadedPresets],
+  );
+
   const activeTemplatePool = useMemo(() => {
     if (graphPresetId === 'simple1') return simple1Templates;
     if (graphPresetId === 'reneHouseTemplate') return reneHouseTemplates;
+    const uploaded = uploadedPresets.find((preset) => preset.id === graphPresetId);
+    if (uploaded) return uploaded.templates;
     return NODE_LIBRARY;
-  }, [graphPresetId, simple1Templates, reneHouseTemplates]);
+  }, [graphPresetId, simple1Templates, reneHouseTemplates, uploadedPresets]);
 
   const availableTemplates = useMemo(
     () => activeTemplatePool.filter((item) => !usedTemplateIds.includes(item.id)),
@@ -669,6 +801,13 @@ export default function ContractConstellation() {
       exportTimerRef.current = null;
     }
     setExportState('exporting');
+    track('canvas_interaction', {
+      componentId: 'template_gate',
+      payload: {
+        timer_action: 'export_start',
+        started_at: Date.now(),
+      },
+    });
     try {
       const root = nodes.find((node) => node.id === 'root');
       if (!root) throw new Error('Root node missing.');
@@ -877,6 +1016,10 @@ export default function ContractConstellation() {
         payload: {
           clause_count: displayClauses.length,
           link_count: links.length,
+          task_duration_ms: taskStartAtRef.current ? Math.max(0, Date.now() - taskStartAtRef.current) : null,
+          task_duration_s: taskStartAtRef.current
+            ? Number(((Date.now() - taskStartAtRef.current) / 1000).toFixed(2))
+            : null,
           x: width + SIDE_PANEL_WIDTH / 2,
           y: height - 34,
           layout_w: layoutWidth,
@@ -1391,7 +1534,7 @@ export default function ContractConstellation() {
 
       <SidePanel
         availableTemplates={availableTemplates}
-        graphPresetOptions={GRAPH_PRESET_OPTIONS}
+        graphPresetOptions={graphPresetOptions}
         selectedGraphPresetId={graphPresetId}
         onGraphPresetChange={handleGraphPresetChange}
         selectedNode={selectedNode}
@@ -1410,6 +1553,64 @@ export default function ContractConstellation() {
         onExport={handleExportContract}
         onModifyHoverSample={handleModifyHoverSample}
       />
+
+      {showUploadPrompt && (
+        <div className="absolute inset-0 z-[30] flex items-center justify-center bg-slate-900/45 backdrop-blur-[1px]">
+          <form
+            onSubmit={handleUploadTemplate}
+            className="w-[480px] max-w-[92vw] rounded-2xl border border-slate-200 bg-white p-5 shadow-xl"
+          >
+            <h3 className="text-base font-semibold text-slate-900">Upload Contract TXT</h3>
+            <p className="mt-1 text-xs text-slate-600">
+              Upload a .txt contract to auto-build a template, or skip and use the default Standard template.
+            </p>
+
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-700">Template Name</label>
+                <input
+                  type="text"
+                  value={templateNameInput}
+                  onChange={(event) => setTemplateNameInput(event.target.value)}
+                  placeholder="e.g. officeLeaseTemplate"
+                  className="w-full rounded border border-slate-300 px-2.5 py-2 text-sm text-slate-700 outline-none focus:border-blue-400"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-700">Contract TXT</label>
+                <input
+                  type="file"
+                  accept=".txt,text/plain"
+                  onChange={handleTemplateFileChange}
+                  className="w-full rounded border border-slate-300 px-2.5 py-2 text-xs text-slate-700 file:mr-2 file:rounded file:border-0 file:bg-slate-100 file:px-2 file:py-1 file:text-xs file:font-semibold file:text-slate-700 hover:file:bg-slate-200"
+                />
+              </div>
+            </div>
+
+            {uploadError && (
+              <p className="mt-3 rounded border border-red-200 bg-red-50 px-2.5 py-2 text-xs text-red-700">{uploadError}</p>
+            )}
+
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={handleUseDefaultTemplate}
+                disabled={uploadingTemplate}
+                className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Use Default Template
+              </button>
+              <button
+                type="submit"
+                disabled={uploadingTemplate}
+                className="rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {uploadingTemplate ? 'Building...' : 'Upload and Build'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

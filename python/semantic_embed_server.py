@@ -4,12 +4,22 @@ from copy import deepcopy
 from datetime import datetime, timezone
 import json
 import os
+from pathlib import Path
 import re
 from typing import Any, Dict, List, Literal, Optional, Tuple
 from urllib import error, request
 
+try:
+    from dotenv import load_dotenv
+    _root = Path(__file__).resolve().parent.parent
+    load_dotenv(_root / ".env")
+    load_dotenv(Path(__file__).resolve().parent / ".env")
+except ImportError:
+    pass
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 try:
     from sentence_transformers import SentenceTransformer
@@ -125,7 +135,29 @@ class FinalizeResponse(BaseModel):
     change_report: List[Dict[str, Any]]
 
 
+class UpstreamBuildTemplateRequest(BaseModel):
+    contract_text: str
+    template_name: Optional[str] = None
+    save_artifacts: bool = True
+
+
+class UpstreamBuildTemplateResponse(BaseModel):
+    template_id: str
+    template_label: str
+    stage_a_nodes: List[Dict[str, Any]]
+    stage_b_nodes: List[Dict[str, Any]]
+    merged_nodes: List[Dict[str, Any]]
+    artifact_paths: Dict[str, str]
+
+
 app = FastAPI(title="Semantic Embedding Service", version="0.1.0")
+
+
+@app.exception_handler(RuntimeError)
+def runtime_error_handler(request, exc: RuntimeError):
+    return JSONResponse(status_code=500, content={"detail": str(exc)})
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -139,6 +171,8 @@ _model: SentenceTransformer | None = None
 _events_store: List[EventRecord] = []
 XHUB_API_URL = os.getenv("XHUB_API_URL", "https://api3.xhub.chat/v1/chat/completions")
 XHUB_FINALIZE_MODEL = os.getenv("XHUB_FINALIZE_MODEL", "claude-3-5-sonnet-20241022-thinking")
+XHUB_STAGEA_MODEL = os.getenv("XHUB_STAGEA_MODEL", "claude-3-7-sonnet-20250219-thinking")
+XHUB_STAGEB_MODEL = os.getenv("XHUB_STAGEB_MODEL", "claude-3-7-sonnet-20250219-thinking")
 
 FINALIZE_SYSTEM_PROMPT = """
 You are a strict legal text mapping engine.
@@ -164,6 +198,79 @@ Output strict JSON only:
       "changeType": "add|delete|revise",
       "summary": "string",
       "affectedSections": ["string"]
+    }
+  ]
+}
+""".strip()
+
+STAGE_A_SYSTEM_PROMPT = """
+You are a legal-tech contract structuring engine.
+Your task is Stage A only: transform unstructured contract text into stable structural JSON nodes.
+
+Hard constraints:
+1) LOSSLESS CONTENT:
+   - "content" must be a verbatim copy from source text.
+   - Do not summarize, rewrite, normalize, or correct typos.
+2) HIERARCHICAL INTEGRITY:
+   - Determine parentId using explicit numbering first (e.g. Chapter/Article, 1/1.1/1.1.1, (1), a), Section 1.2).
+   - If numbering jumps levels, attach to nearest valid ancestor.
+   - Unnumbered paragraphs should attach to nearest preceding numbered clause.
+3) STRUCTURE-ONLY OUTPUT:
+   - Output only these fields:
+     id, label, content, type, parentId, timePhase
+   - Never output risk/references/actions.
+4) FIELD ALIGNMENT:
+   - type: "main" | "sub"
+   - timePhase: "pre_sign" | "effective" | "execution" | "acceptance" | "termination" | "post_termination"
+
+Output strictly valid JSON only:
+{
+  "nodes": [
+    {
+      "id": "string",
+      "label": "string",
+      "content": "string",
+      "type": "main|sub",
+      "parentId": "root|string",
+      "timePhase": "pre_sign|effective|execution|acceptance|termination|post_termination"
+    }
+  ]
+}
+""".strip()
+
+STAGE_B_SYSTEM_PROMPT = """
+You are a contract risk and cross-reference reasoning engine (Stage B).
+
+Objective:
+Given nodes_stage_a and original_contract_text, output for each node:
+- references
+- riskLevel
+- actions
+
+Non-Negotiable Constraints:
+1) IMMUTABLE STRUCTURE: Use existing node ids only.
+2) COMPLETE COVERAGE: Output one and only one record per input node id.
+3) NO-RISK POLICY: If riskLevel is none, actions must be [].
+4) ACTION EXCLUSIVITY: If delete exists, do not output revise/add_clause for same node.
+5) REFERENCE VALIDITY: references must only contain existing node ids and must not self-reference.
+6) CONSERVATIVE INFERENCE: If uncertain, use riskLevel none.
+
+Output strict JSON only:
+{
+  "nodes": [
+    {
+      "id": "string",
+      "references": ["string"],
+      "riskLevel": "none|low|medium|high",
+      "actions": [
+        {
+          "id": "string",
+          "type": "delete|revise|add_clause",
+          "status": "pending",
+          "suggestionText": "string",
+          "supplementDraft": "string"
+        }
+      ]
     }
   ]
 }
@@ -239,6 +346,97 @@ def _extract_json_block(text: str) -> str:
     raise ValueError("No JSON object found in model response.")
 
 
+def _xhub_json_completion(
+    model: str,
+    system_prompt: str,
+    user_content: str,
+    max_tokens: int = 9000,
+    temperature: float = 0.0,
+) -> dict[str, Any]:
+    api_key = os.getenv("XHUB_API_KEY")
+    if not api_key:
+        raise RuntimeError("Missing XHUB_API_KEY for upstream model call.")
+    req_payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content},
+        ],
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+    }
+    response = _post_json(XHUB_API_URL, req_payload, api_key, timeout=240)
+    if "error" in response:
+        raise RuntimeError(f"Upstream API error: {json.dumps(response['error'], ensure_ascii=False)}")
+    try:
+        content = response["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError) as exc:
+        raise RuntimeError(f"Unexpected upstream response shape: {json.dumps(response, ensure_ascii=False)}") from exc
+    return json.loads(_extract_json_block(content))
+
+
+def _sanitize_template_name(value: Optional[str]) -> Tuple[str, str]:
+    base = (value or "uploaded_template").strip()
+    if not base:
+        base = "uploaded_template"
+    safe = re.sub(r"[^a-zA-Z0-9_-]+", "_", base).strip("_")
+    if not safe:
+        safe = "uploaded_template"
+    return safe, base
+
+
+def _normalize_stage_b_nodes(stage_a_nodes: List[Dict[str, Any]], stage_b_nodes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    out_by_id: Dict[str, Dict[str, Any]] = {}
+    for node in stage_b_nodes:
+        node_id = node.get("id")
+        if not isinstance(node_id, str) or not node_id:
+            continue
+        refs = node.get("references")
+        actions = node.get("actions")
+        risk = node.get("riskLevel")
+        out_by_id[node_id] = {
+            "id": node_id,
+            "references": refs if isinstance(refs, list) else [],
+            "riskLevel": risk if risk in {"none", "low", "medium", "high"} else "none",
+            "actions": actions if isinstance(actions, list) else [],
+        }
+    out: List[Dict[str, Any]] = []
+    valid_ids = {n.get("id") for n in stage_a_nodes if isinstance(n.get("id"), str)}
+    for node in stage_a_nodes:
+        node_id = node.get("id")
+        if not isinstance(node_id, str) or not node_id:
+            continue
+        item = out_by_id.get(node_id, {"id": node_id, "references": [], "riskLevel": "none", "actions": []})
+        item["references"] = [
+            ref for ref in item.get("references", [])
+            if isinstance(ref, str) and ref in valid_ids and ref != node_id
+        ][:5]
+        out.append(item)
+    return out
+
+
+def _merge_stage_nodes(stage_a_nodes: List[Dict[str, Any]], stage_b_nodes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    b_by_id = {n.get("id"): n for n in stage_b_nodes if isinstance(n.get("id"), str)}
+    merged: List[Dict[str, Any]] = []
+    for a in stage_a_nodes:
+        node_id = a.get("id")
+        b = b_by_id.get(node_id, {})
+        merged.append(
+            {
+                "id": node_id,
+                "label": a.get("label", ""),
+                "content": a.get("content", ""),
+                "type": a.get("type", "sub"),
+                "parentId": a.get("parentId", "root"),
+                "timePhase": a.get("timePhase", "execution"),
+                "references": b.get("references", []),
+                "riskLevel": b.get("riskLevel", "none"),
+                "actions": b.get("actions", []),
+            }
+        )
+    return merged
+
+
 @app.post("/downstream/events", response_model=EventBatchResponse)
 def append_events(payload: EventBatchRequest):
     accepted = 0
@@ -251,6 +449,84 @@ def append_events(payload: EventBatchRequest):
 @app.get("/downstream/events")
 def list_events():
     return {"events": [event.model_dump() for event in _events_store], "total": len(_events_store)}
+
+
+@app.post("/upstream/build-template", response_model=UpstreamBuildTemplateResponse)
+def build_upstream_template(payload: UpstreamBuildTemplateRequest):
+    contract_text = (payload.contract_text or "").strip()
+    if not contract_text:
+        raise RuntimeError("contract_text is empty.")
+
+    template_id, template_label = _sanitize_template_name(payload.template_name)
+    stage_a_resp = _xhub_json_completion(
+        model=XHUB_STAGEA_MODEL,
+        system_prompt=STAGE_A_SYSTEM_PROMPT,
+        user_content=(
+            "Run Stage A structuring for the contract below. Output strictly valid JSON only.\n\n"
+            f"{contract_text}"
+        ),
+        max_tokens=9000,
+        temperature=0.1,
+    )
+    stage_a_nodes = stage_a_resp.get("nodes")
+    if not isinstance(stage_a_nodes, list):
+        raise RuntimeError("Stage A output must include a top-level nodes array.")
+
+    stage_b_resp = _xhub_json_completion(
+        model=XHUB_STAGEB_MODEL,
+        system_prompt=STAGE_B_SYSTEM_PROMPT,
+        user_content=(
+            "Run Stage B enrichment. Output JSON only.\n\n"
+            f"{json.dumps({'nodes_stage_a': stage_a_nodes, 'original_contract_text': contract_text}, ensure_ascii=False)}"
+        ),
+        max_tokens=10000,
+        temperature=0.0,
+    )
+    raw_stage_b_nodes = stage_b_resp.get("nodes")
+    if not isinstance(raw_stage_b_nodes, list):
+        raise RuntimeError("Stage B output must include a top-level nodes array.")
+    stage_b_nodes = _normalize_stage_b_nodes(stage_a_nodes, raw_stage_b_nodes)
+    merged_nodes = _merge_stage_nodes(stage_a_nodes, stage_b_nodes)
+
+    artifact_paths = {"stage_a": "", "stage_b": "", "merged": ""}
+    if payload.save_artifacts:
+        docs_dir = Path(__file__).resolve().parents[1] / "docs"
+        docs_dir.mkdir(parents=True, exist_ok=True)
+        stage_a_path = docs_dir / f"{template_id}.stage_a.json"
+        stage_b_path = docs_dir / f"{template_id}.stage_b.json"
+        merged_path = docs_dir / f"{template_id}.stage_ab_merged.json"
+        stage_a_path.write_text(json.dumps({"nodes": stage_a_nodes}, ensure_ascii=False, indent=2), encoding="utf-8")
+        stage_b_path.write_text(json.dumps({"nodes": stage_b_nodes}, ensure_ascii=False, indent=2), encoding="utf-8")
+        merged_path.write_text(
+            json.dumps(
+                {
+                    "meta": {
+                        "templateId": template_id,
+                        "stageA": str(stage_a_path.relative_to(Path(__file__).resolve().parents[1])),
+                        "stageB": str(stage_b_path.relative_to(Path(__file__).resolve().parents[1])),
+                        "mergedAt": datetime.now(timezone.utc).isoformat(),
+                    },
+                    "nodes": merged_nodes,
+                },
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        artifact_paths = {
+            "stage_a": str(stage_a_path),
+            "stage_b": str(stage_b_path),
+            "merged": str(merged_path),
+        }
+
+    return UpstreamBuildTemplateResponse(
+        template_id=template_id,
+        template_label=template_label,
+        stage_a_nodes=stage_a_nodes,
+        stage_b_nodes=stage_b_nodes,
+        merged_nodes=merged_nodes,
+        artifact_paths=artifact_paths,
+    )
 
 
 def _parent_map(nodes: List[DownstreamNode]) -> Dict[str, Optional[str]]:
