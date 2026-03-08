@@ -108,6 +108,18 @@ type UpstreamBuildTemplateResponse = {
   stage_b_nodes: StageBNode[];
 };
 
+type FormatBlock = {
+  type: 'heading' | 'paragraph' | 'list_item' | 'blank';
+  text: string;
+  level?: number;
+  indent?: number;
+  marker?: string | null;
+};
+
+type DownstreamFormatResponse = {
+  blocks?: FormatBlock[];
+};
+
 function buildStageTemplates(
   stageANodes: StageANode[],
   stageBNodes: StageBNode[],
@@ -185,6 +197,28 @@ function escapeHtml(value: string): string {
 
 function toHtmlWithBreaks(value: string): string {
   return escapeHtml(value).replace(/\n/g, '<br/>');
+}
+
+function buildFormattedBlocksHtml(blocks: FormatBlock[]): string {
+  return blocks.map((block) => {
+    const level = Math.max(1, Math.min(4, Number(block.level ?? 1)));
+    const indent = Math.max(0, Math.min(4, Number(block.indent ?? 0)));
+    const indentEm = indent * 1.5;
+    if (block.type === 'blank') {
+      return '<div style="height:10px;"></div>';
+    }
+    const text = toHtmlWithBreaks(block.text || '');
+    if (block.type === 'heading') {
+      const fontSize = level === 1 ? 20 : level === 2 ? 17 : level === 3 ? 15 : 14;
+      const marginTop = level === 1 ? 16 : 12;
+      return `<div style="font-weight:700;font-size:${fontSize}px;line-height:1.45;margin:${marginTop}px 0 8px ${indentEm}em;">${text}</div>`;
+    }
+    if (block.type === 'list_item') {
+      const marker = block.marker ? `${escapeHtml(block.marker)} ` : '';
+      return `<div style="line-height:1.72;margin:4px 0 4px ${indentEm}em;">${marker}${text}</div>`;
+    }
+    return `<div style="line-height:1.72;margin:4px 0 4px ${indentEm}em;">${text}</div>`;
+  }).join('');
 }
 
 function normalizeInlineText(value: string): string {
@@ -996,6 +1030,25 @@ export default function ContractConstellation() {
       }
       const finalized = (await finalizeResp.json()) as { final_text?: string; change_report?: unknown[] };
       const finalText = typeof finalized.final_text === 'string' ? finalized.final_text : draftV1;
+      let formattedBlocks: FormatBlock[] | null = null;
+      try {
+        const formatResp = await fetch(`${DOWNSTREAM_API_BASE}/downstream/format`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ final_text: finalText }),
+        });
+        if (formatResp.ok) {
+          const formatData = (await formatResp.json()) as DownstreamFormatResponse;
+          if (Array.isArray(formatData.blocks)) {
+            formattedBlocks = formatData.blocks;
+          }
+        } else {
+          const detail = await formatResp.text();
+          console.warn('[Export] format API failed, fallback to plain text', detail);
+        }
+      } catch (formatError) {
+        console.warn('[Export] format API error, fallback to plain text', formatError);
+      }
 
       const htmlRows = displayClauses.map((clause) => {
         const node = nodes.find((item) => item.id === clause.id);
@@ -1031,8 +1084,12 @@ export default function ContractConstellation() {
         <body style="font-family: Arial, sans-serif; padding: 24px; color: #111827;">
           <h2 style="margin:0 0 8px 0;">Contract Export</h2>
           <div style="font-size:12px;color:#6b7280;margin-bottom:16px;">Generated at: ${escapeHtml(generatedAt)}</div>
-          <div style="font-size:12px;color:#6b7280;margin-bottom:8px;">Finalized via downstream finalize model call.</div>
-          <div style="margin:0 0 14px 0;padding:10px;border:1px solid #e5e7eb;background:#fafafa;line-height:1.65;white-space:pre-wrap;">${toHtmlWithBreaks(finalText)}</div>
+          <div style="font-size:12px;color:#6b7280;margin-bottom:8px;">Finalized via downstream finalize model call; formatted via downstream format model call when available.</div>
+          <div style="margin:0 0 14px 0;padding:10px;border:1px solid #e5e7eb;background:#fafafa;line-height:1.65;">
+            ${formattedBlocks && formattedBlocks.length > 0
+              ? buildFormattedBlocksHtml(formattedBlocks)
+              : `<div style="white-space:pre-wrap;">${toHtmlWithBreaks(finalText)}</div>`}
+          </div>
           <hr style="margin:20px 0;border:0;border-top:1px solid #e5e7eb;"/>
           <div style="font-weight:700; margin-bottom:10px;">Clause View (Modified Clauses in Red)</div>
           ${htmlRows.join('')}

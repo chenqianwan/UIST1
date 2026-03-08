@@ -162,6 +162,22 @@ class FinalizeResponse(BaseModel):
     change_report: List[Dict[str, Any]]
 
 
+class FormatRequest(BaseModel):
+    final_text: str
+
+
+class FormattedBlock(BaseModel):
+    type: Literal["heading", "paragraph", "list_item", "blank"]
+    text: str
+    level: Optional[int] = 1
+    indent: Optional[int] = 0
+    marker: Optional[str] = None
+
+
+class FormatResponse(BaseModel):
+    blocks: List[FormattedBlock]
+
+
 class UpstreamBuildTemplateRequest(BaseModel):
     contract_text: str
     template_name: Optional[str] = None
@@ -202,6 +218,7 @@ _monitoring_session_files: Dict[str, Path] = {}
 _monitoring_lock = Lock()
 XHUB_API_URL = os.getenv("XHUB_API_URL", "https://api3.xhub.chat/v1/chat/completions")
 XHUB_FINALIZE_MODEL = os.getenv("XHUB_FINALIZE_MODEL", "claude-3-5-sonnet-20241022-thinking")
+XHUB_FORMAT_MODEL = os.getenv("XHUB_FORMAT_MODEL", "claude-sonnet-4-5-20250929-thinking")
 XHUB_STAGEA_MODEL = os.getenv("XHUB_STAGEA_MODEL", "claude-3-7-sonnet-20250219-thinking")
 XHUB_STAGEB_MODEL = os.getenv("XHUB_STAGEB_MODEL", "claude-3-7-sonnet-20250219-thinking")
 XHUB_STAGEA_CHUNK_MAX_CHARS = int(os.getenv("XHUB_STAGEA_CHUNK_MAX_CHARS", "5200"))
@@ -307,6 +324,44 @@ Output strict JSON only:
           "supplementDraft": "string"
         }
       ]
+    }
+  ]
+}
+""".strip()
+
+FORMAT_SYSTEM_PROMPT = """
+You are a legal contract formatting planner.
+Transform plain contract text into structured formatting blocks for deterministic rendering.
+
+Output goals:
+- Preserve original text wording exactly.
+- Infer readable structure (headings, paragraphs, list items, blank lines).
+- Keep output concise and valid JSON.
+
+Block rules:
+1) type:
+   - heading: title-like clause lines
+   - paragraph: regular prose
+   - list_item: bullet/lettered/numbered item
+   - blank: visual separator (text must be "")
+2) level:
+   - heading/list_item level in range 1..4
+3) indent:
+   - paragraph/list_item indent level in range 0..4
+4) marker:
+   - optional list marker like "(a)", "1.", "-" for list_item only
+5) text:
+   - verbatim source line/paragraph text; do not rewrite.
+
+Output strict JSON only:
+{
+  "blocks": [
+    {
+      "type": "heading|paragraph|list_item|blank",
+      "text": "string",
+      "level": 1,
+      "indent": 0,
+      "marker": "string|null"
     }
   ]
 }
@@ -1140,3 +1195,66 @@ def finalize_text(payload: FinalizeRequest):
     if not isinstance(change_report, list):
         raise RuntimeError("Finalize output missing list field: change_report")
     return FinalizeResponse(final_text=final_text, change_report=change_report)
+
+
+@app.post("/downstream/format", response_model=FormatResponse)
+def format_text(payload: FormatRequest):
+    api_key = os.getenv("XHUB_API_KEY")
+    if not api_key:
+        raise RuntimeError("Missing XHUB_API_KEY for downstream format model call.")
+    final_text = (payload.final_text or "").strip()
+    if not final_text:
+        return FormatResponse(blocks=[])
+
+    response = _xhub_json_completion(
+        model=XHUB_FORMAT_MODEL,
+        system_prompt=FORMAT_SYSTEM_PROMPT,
+        user_content=(
+            "Format the following finalized contract text into blocks. "
+            "Output JSON only.\n\n"
+            f"{json.dumps({'final_text': final_text}, ensure_ascii=False)}"
+        ),
+        max_tokens=6000,
+        temperature=0.0,
+    )
+    raw_blocks = response.get("blocks")
+    if not isinstance(raw_blocks, list):
+        raise RuntimeError("Format output must include a top-level blocks array.")
+
+    normalized_blocks: List[FormattedBlock] = []
+    for block in raw_blocks:
+        if not isinstance(block, dict):
+            continue
+        block_type = str(block.get("type", "paragraph"))
+        if block_type not in {"heading", "paragraph", "list_item", "blank"}:
+            block_type = "paragraph"
+        text = str(block.get("text", ""))
+        level_raw = block.get("level", 1)
+        indent_raw = block.get("indent", 0)
+        marker_raw = block.get("marker")
+        try:
+            level = max(1, min(4, int(level_raw)))
+        except Exception:
+            level = 1
+        try:
+            indent = max(0, min(4, int(indent_raw)))
+        except Exception:
+            indent = 0
+        marker = str(marker_raw) if marker_raw is not None else None
+        if block_type == "blank":
+            text = ""
+            marker = None
+            indent = 0
+        if block_type != "list_item":
+            marker = None
+        normalized_blocks.append(
+            FormattedBlock(
+                type=block_type,  # type: ignore[arg-type]
+                text=text,
+                level=level,
+                indent=indent,
+                marker=marker,
+            )
+        )
+
+    return FormatResponse(blocks=normalized_blocks)
