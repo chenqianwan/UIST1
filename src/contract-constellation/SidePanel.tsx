@@ -276,7 +276,7 @@ export function SidePanel({
                     )}
                     {action.type === 'revise' && (
                       <div className="mt-2 rounded border border-slate-200 bg-white p-2 text-xs leading-relaxed text-slate-700">
-                        {action.suggestionText ?? aiSuggestion?.replacement ?? selectedNode.content}
+                        {action.replacementText ?? aiSuggestion?.replacement ?? selectedNode.content}
                       </div>
                     )}
                     {action.type === 'add_clause' && action.supplementDraft && (
@@ -288,7 +288,7 @@ export function SidePanel({
                       className={`mt-2 w-full rounded border px-2 py-1.5 text-xs font-semibold transition ${tone.button}`}
                       onClick={() => {
                         if (action.type === 'delete') onDeleteNode(selectedNode.id, action.id);
-                        if (action.type === 'revise') onReviseNode(selectedNode.id, action.id, action.suggestionText ?? aiSuggestion?.replacement ?? selectedNode.content);
+                        if (action.type === 'revise') onReviseNode(selectedNode.id, action.id, action.replacementText ?? aiSuggestion?.replacement ?? selectedNode.content);
                         if (action.type === 'add_clause') onAddSupplement(selectedNode.id, action.id, action.supplementDraft);
                       }}
                     >

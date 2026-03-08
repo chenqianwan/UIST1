@@ -7,32 +7,28 @@
       "actions": []
     },
     {
-      "id": "parties_lessor",
+      "id": "party_lessor",
       "references": [],
-      "riskLevel": "low",
+      "riskLevel": "medium",
       "actions": [
         {
-          "id": "action_1",
+          "id": "action_party_lessor_1",
           "type": "revise",
           "status": "pending",
-          "reason": "出租人信息不完整，缺少必要的身份证明和联系方式",
-          "confidence": 0.8,
-          "suggestionText": "建议在签署前确保出租人的所有信息字段已填写完整，包括证件号码、通讯地址和联系电话"
+          "replacementText": "出租人（甲方）：[填写完整姓名/公司名称]\n证件类型：□居民身份证 □护照 □统一社会信用代码 □其他\n证件号码：[填写完整证件号码]\n房屋信息编码卡号码：[填写完整编码]\n通讯地址：[填写完整通讯地址]\n□委托代理人/□法定代表人：[填写姓名]\n证件类型：□居民身份证 □护照 □统一社会信用代码 □其他\n证件号码：[填写完整证件号码]\n通讯地址：[填写完整通讯地址]\n联系电话：[填写联系电话]"
         }
       ]
     },
     {
-      "id": "parties_tenant",
+      "id": "party_lessee",
       "references": [],
-      "riskLevel": "low",
+      "riskLevel": "medium",
       "actions": [
         {
-          "id": "action_2",
+          "id": "action_party_lessee_1",
           "type": "revise",
           "status": "pending",
-          "reason": "承租人信息不完整，缺少证件号码、委托代理人信息和联系电话",
-          "confidence": 0.8,
-          "suggestionText": "建议在签署前确保承租人的所有信息字段已填写完整"
+          "replacementText": "承租人（乙方）：[填写完整姓名/公司名称]\n证件类型：□居民身份证 □护照 ☐统一社会信用代码 □其他\n证件号码：[填写完整证件号码]\n通讯地址：深圳市南山区桂湾片区二单元前海卓越金融中心（一期）8号楼1001号\n□委托代理人/☐法定代表人：[填写姓名]\n证件类型：□居民身份证 □护照 □统一社会信用代码 □其他\n证件号码：[填写完整证件号码]\n通讯地址：[填写完整通讯地址]\n联系电话：[填写联系电话]"
         }
       ]
     },
@@ -43,433 +39,465 @@
       "actions": []
     },
     {
-      "id": "article_1",
+      "id": "art1",
       "references": [],
       "riskLevel": "none",
       "actions": []
     },
     {
-      "id": "article_1_1",
+      "id": "art1_1",
       "references": [],
-      "riskLevel": "medium",
+      "riskLevel": "high",
       "actions": [
         {
-          "id": "action_3",
+          "id": "action_art1_1_1",
           "type": "revise",
           "status": "pending",
-          "reason": "房屋地址包含脱敏符号'*******'，使用面积和公摊面积未填写",
-          "confidence": 0.9,
-          "suggestionText": "建议补全房屋完整地址、使用面积和公摊面积的具体数值"
+          "replacementText": "1.1 甲方出租给乙方的房屋坐落于深圳市南山区桂湾片区二单元前海卓越金融中心（一期）8号楼1001号[完整房号]，租赁形式：□整租/□部分出租，房屋建筑面积：[填写实际面积]平方米，使用面积：[填写实际面积]平方米，公摊面积：[填写实际面积]平方米（详见附件二房屋平面图），房屋租赁用途：办公，房屋编码：[填写完整编码]。"
         }
       ]
     },
     {
-      "id": "article_1_2",
+      "id": "art1_2",
       "references": [],
-      "riskLevel": "medium",
+      "riskLevel": "high",
       "actions": [
         {
-          "id": "action_4",
+          "id": "action_art1_2_1",
           "type": "revise",
           "status": "pending",
-          "reason": "房屋权属状况中，甲方持有的证明文件类型未勾选，房屋是否设定抵押未确认",
-          "confidence": 0.85,
-          "suggestionText": "建议明确甲方持有的房屋权属证明文件类型，并确认房屋是否存在抵押"
+          "replacementText": "1.2 房屋权属状况：\n不动产权利人或合法使用人为深圳市前海风尚行物业管理有限公司，甲方持有：（□房屋所有权证或不动产权证书/□房屋买卖合同/□房屋租赁合同/□其他房屋来源证明文件），房屋所有权证或不动产权证书编号：0193818号，房屋（□是/□否）设定了抵押。\n\n【注意】：应明确勾选甲方持有的权属证明文件类型，并明确勾选房屋是否设定抵押。若房屋已设定抵押，乙方有权要求甲方提供抵押权人同意出租的书面证明，以保障租赁合同效力。"
         }
       ]
     },
     {
-      "id": "article_1_3",
-      "references": [],
-      "riskLevel": "none",
-      "actions": []
-    },
-    {
-      "id": "article_1_4",
-      "references": [],
+      "id": "art1_3",
+      "references": [
+        "art6_2"
+      ],
       "riskLevel": "low",
       "actions": [
         {
-          "id": "action_5",
-          "type": "revise",
+          "id": "action_art1_3_1",
+          "type": "add_clause",
           "status": "pending",
-          "reason": "房屋内附属设施情况未勾选确认",
-          "confidence": 0.7,
-          "suggestionText": "建议勾选房屋是否有附属设施设备，如有应附《房屋交付确认书》"
+          "supplementDraft": "建议在附件二中详细列明房屋现有装修状况、装修材料、设施完好程度及现存瑕疵，并由双方签字确认，以便租赁期满时作为房屋返还标准的依据，避免争议。"
         }
       ]
     },
     {
-      "id": "article_2",
-      "references": [],
-      "riskLevel": "none",
-      "actions": []
-    },
-    {
-      "id": "article_2_1",
-      "references": [],
-      "riskLevel": "high",
-      "actions": [
-        {
-          "id": "action_6",
-          "type": "revise",
-          "status": "pending",
-          "reason": "租赁期限起始日期为2025年12月1日，但当前日期应早于此，存在时间逻辑问题；租赁期限计算有误（显示1年0个月但应为12个月）",
-          "confidence": 0.9,
-          "suggestionText": "建议核实租赁期限的起始日期和期限长度，确保时间逻辑正确"
-        }
-      ]
-    },
-    {
-      "id": "article_2_2",
-      "references": [],
-      "riskLevel": "none",
-      "actions": []
-    },
-    {
-      "id": "article_3",
-      "references": [],
-      "riskLevel": "none",
-      "actions": []
-    },
-    {
-      "id": "article_3_1",
-      "references": [],
-      "riskLevel": "high",
-      "actions": [
-        {
-          "id": "action_7",
-          "type": "revise",
-          "status": "pending",
-          "reason": "月租金250元（贰佰伍拾元整）明显过低，不符合深圳市前海卓越金融中心办公用房的市场价格，存在重大风险",
-          "confidence": 0.95,
-          "suggestionText": "建议重新核实租金金额，确保与市场价格相符且双方真实意思表示一致"
-        }
-      ]
-    },
-    {
-      "id": "article_3_2",
-      "references": [],
-      "riskLevel": "medium",
-      "actions": [
-        {
-          "id": "action_8",
-          "type": "revise",
-          "status": "pending",
-          "reason": "租金支付日期未填写（'每月    日前'），甲方账户信息未提供",
-          "confidence": 0.85,
-          "suggestionText": "建议明确租金支付的具体日期和甲方的收款账户信息"
-        }
-      ]
-    },
-    {
-      "id": "article_3_3",
-      "references": [],
-      "riskLevel": "medium",
-      "actions": [
-        {
-          "id": "action_9",
-          "type": "revise",
-          "status": "pending",
-          "reason": "支付方式未勾选，甲方账户信息（户名、开户行、账号）未填写",
-          "confidence": 0.85,
-          "suggestionText": "建议确认租金支付方式并填写完整的甲方账户信息"
-        }
-      ]
-    },
-    {
-      "id": "article_3_4",
-      "references": [],
-      "riskLevel": "none",
-      "actions": []
-    },
-    {
-      "id": "article_4",
-      "references": [],
-      "riskLevel": "none",
-      "actions": []
-    },
-    {
-      "id": "article_4_1",
-      "references": [],
-      "riskLevel": "high",
-      "actions": [
-        {
-          "id": "action_10",
-          "type": "revise",
-          "status": "pending",
-          "reason": "押金月数和金额均未填写（显示'\\   月'和'\\    元'），无法确定押金具体数额",
-          "confidence": 0.95,
-          "suggestionText": "建议明确押金为几个月租金（不超过两个月）及具体金额"
-        }
-      ]
-    },
-    {
-      "id": "article_4_2",
-      "references": [],
-      "riskLevel": "high",
-      "actions": [
-        {
-          "id": "action_11",
-          "type": "revise",
-          "status": "pending",
-          "reason": "第(3)项及其子项a、b、c存在严重问题：条款表述不清、逻辑混乱，特别是'复合社会主义建设'等表述不规范且无法理解，可能导致合同无效或纠纷",
-          "confidence": 0.95,
-          "suggestionText": "建议删除或重新表述第(3)项及其子项，仅保留合理的押金退还条件"
-        }
-      ]
-    },
-    {
-      "id": "article_5",
-      "references": [],
-      "riskLevel": "none",
-      "actions": []
-    },
-    {
-      "id": "article_5_1",
-      "references": [],
-      "riskLevel": "none",
-      "actions": []
-    },
-    {
-      "id": "article_5_2",
-      "references": [],
-      "riskLevel": "medium",
-      "actions": [
-        {
-          "id": "action_12",
-          "type": "revise",
-          "status": "pending",
-          "reason": "各项费用的计费标准未填写（显示'\\       元/吨'等），无法确定乙方应承担的具体费用",
-          "confidence": 0.85,
-          "suggestionText": "建议填写水费、电费、燃气费、物业管理费等的具体计费标准"
-        }
-      ]
-    },
-    {
-      "id": "article_5_3",
-      "references": [],
-      "riskLevel": "none",
-      "actions": []
-    },
-    {
-      "id": "article_6",
-      "references": [],
-      "riskLevel": "none",
-      "actions": []
-    },
-    {
-      "id": "article_6_1",
+      "id": "art1_4",
       "references": [
-        "article_2_1"
+        "art6_2"
+      ],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "action_art1_4_1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "1.4 房屋内附属设施情况：\n□房屋内无任何设施设备，是空房。\n□房屋内安装有设施设备，详见附件三《房屋交付确认书》。\n\n【注意】：应明确勾选上述选项之一，并确保附件三《房屋交付确认书》在交付时完整填写并由双方签署，以明确附属设施的初始状态及归属责任。"
+        }
+      ]
+    },
+    {
+      "id": "art2",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "art2_1",
+      "references": [
+        "art6_1"
+      ],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "action_art2_1_1",
+          "type": "add_clause",
+          "status": "pending",
+          "supplementDraft": "建议补充约定：若因甲方原因导致房屋未能于2025年12月1日前交付，租赁期限起算日相应顺延，乙方不因此承担任何违约责任，且甲方应就逾期交付期间承担相应违约责任。"
+        }
+      ]
+    },
+    {
+      "id": "art2_2",
+      "references": [
+        "art6_2",
+        "art6_3"
+      ],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "action_art2_2_1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "2.2 免租期：\n☑乙方不享有免租期，自甲方实际交付房屋且双方共同签署《房屋交付确认书》之日起开始计算租金、管理费及其他各项费用。\n\n【注意】：结合第6.3条，乙方进场装修即视为交付完成，费用随即起算，建议乙方在进场前确认房屋状态符合约定，避免因视为交付而提前承担费用义务。"
+        }
+      ]
+    },
+    {
+      "id": "art3",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "art3_1",
+      "references": [
+        "art8_2"
+      ],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "action_art3_1_1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "3.1 租赁房屋按□套内建筑面积/□建筑面积计算租金，月租金总额为人民币250元（大写：贰佰伍拾元整）。\n因维修或其他原因导致租金调整的，按第8.2条约定执行。\n\n【注意】：应明确勾选租金计算面积基准（套内建筑面积或建筑面积），避免后续争议。"
+        }
+      ]
+    },
+    {
+      "id": "art3_2",
+      "references": [
+        "art3_3"
       ],
       "riskLevel": "high",
       "actions": [
         {
-          "id": "action_13",
+          "id": "action_art3_2_1",
           "type": "revise",
           "status": "pending",
-          "reason": "房屋交付日期为2025年12月1日，与租赁期限起始日期相同，但当前日期应早于此，存在时间逻辑问题；且要求保证空气质量但未明确检测标准",
-          "confidence": 0.85,
-          "suggestionText": "建议核实交付日期，并明确空气质量的检测标准和方法"
+          "replacementText": "3.2 租金支付时间：租金按月支付，乙方应当于每月[填写具体日期，如：5]日前向甲方支付租金。甲方在收取乙方租金时，应当向乙方开具收款凭证。"
         }
       ]
     },
     {
-      "id": "article_6_2",
-      "references": [],
-      "riskLevel": "low",
-      "actions": [
-        {
-          "id": "action_14",
-          "type": "revise",
-          "status": "pending",
-          "reason": "条款要求签署《房屋交付确认书》但未明确其具体内容和双方的检查范围",
-          "confidence": 0.6,
-          "suggestionText": "建议在附件三中详细列明《房屋交付确认书》应包含的内容"
-        }
-      ]
-    },
-    {
-      "id": "article_6_3",
-      "references": [],
+      "id": "art3_3",
+      "references": [
+        "art3_2"
+      ],
       "riskLevel": "high",
       "actions": [
         {
-          "id": "action_15",
+          "id": "action_art3_3_1",
           "type": "revise",
           "status": "pending",
-          "reason": "条款规定未签署《房屋交付确认书》但乙方已进场装修即视为交付完成，存在重大风险，可能导致房屋状况无法确认和纠纷",
-          "confidence": 0.9,
-          "suggestionText": "建议修改为必须签署《房屋交付确认书》才能视为交付完成，以保护双方权益"
+          "replacementText": "3.3 租金支付方式：乙方应当在约定的支付租金日期前以□现金支付/□银行转账/□其他[填写方式]方式将租金交付于甲方。\n以转账方式支付时，乙方应当将租金付至甲方指定的如下账户：\n户  名：[填写完整户名]\n开户行：[填写完整开户行]\n账  号：[填写完整账号]"
         }
       ]
     },
     {
-      "id": "article_7",
+      "id": "art3_4",
       "references": [],
       "riskLevel": "none",
       "actions": []
     },
     {
-      "id": "article_7_1",
+      "id": "art4",
       "references": [],
       "riskLevel": "none",
       "actions": []
     },
     {
-      "id": "article_8",
-      "references": [],
-      "riskLevel": "none",
-      "actions": []
-    },
-    {
-      "id": "article_8_1",
-      "references": [],
-      "riskLevel": "none",
-      "actions": []
-    },
-    {
-      "id": "article_8_2",
-      "references": [],
-      "riskLevel": "low",
-      "actions": [
-        {
-          "id": "action_16",
-          "type": "revise",
-          "status": "pending",
-          "reason": "条款中关于维修期限和费用承担的规定较为复杂，建议明确甲方维修义务的具体范围和时限",
-          "confidence": 0.6,
-          "suggestionText": "建议进一步明确哪些维修由甲方承担，哪些由乙方承担，以及维修期限的具体要求"
-        }
-      ]
-    },
-    {
-      "id": "article_8_3",
-      "references": [],
-      "riskLevel": "low",
-      "actions": [
-        {
-          "id": "action_17",
-          "type": "revise",
-          "status": "pending",
-          "reason": "条款规定甲方可在物业协助下进入房屋进行紧急维修，但未明确补偿的具体标准",
-          "confidence": 0.65,
-          "suggestionText": "建议明确甲方进入房屋进行紧急维修时的补偿标准和计算方法"
-        }
-      ]
-    },
-    {
-      "id": "article_9",
-      "references": [],
-      "riskLevel": "none",
-      "actions": []
-    },
-    {
-      "id": "article_9_1",
-      "references": [],
-      "riskLevel": "none",
-      "actions": []
-    },
-    {
-      "id": "article_9_2",
-      "references": [],
-      "riskLevel": "low",
-      "actions": [
-        {
-          "id": "action_18",
-          "type": "revise",
-          "status": "pending",
-          "reason": "续租申请的提前通知期限为30日，但未明确续租条件和新租金的确定方式",
-          "confidence": 0.65,
-          "suggestionText": "建议明确续租时新租金的确定方式和其他续租条件"
-        }
-      ]
-    },
-    {
-      "id": "article_9_3",
-      "references": [],
-      "riskLevel": "none",
-      "actions": []
-    },
-    {
-      "id": "article_10",
-      "references": [],
-      "riskLevel": "none",
-      "actions": []
-    },
-    {
-      "id": "article_10_1",
-      "references": [],
-      "riskLevel": "medium",
-      "actions": [
-        {
-          "id": "action_19",
-          "type": "revise",
-          "status": "pending",
-          "reason": "条款规定房屋返还期限为3日，但未明确'结算及交接手续'的具体内容和时间要求",
-          "confidence": 0.7,
-          "suggestionText": "建议明确房屋返还的具体流程、结算方式和交接手续的详细要求"
-        }
-      ]
-    },
-    {
-      "id": "article_10_2",
-      "references": [],
-      "riskLevel": "medium",
-      "actions": [
-        {
-          "id": "action_20",
-          "type": "revise",
-          "status": "pending",
-          "reason": "条款规定乙方遗留物品视为放弃所有权，但未明确甲方处理遗留物的具体程序和时间限制",
-          "confidence": 0.75,
-          "suggestionText": "建议明确甲方处理遗留物的具体程序、保管期限和处置方式"
-        }
-      ]
-    },
-    {
-      "id": "article_10_3",
-      "references": [],
-      "riskLevel": "low",
-      "actions": [
-        {
-          "id": "action_21",
-          "type": "revise",
-          "status": "pending",
-          "reason": "条款要求签署《房屋交还确认书》但未明确其具体内容",
-          "confidence": 0.6,
-          "suggestionText": "建议在附件四中详细列明《房屋交还确认书》应包含的内容"
-        }
-      ]
-    },
-    {
-      "id": "article_11",
-      "references": [],
+      "id": "art4_1",
+      "references": [
+        "art3_1",
+        "art3_2"
+      ],
       "riskLevel": "high",
       "actions": [
         {
-          "id": "action_22",
+          "id": "action_art4_1_1",
           "type": "revise",
           "status": "pending",
-          "reason": "第十一条仅有标题，合同解除的具体条件、程序和违约责任未规定，存在重大缺陷",
-          "confidence": 0.95,
-          "suggestionText": "建议补充合同解除的具体条件、解除程序、违约责任、赔偿标准等内容"
+          "replacementText": "4.1 本合同签署后5日内，乙方应当向甲方支付相当于[填写月数，不超过两个月]月租金的押金共计人民币[填写金额]元（大写：[填写大写金额]元整）。甲方收取乙方押金时，应当向乙方开具收款凭证。\n押金金额及缴纳时间应与第3.1条租金标准、第3.2条支付节奏保持一致。"
         }
       ]
     },
     {
-      "id": "signature_block",
+      "id": "art4_2",
+      "references": [
+        "art10_1",
+        "art10_3"
+      ],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "action_art4_2_1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "4.2 乙方支付的押金并非乙方预付的租金或其他费用，仅是乙方履行本合同约定义务的保证，甲方不得无故扣留乙方押金，拒不退还。租赁期限届满或合同解除后5日内，同时满足以下条件时，甲方应当在扣除乙方应承担的租金、费用以及违约赔偿金后，将租赁押金剩余部分无息退还给乙方（如有租金余额一并予以退还）：\n（1）乙方未对租赁房屋造成损坏或已经将损坏的房屋修复；\n（2）乙方按照本合同约定的方式将租赁房屋（包括附属设施）交还给甲方；\n（3）乙方使用租赁房屋地址办理工商注册的，已将工商注册地址迁移，并办理完毕法律及政府规定的其他手续。"
+        }
+      ]
+    },
+    {
+      "id": "art5",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "art5_1",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "art5_2",
+      "references": [
+        "art5_3",
+        "art4_2"
+      ],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "action_art5_2_1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "5.2 租赁期间，因乙方使用租赁房屋所产生的□水费/□电费/□燃气费/□物业管理费/□电视费/□电话费/□网络费用/□[其他费用类型]等其他费用，由乙方承担。计费标准如下（如公用事业单位或物业服务企业依法调整收费标准的，随其调整）：\n水费：[填写]元/吨；电费：[填写]元/度；\n燃气费：[填写]元/立方米；物业管理费：[填写]元/平方米/月；\n其他：[填写]。\n乙方未按时缴纳本条费用产生的后果，按第5.3条处理；甲方代垫部分可依第4.2条在押金中依法抵扣。\n\n【注意】：应明确勾选乙方承担的费用类型，并填写具体计费标准，避免因约定不明产生争议。"
+        }
+      ]
+    },
+    {
+      "id": "art5_3",
+      "references": [
+        "art5_2"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "art6",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "art6_1",
+      "references": [
+        "art2_1",
+        "art3_1",
+        "art3_2"
+      ],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "action_art6_1_1",
+          "type": "add_clause",
+          "status": "pending",
+          "supplementDraft": "建议补充约定甲方逾期交付的具体违约责任条款，例如：甲方逾期交付超过[X]日的，乙方有权解除合同，甲方应退还已收取的全部费用并按日支付相当于日租金[X]倍的违约金。"
+        }
+      ]
+    },
+    {
+      "id": "art6_2",
+      "references": [
+        "art6_3",
+        "art2_2"
+      ],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "action_art6_2_1",
+          "type": "add_clause",
+          "status": "pending",
+          "supplementDraft": "建议明确约定：若乙方在验收时发现房屋或附属设施存在瑕疵或不符合约定状态，乙方有权拒绝签署《房屋交付确认书》并要求甲方整改，整改完成后方视为交付完成，相关费用起算日相应顺延。"
+        }
+      ]
+    },
+    {
+      "id": "art6_3",
+      "references": [
+        "art6_2",
+        "art2_2"
+      ],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "action_art6_3_1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "6.3 双方特别确认：未签署《房屋交付确认书》但乙方已进场装修的，视为租赁房屋交付已完成。但乙方进场装修前，应书面通知甲方，并由甲方书面确认房屋状态符合交付条件后，方可视为交付完成，相关费用自乙方进场装修之日起计算。"
+        }
+      ]
+    },
+    {
+      "id": "art7",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "art7_1",
+      "references": [
+        "art8_2",
+        "art8_3"
+      ],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "action_art7_1_1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "7.1 甲方不同意乙方对租赁房屋进行装饰装修。\n乙方违反本条进行装修并造成损失的，维修与赔偿责任按第8.2条、第8.3条处理。\n\n【注意】：鉴于本合同第1.3条已载明房屋为已装修状态，且租赁用途为办公，建议双方协商明确：（1）乙方是否可进行不影响房屋结构的轻微布置；（2）租赁期满时乙方是否需将房屋恢复至交付时状态；（3）若甲方同意特定装修，应另行签署书面补充协议。"
+        }
+      ]
+    },
+    {
+      "id": "art8",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "art8_1",
+      "references": [
+        "art10_1",
+        "art10_3"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "art8_2",
+      "references": [
+        "art3_1",
+        "art8_3"
+      ],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "action_art8_2_1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "8.2 租赁期间，乙方发现租赁房屋及其附属设施有损坏或故障时，应当及时通知甲方修复。甲方应当在接到乙方通知后的5日内进行维修。无法通知甲方或甲方接到通知逾期不维修的，或者因情况紧急必须立即进行维修的，乙方有权代为维修，费用由甲方承担。因维修房屋影响乙方使用的，应相应减少租金或延长租赁期限。\n因乙方故意或使用不当而造成租赁房屋或附属设施出现损坏或故障，由乙方负责维修，甲方不承担维修义务。\n在租赁期内，因甲方或乙方不及时履行本合同约定的维修、养护以及其他义务造成对方或第三方人身损害、财产损失的，责任方应当承担赔偿责任。"
+        }
+      ]
+    },
+    {
+      "id": "art8_3",
+      "references": [
+        "art8_2"
+      ],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "action_art8_3_1",
+          "type": "add_clause",
+          "status": "pending",
+          "supplementDraft": "建议补充约定：甲方行使紧急进入权时，应尽量提前通知乙方（即使无法获得乙方同意），并在进入后及时向乙方提供书面说明，包括进入时间、维修内容及造成损失的评估，以保障乙方知情权及财产安全。"
+        }
+      ]
+    },
+    {
+      "id": "art9",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "art9_1",
+      "references": [
+        "art11"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "art9_2",
+      "references": [],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "action_art9_2_1",
+          "type": "add_clause",
+          "status": "pending",
+          "supplementDraft": "建议补充约定：甲方收到乙方续租申请后，应于[X]日内书面回复是否同意续租及续租条件。若甲方逾期未回复，视为同意在原条件下续租。"
+        }
+      ]
+    },
+    {
+      "id": "art9_3",
+      "references": [
+        "art10_1"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "art10",
+      "references": [],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "art10_1",
+      "references": [
+        "art10_2",
+        "art10_3",
+        "art4_2"
+      ],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "action_art10_1_1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "10.1 租赁期限届满或本合同解除之日起3日内，乙方应当及时清空搬离租赁房屋，在完成结算及交接手续后将房屋及附属设施交还甲方。若乙方逾期未搬离，甲方应先以本合同约定送达方式向乙方发出书面通知并给予不少于7日的宽限期；宽限期届满乙方仍未处理且确实无法联系的，甲方应对遗留物进行清点、拍照、录像并制作清单后妥善保管30日，保管期间产生的合理保管费用由乙方承担并可在押金中抵扣，甲方不得擅自将遗留物作为废弃物处理；保管期届满乙方仍未取回的，甲方可依法委托第三方处置或通过拍卖、变卖方式处置，处置所得在扣除合理处置费用、保管费用及乙方应付未付费用后余额应返还乙方，不足部分乙方仍应补足，甲方按前述程序处置的，不视为侵权或违约。"
+        }
+      ]
+    },
+    {
+      "id": "art10_2",
+      "references": [
+        "art10_1"
+      ],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "action_art10_2_1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "10.2 乙方返还房屋后遗留的物品，在甲方依第10.1条约定履行通知、清点、保管程序且保管期届满乙方仍未取回的情形下，方视为乙方放弃所有权，甲方有权依法处置。甲方因处理乙方遗留废弃物产生的合理费用，有权要求乙方承担。"
+        }
+      ]
+    },
+    {
+      "id": "art10_3",
+      "references": [
+        "art4_2",
+        "art8_1"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "art11",
+      "references": [
+        "art9_1"
+      ],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "action_art11_1",
+          "type": "add_clause",
+          "status": "pending",
+          "supplementDraft": "第十一条 合同的解除\n11.1 法定解除：依据《中华人民共和国民法典》相关规定，任何一方可在法定情形下解除本合同。\n11.2 甲方单方解除权：发生以下情形之一，甲方有权书面通知乙方解除本合同：\n（1）乙方连续[X]个月或累计[X]个月未按时支付租金；\n（2）乙方擅自转租；\n（3）乙方擅自改变租赁用途；\n（4）乙方严重损坏房屋或附属设施且拒不修复。\n11.3 乙方单方解除权：发生以下情形之一，乙方有权书面通知甲方解除本合同：\n（1）甲方逾期交付房屋超过[X]日；\n（2）甲方未能保证房屋安全、合格，影响乙方正常使用；\n（3）甲方擅自进入租赁房屋，侵害乙方合法权益。\n11.4 协商解除：双方协商一致可解除本合同，解除条件及补偿方案由双方另行书面约定。\n11.5 违约责任：因一方违约导致合同解除的，违约方应向守约方支付相当于[X]个月租金的违约金，并赔偿守约方因此遭受的实际损失。"
+        }
+      ]
+    },
+    {
+      "id": "signature",
       "references": [],
       "riskLevel": "medium",
       "actions": [
         {
-          "id": "action_23",
+          "id": "action_signature_1",
           "type": "revise",
           "status": "pending",
-          "reason": "签署日期未填写，无法确定合同生效日期",
-          "confidence": 0.85,
-          "suggestionText": "建议在签署时填写完整的签署日期"
+          "replacementText": "甲方(签章)：[填写甲方名称并加盖公章]          乙方(签章)：[填写乙方名称并加盖公章]\n\n委托代理人(签章)：[如适用，填写并签章]        委托代理人(签章)：[如适用，填写并签章]\n\n签订日期：[年]年[月]月[日]日               签订日期：[年]年[月]月[日]日"
         }
       ]
     }

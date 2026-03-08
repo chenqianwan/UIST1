@@ -58,6 +58,7 @@ const RISK_RANK = {
 const SIDE_PANEL_WIDTH = 320;
 const CONTROLS_PANEL_WIDTH = 470;
 const CONTROLS_PANEL_HEIGHT = 96;
+const ANALYSIS_SLIDER_COUNT = 3;
 const TRASH_ZONE_WIDTH = 192;
 const TRASH_ZONE_HEIGHT = 96;
 const TRASH_ZONE_LEFT = 16;
@@ -106,18 +107,6 @@ type UpstreamBuildTemplateResponse = {
   template_label: string;
   stage_a_nodes: StageANode[];
   stage_b_nodes: StageBNode[];
-};
-
-type FormatBlock = {
-  type: 'heading' | 'paragraph' | 'list_item' | 'blank';
-  text: string;
-  level?: number;
-  indent?: number;
-  marker?: string | null;
-};
-
-type DownstreamFormatResponse = {
-  blocks?: FormatBlock[];
 };
 
 function buildStageTemplates(
@@ -199,25 +188,112 @@ function toHtmlWithBreaks(value: string): string {
   return escapeHtml(value).replace(/\n/g, '<br/>');
 }
 
-function buildFormattedBlocksHtml(blocks: FormatBlock[]): string {
-  return blocks.map((block) => {
-    const level = Math.max(1, Math.min(4, Number(block.level ?? 1)));
-    const indent = Math.max(0, Math.min(4, Number(block.indent ?? 0)));
-    const indentEm = indent * 1.5;
-    if (block.type === 'blank') {
-      return '<div style="height:10px;"></div>';
+function canonicalizeHeadingText(raw: string): string {
+  return raw
+    .toLowerCase()
+    .replace(/\b(section|article|clause)\b/g, ' ')
+    .replace(/第\s*\d+(\.\d+)*\s*条/g, ' ')
+    .replace(/[\u2012-\u2015]/g, '-')
+    .replace(/[^\p{L}\p{N}\s.-]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function extractHeadingPrefix(raw: string): { index: string; title: string } {
+  const text = raw.trim();
+  if (!text) return { index: '', title: '' };
+  const sectionMatch = text.match(
+    /^\s*(?:section|article|clause)\s+(\d+(?:\.\d+)*)\s*(?:[-:.\u2012-\u2015]|\s)*([\s\S]*)$/i,
+  );
+  if (sectionMatch) {
+    return {
+      index: sectionMatch[1],
+      title: sectionMatch[2].trim(),
+    };
+  }
+  const plainMatch = text.match(/^\s*(\d+(?:\.\d+)*)\s*(?:[-:.\u2012-\u2015]|\s)*([\s\S]*)$/);
+  if (plainMatch) {
+    return {
+      index: plainMatch[1],
+      title: plainMatch[2].trim(),
+    };
+  }
+  return { index: '', title: text };
+}
+
+function isEquivalentHeading(label: string, firstLine: string): boolean {
+  const a = extractHeadingPrefix(label);
+  const b = extractHeadingPrefix(firstLine);
+  const aTitle = canonicalizeHeadingText(a.title);
+  const bTitle = canonicalizeHeadingText(b.title);
+  const indexMatches = a.index && b.index && a.index === b.index;
+  const titleMatches =
+    (aTitle && bTitle && (aTitle === bTitle || aTitle.startsWith(bTitle) || bTitle.startsWith(aTitle)))
+    || (!aTitle && !bTitle);
+  return Boolean(indexMatches && titleMatches);
+}
+
+function stripLeadingDuplicateHeading(label: string, content: string): string {
+  const normalizedLabel = normalizeInlineText(label);
+  if (!normalizedLabel) return content.trim();
+  const lines = content.split(/\r?\n/);
+  let start = 0;
+  while (start < lines.length && !lines[start].trim()) start += 1;
+  if (start >= lines.length) return '';
+  const firstLine = lines[start].trim();
+  const firstLineNormalized = normalizeInlineText(firstLine);
+  if (firstLineNormalized !== normalizedLabel && !isEquivalentHeading(label, firstLine)) return content.trim();
+  const rest = lines.slice(start + 1).join('\n').trim();
+  return rest;
+}
+
+function buildTreeFormattedClausesHtml(
+  clauses: Array<{
+    id: string;
+    label: string;
+    content: string;
+    type?: string;
+    parentId?: string | null;
+  }>,
+  options?: {
+    highlightIds?: Set<string>;
+  },
+): string {
+  const byId = new Map(clauses.map((clause) => [clause.id, clause]));
+  const depthMemo = new Map<string, number>();
+
+  const getDepth = (id: string, visiting: Set<string> = new Set()): number => {
+    if (depthMemo.has(id)) return depthMemo.get(id)!;
+    if (visiting.has(id)) return 0;
+    visiting.add(id);
+    const clause = byId.get(id);
+    const parentId = clause?.parentId;
+    if (!parentId || parentId === 'root' || !byId.has(parentId)) {
+      depthMemo.set(id, 0);
+      return 0;
     }
-    const text = toHtmlWithBreaks(block.text || '');
-    if (block.type === 'heading') {
-      const fontSize = level === 1 ? 20 : level === 2 ? 17 : level === 3 ? 15 : 14;
-      const marginTop = level === 1 ? 16 : 12;
-      return `<div style="font-weight:700;font-size:${fontSize}px;line-height:1.45;margin:${marginTop}px 0 8px ${indentEm}em;">${text}</div>`;
-    }
-    if (block.type === 'list_item') {
-      const marker = block.marker ? `${escapeHtml(block.marker)} ` : '';
-      return `<div style="line-height:1.72;margin:4px 0 4px ${indentEm}em;">${marker}${text}</div>`;
-    }
-    return `<div style="line-height:1.72;margin:4px 0 4px ${indentEm}em;">${text}</div>`;
+    const depth = Math.min(4, getDepth(parentId, visiting) + 1);
+    depthMemo.set(id, depth);
+    return depth;
+  };
+
+  return clauses.map((clause) => {
+    const depth = getDepth(clause.id);
+    const indentEm = depth * 1.5;
+    const isMain = clause.type === 'main' || depth === 0;
+    const titleSize = isMain ? 19 : 15;
+    const cleanedContent = stripLeadingDuplicateHeading(clause.label, clause.content);
+    const shouldRenderContent = hasDistinctClauseBody(clause.label, cleanedContent);
+    const highlight = options?.highlightIds?.has(clause.id) ?? false;
+    const bodyColor = highlight ? '#d32f2f' : '#1f2937';
+    return `
+      <div style="margin:0 0 12px ${indentEm}em;">
+        <div style="font-weight:700;font-size:${titleSize}px;line-height:1.5;margin:0 0 4px 0;color:${bodyColor};">${toHtmlWithBreaks(clause.label)}</div>
+        ${shouldRenderContent
+          ? `<div style="line-height:1.72;color:${bodyColor};">${toHtmlWithBreaks(cleanedContent)}</div>`
+          : ''}
+      </div>
+    `;
   }).join('');
 }
 
@@ -318,6 +394,7 @@ export default function ContractConstellation() {
   const [semanticBiasStrength, setSemanticBiasStrength] = useState(0);
   const [riskBiasStrength, setRiskBiasStrength] = useState(0);
   const [timeBiasStrength, setTimeBiasStrength] = useState(0);
+  const [showAnalysisControls, setShowAnalysisControls] = useState(true);
   const [semanticTargetXById, setSemanticTargetXById] = useState<Record<string, number>>({});
   const [timeTargetXById, setTimeTargetXById] = useState<Record<string, number>>({});
   const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -1028,41 +1105,18 @@ export default function ContractConstellation() {
         const detail = await finalizeResp.text();
         throw new Error(`Finalize API failed: ${finalizeResp.status} ${detail}`);
       }
-      const finalized = (await finalizeResp.json()) as { final_text?: string; change_report?: unknown[] };
-      const finalText = typeof finalized.final_text === 'string' ? finalized.final_text : draftV1;
-      let formattedBlocks: FormatBlock[] | null = null;
-      try {
-        const formatResp = await fetch(`${DOWNSTREAM_API_BASE}/downstream/format`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ final_text: finalText }),
-        });
-        if (formatResp.ok) {
-          const formatData = (await formatResp.json()) as DownstreamFormatResponse;
-          if (Array.isArray(formatData.blocks)) {
-            formattedBlocks = formatData.blocks;
-          }
-        } else {
-          const detail = await formatResp.text();
-          console.warn('[Export] format API failed, fallback to plain text', detail);
-        }
-      } catch (formatError) {
-        console.warn('[Export] format API error, fallback to plain text', formatError);
-      }
-
-      const htmlRows = displayClauses.map((clause) => {
-        const node = nodes.find((item) => item.id === clause.id);
-        const highlight = modifiedSet.has(clause.id) || (node ? isUserAddedSupplementNode(node) : false);
-        const shouldRenderContent = hasDistinctClauseBody(clause.label, clause.content);
-        return `
-          <div style="margin-bottom:14px;">
-            <div style="font-weight:700; margin-bottom:4px;">${toHtmlWithBreaks(clause.label)}</div>
-            ${shouldRenderContent
-              ? `<div style="color:${highlight ? '#d32f2f' : '#1f2937'}; line-height:1.65;">${toHtmlWithBreaks(clause.content)}</div>`
-              : ''}
-          </div>
-        `;
-      });
+      const finalized = (await finalizeResp.json()) as { final_text?: string };
+      void finalized;
+      const treeFormattedHtml = buildTreeFormattedClausesHtml(displayClauses);
+      const highlightIds = new Set(
+        displayClauses
+          .filter((clause) => {
+            const node = nodes.find((item) => item.id === clause.id);
+            return modifiedSet.has(clause.id) || (node ? isUserAddedSupplementNode(node) : false);
+          })
+          .map((clause) => clause.id),
+      );
+      const htmlRows = buildTreeFormattedClausesHtml(displayClauses, { highlightIds });
       const deletedSection = deletedClauses.length > 0
         ? `
         <hr style="margin:20px 0;border:0;border-top:1px solid #e5e7eb;"/>
@@ -1084,15 +1138,13 @@ export default function ContractConstellation() {
         <body style="font-family: Arial, sans-serif; padding: 24px; color: #111827;">
           <h2 style="margin:0 0 8px 0;">Contract Export</h2>
           <div style="font-size:12px;color:#6b7280;margin-bottom:16px;">Generated at: ${escapeHtml(generatedAt)}</div>
-          <div style="font-size:12px;color:#6b7280;margin-bottom:8px;">Finalized via downstream finalize model call; formatted via downstream format model call when available.</div>
+          <div style="font-size:12px;color:#6b7280;margin-bottom:8px;">Finalized via downstream finalize model call; rendered with tree-based formatting from ordered clauses.</div>
           <div style="margin:0 0 14px 0;padding:10px;border:1px solid #e5e7eb;background:#fafafa;line-height:1.65;">
-            ${formattedBlocks && formattedBlocks.length > 0
-              ? buildFormattedBlocksHtml(formattedBlocks)
-              : `<div style="white-space:pre-wrap;">${toHtmlWithBreaks(finalText)}</div>`}
+            ${treeFormattedHtml}
           </div>
           <hr style="margin:20px 0;border:0;border-top:1px solid #e5e7eb;"/>
           <div style="font-weight:700; margin-bottom:10px;">Clause View (Modified Clauses in Red)</div>
-          ${htmlRows.join('')}
+          ${htmlRows}
           ${deletedSection}
         </body>
         </html>
@@ -1246,7 +1298,7 @@ export default function ContractConstellation() {
     const run = () => {
       const applyRevise = (t: BulkTask) => {
         if (removedIds.has(t.nodeId)) return;
-        completeNodeAction(t.nodeId, t.action.id, t.action.suggestionText ?? t.node.content);
+        completeNodeAction(t.nodeId, t.action.id, t.action.replacementText ?? t.node.content);
         markNodeModified(t.nodeId);
       };
       const applyAddClause = (t: BulkTask) => {
@@ -1355,7 +1407,7 @@ export default function ContractConstellation() {
   const trackDimensionPanelInteraction = useCallback(
     (
       source: 'semantic_pull' | 'risk_pull' | 'time_pull',
-      sliderIndex: 0 | 1 | 2,
+      sliderIndex: number,
       value: number,
       force = false,
     ) => {
@@ -1364,7 +1416,7 @@ export default function ContractConstellation() {
       sliderSampleAtRef.current = now;
       const panelLeft = width - 16 - CONTROLS_PANEL_WIDTH;
       const panelCenterY = height - 16 - CONTROLS_PANEL_HEIGHT / 2;
-      const sliderCenterX = panelLeft + CONTROLS_PANEL_WIDTH * ((sliderIndex * 2 + 1) / 6);
+      const sliderCenterX = panelLeft + CONTROLS_PANEL_WIDTH * ((sliderIndex + 0.5) / ANALYSIS_SLIDER_COUNT);
       track('canvas_interaction', {
         componentId: 'analysis_controls',
         payload: {
@@ -1540,64 +1592,83 @@ export default function ContractConstellation() {
           </div>
         </div>
         <div className="pointer-events-none absolute bottom-4 right-4 z-10">
-          <div className="pointer-events-auto flex h-[96px] w-[470px] flex-col justify-center rounded-xl border border-slate-200 bg-white/90 px-4 py-2 text-[11px] text-slate-700 shadow-sm backdrop-blur-sm">
-            <div className="mb-1.5 flex items-center justify-between">
-              <span className="font-semibold">Analysis Controls</span>
-              <span className="text-slate-500">
-                S {Math.round(semanticBiasStrength * 100)}% / R {Math.round(riskBiasStrength * 100)}% / T {Math.round(timeBiasStrength * 100)}%
-              </span>
+          {showAnalysisControls ? (
+            <div className="pointer-events-auto flex h-[96px] w-[470px] flex-col justify-center rounded-xl border border-slate-200 bg-white/90 px-4 py-2 text-[11px] text-slate-700 shadow-sm backdrop-blur-sm">
+              <div className="mb-1.5 flex items-center justify-between">
+                <span className="font-semibold">Analysis Controls</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-500">
+                    S {Math.round(semanticBiasStrength * 100)}% / R {Math.round(riskBiasStrength * 100)}% / T {Math.round(timeBiasStrength * 100)}%
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowAnalysisControls(false)}
+                    className="rounded border border-slate-300 bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-600 hover:bg-slate-50"
+                  >
+                    Hide
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-md border border-slate-200 bg-slate-50/65 px-2 py-1">
+                  <div className="mb-0.5 flex items-center justify-between text-[10px] text-slate-600">
+                    <span>Semantic Pull</span>
+                    <span>{Math.round(semanticBiasStrength * 100)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={semanticBiasStrength}
+                    onChange={handleSemanticBiasChange}
+                    onPointerUp={handleSemanticBiasCommit}
+                    className="analysis-slider analysis-slider--semantic"
+                  />
+                </div>
+                <div className="rounded-md border border-slate-200 bg-slate-50/65 px-2 py-1">
+                  <div className="mb-0.5 flex items-center justify-between text-[10px] text-slate-600">
+                    <span>Risk Pull</span>
+                    <span>{Math.round(riskBiasStrength * 100)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={riskBiasStrength}
+                    onChange={handleRiskBiasChange}
+                    onPointerUp={handleRiskBiasCommit}
+                    className="analysis-slider analysis-slider--risk"
+                  />
+                </div>
+                <div className="rounded-md border border-slate-200 bg-slate-50/65 px-2 py-1">
+                  <div className="mb-0.5 flex items-center justify-between text-[10px] text-slate-600">
+                    <span>Time Pull</span>
+                    <span>{Math.round(timeBiasStrength * 100)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={timeBiasStrength}
+                    onChange={handleTimeBiasChange}
+                    onPointerUp={handleTimeBiasCommit}
+                    className="analysis-slider analysis-slider--time"
+                  />
+                </div>
+              </div>
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-md border border-slate-200 bg-slate-50/65 px-2 py-1">
-                <div className="mb-0.5 flex items-center justify-between text-[10px] text-slate-600">
-                  <span>Semantic Pull</span>
-                  <span>{Math.round(semanticBiasStrength * 100)}%</span>
-                </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={semanticBiasStrength}
-                  onChange={handleSemanticBiasChange}
-                  onPointerUp={handleSemanticBiasCommit}
-                  className="analysis-slider analysis-slider--semantic"
-                />
-              </div>
-              <div className="rounded-md border border-slate-200 bg-slate-50/65 px-2 py-1">
-                <div className="mb-0.5 flex items-center justify-between text-[10px] text-slate-600">
-                  <span>Risk Pull</span>
-                  <span>{Math.round(riskBiasStrength * 100)}%</span>
-                </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={riskBiasStrength}
-                  onChange={handleRiskBiasChange}
-                  onPointerUp={handleRiskBiasCommit}
-                  className="analysis-slider analysis-slider--risk"
-                />
-              </div>
-              <div className="rounded-md border border-slate-200 bg-slate-50/65 px-2 py-1">
-                <div className="mb-0.5 flex items-center justify-between text-[10px] text-slate-600">
-                  <span>Time Pull</span>
-                  <span>{Math.round(timeBiasStrength * 100)}%</span>
-                </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={timeBiasStrength}
-                  onChange={handleTimeBiasChange}
-                  onPointerUp={handleTimeBiasCommit}
-                  className="analysis-slider analysis-slider--time"
-                />
-              </div>
-            </div>
-          </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowAnalysisControls(true)}
+              className="pointer-events-auto rounded-lg border border-slate-300 bg-white/95 px-3 py-2 text-[11px] font-semibold text-slate-700 shadow-sm backdrop-blur-sm hover:bg-white"
+            >
+              Show Analysis Controls
+            </button>
+          )}
         </div>
 
         <GraphCanvas

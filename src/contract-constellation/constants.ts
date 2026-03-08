@@ -54,7 +54,7 @@ export const NODE_LIBRARY: TemplateItem[] = [
         type: 'revise',
         status: 'pending',
         reason: 'Narrow ownership wording so scope and transfer boundaries are explicit.',
-        suggestionText:
+        replacementText:
           'Revision: Deliverables developed specifically for this project shall be owned by Party A; pre-existing tools and reusable modules remain Party B property unless separately transferred in writing.',
         confidence: 0.74,
       },
@@ -137,7 +137,7 @@ export const NODE_LIBRARY: TemplateItem[] = [
         type: 'revise',
         status: 'pending',
         reason: 'Clarify who confirms acceptance and how exceptions are resolved.',
-        suggestionText:
+        replacementText:
           'Revision: Acceptance shall be confirmed by designated reviewers from both parties, and disputed items must enter a documented remediation cycle within 3 business days.',
         confidence: 0.78,
       },
@@ -213,7 +213,7 @@ export const NODE_LIBRARY: TemplateItem[] = [
         status: 'pending',
         reason:
           'High risk here requires precise redrafting rather than deletion, because termination rights are mandatory for enforceability.',
-        suggestionText:
+        replacementText:
           'Revision: "Material breach" means uncured breach lasting more than 15 business days after written notice; termination requires board-level written approval and settlement checklist completion.',
         confidence: 0.9,
       },

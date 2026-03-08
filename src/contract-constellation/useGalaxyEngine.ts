@@ -19,7 +19,7 @@ type StageBAction = {
   status?: 'pending' | 'completed';
   reason?: string;
   confidence?: number;
-  suggestionText?: string;
+  replacementText?: string;
   supplementDraft?: string;
 };
 
@@ -29,15 +29,6 @@ type StageBNode = {
   riskLevel?: GraphNode['riskLevel'];
   actions?: StageBAction[];
 };
-
-function getIndependentRiskLevel(seed: string): GraphNode['riskLevel'] {
-  // TODO(upstream): Remove this local fallback once upstream always provides riskLevel for sub nodes.
-  const v = seededRandom(seed);
-  if (v < 0.25) return 'none';
-  if (v < 0.5) return 'low';
-  if (v < 0.78) return 'medium';
-  return 'high';
-}
 
 function getFallbackActionsByRisk(
   riskLevel: GraphNode['riskLevel'],
@@ -138,8 +129,8 @@ function buildGraphFromStageData(
     const parent = n.parentId ? byIdA.get(n.parentId) : undefined;
     const isSubOfSub = n.type === 'sub' && parent?.type === 'sub';
     const angle = ((idx + 1) / Math.max(stageANodes.length, 1)) * Math.PI * 2;
-    const ring = n.type === 'main' ? 190 : isSubOfSub ? 78 : 120;
-    const x = isRoot ? rootX : rootX + Math.cos(angle) * ring;
+    const ring = n.type === 'main' ? 232 : isSubOfSub ? 98 : 154;
+    const x = isRoot ? rootX : rootX + Math.cos(angle) * ring * 1.42;
     const y = isRoot ? rootY : rootY + Math.sin(angle) * ring;
     return {
       id: n.id,
@@ -295,9 +286,8 @@ export function useGalaxyEngine(
 
       const satellites = (template.satellites ?? []).map((item, index, arr) => {
         const angle = (index / Math.max(arr.length, 1)) * Math.PI * 2;
-        // TODO(upstream): Replace local risk/action fallback with upstream-provided fields for generated child nodes.
-        const riskLevel = getIndependentRiskLevel(`${template.id}::sat::${item.label}::${item.content}`);
-        const actions = normalizeActions(getFallbackActionsByRisk(riskLevel, `${template.id}::sat-action::${item.label}`));
+        const riskLevel: GraphNode['riskLevel'] = 'none';
+        const actions = undefined;
         const timePhase = item.timePhase ?? inferTimePhaseFromText(`${item.label}. ${item.content}`);
         const satelliteId = item.id ?? `sub_${id}_${index}`;
         return {
@@ -330,9 +320,8 @@ export function useGalaxyEngine(
         const uy = Math.sin(satAngle);
 
         return details.map((detail, detailIndex) => {
-          // TODO(upstream): Replace local risk/action fallback with upstream-provided fields for generated sub nodes.
-          const riskLevel = getIndependentRiskLevel(`${template.id}::sub::${detail.label}::${detail.content}`);
-          const actions = normalizeActions(getFallbackActionsByRisk(riskLevel, `${template.id}::sub-action::${detail.label}`));
+          const riskLevel: GraphNode['riskLevel'] = 'none';
+          const actions = undefined;
           const timePhase = detail.timePhase ?? inferTimePhaseFromText(`${detail.label}. ${detail.content}`);
           const detailId = detail.id ?? `sub_${id}_${index}_${detailIndex}`;
           return {
@@ -485,7 +474,8 @@ export function useGalaxyEngine(
     const childIndex = siblingIds.length;
     const insertAfterId = siblingIds.length > 0 ? siblingIds[siblingIds.length - 1] : undefined;
     const angle = (childIndex % 6) * (Math.PI / 3);
-    const radius = isParentMain ? 62 : 38;
+    const radiusX = isParentMain ? 62 : 38;
+    const radiusY = isParentMain ? 62 : 38;
     const newType: GraphNode['type'] = 'sub';
     const newRadius = isParentMain ? 10 : 7;
     const content = (draft && draft.trim()) || `Supplement for "${parentNode.label}".`;
@@ -496,8 +486,8 @@ export function useGalaxyEngine(
       label: isParentMain ? `Supplement ${childIndex + 1}` : `Detail ${childIndex + 1}`,
       type: newType,
       color: getRiskColor(riskLevel),
-      x: parentNode.x + Math.cos(angle) * radius,
-      y: parentNode.y + Math.sin(angle) * radius,
+      x: parentNode.x + Math.cos(angle) * radiusX,
+      y: parentNode.y + Math.sin(angle) * radiusY,
       vx: 0,
       vy: 0,
       r: newRadius,
@@ -532,7 +522,12 @@ export function useGalaxyEngine(
     }
     const stageANodes = (stageAData as { nodes?: StageANode[] }).nodes ?? [];
     const stageBNodes = (stageBData as { nodes?: StageBNode[] }).nodes ?? [];
-    const graph = buildGraphFromStageData(stageANodes, stageBNodes, width, height);
+    const graph = buildGraphFromStageData(
+      stageANodes,
+      stageBNodes,
+      width,
+      height,
+    );
     if (!graph) {
       nodesRef.current = [rootNode];
       linksRef.current = [];
@@ -566,20 +561,24 @@ export function useGalaxyEngine(
         return;
       }
 
-      const repulsion = 5600;
+      const repulsion = 8600;
       const damping = 0.82;
-      const centerPull = 0.0044;
+      // Keep Y neutral while allowing extra horizontal spread.
+      const centerPullX = 0.0016;
+      const centerPullY = 0.0031;
+      const xForceGain = 1.34;
+      const yForceGain = 1;
       const rootSpring = 0.02;
       const referenceSpring = 0.06;
       const childSpring = 0.12;
       const detailSpring = 0.14;
       // Slightly compact layout for better readability in medium/large graphs.
-      const spreadFactor = localNodes.length <= 12 ? 1.34 : localNodes.length <= 22 ? 1.14 : 0.96;
-      const rootLen = 162 * spreadFactor;
-      const referenceLen = 138 * spreadFactor;
-      const childLen = 60 * spreadFactor;
-      const detailLen = 38 * spreadFactor;
-      const maxPairForce = 3.6;
+      const spreadFactor = localNodes.length <= 12 ? 1.48 : localNodes.length <= 22 ? 1.3 : 1.14;
+      const rootLen = 172 * spreadFactor;
+      const referenceLen = 146 * spreadFactor;
+      const childLen = 66 * spreadFactor;
+      const detailLen = 42 * spreadFactor;
+      const maxPairForce = 4.2;
       const maxSpringForce = 2.8;
       const maxSpeed = 4.4;
 
@@ -596,7 +595,7 @@ export function useGalaxyEngine(
           const dy = a.y - b.y;
           const d2 = dx * dx + dy * dy || 1;
           const d = Math.sqrt(d2);
-          if (d > 420) continue;
+          if (d > 560) continue;
           const f = Math.min(repulsion / d2, maxPairForce);
           const fx = (dx / d) * f;
           const fy = (dy / d) * f;
@@ -604,6 +603,17 @@ export function useGalaxyEngine(
           forces[i].fy += fy;
           forces[j].fx -= fx;
           forces[j].fy -= fy;
+          const minDist = a.r + b.r + 18;
+          if (d < minDist) {
+            const overlap = minDist - d;
+            const push = Math.min(2.6, overlap * 0.18);
+            const cfx = (dx / d) * push;
+            const cfy = (dy / d) * push;
+            forces[i].fx += cfx;
+            forces[i].fy += cfy;
+            forces[j].fx -= cfx;
+            forces[j].fy -= cfy;
+          }
         }
       }
 
@@ -698,10 +708,14 @@ export function useGalaxyEngine(
           node.vy = 0;
           return;
         }
-        forces[i].fx += (width / 2 - node.x) * centerPull;
-        forces[i].fy += (height / 2 - node.y) * centerPull;
-        const fx = Math.max(-maxPairForce, Math.min(maxPairForce, forces[i].fx));
-        const fy = Math.max(-maxPairForce, Math.min(maxPairForce, forces[i].fy));
+        forces[i].fx += (width / 2 - node.x) * centerPullX;
+        forces[i].fy += (height / 2 - node.y) * centerPullY;
+        const rightSoftEdge = width - margin;
+        if (node.x > rightSoftEdge) {
+          forces[i].fx -= Math.min(1.2, (node.x - rightSoftEdge) * 0.02);
+        }
+        const fx = Math.max(-maxPairForce, Math.min(maxPairForce, forces[i].fx * xForceGain));
+        const fy = Math.max(-maxPairForce, Math.min(maxPairForce, forces[i].fy * yForceGain));
         node.vx = (node.vx + fx) * damping;
         node.vy = (node.vy + fy) * damping;
         node.vx = Math.max(-maxSpeed, Math.min(maxSpeed, node.vx));
@@ -710,8 +724,25 @@ export function useGalaxyEngine(
         if (Math.abs(node.vy) < 0.004) node.vy = 0;
         node.x += node.vx;
         node.y += node.vy;
-        node.x = Math.max(margin, Math.min(width - margin, node.x));
-        node.y = Math.max(margin, Math.min(height - margin, node.y));
+        const minX = margin;
+        const maxX = width - margin;
+        const minY = margin;
+        const maxY = height - margin;
+        // Use soft bounds instead of hard clipping to prevent edge pile-ups.
+        if (node.x < minX) {
+          node.x = minX + (minX - node.x) * 0.28;
+          node.vx = Math.abs(node.vx) * 0.32;
+        } else if (node.x > maxX) {
+          node.x = maxX - (node.x - maxX) * 0.28;
+          node.vx = -Math.abs(node.vx) * 0.32;
+        }
+        if (node.y < minY) {
+          node.y = minY + (minY - node.y) * 0.28;
+          node.vy = Math.abs(node.vy) * 0.32;
+        } else if (node.y > maxY) {
+          node.y = maxY - (node.y - maxY) * 0.28;
+          node.vy = -Math.abs(node.vy) * 0.32;
+        }
       });
 
       setNodes([...localNodes]);

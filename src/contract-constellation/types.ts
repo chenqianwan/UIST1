@@ -11,7 +11,7 @@ export interface NodeActionItem {
   status: NodeActionStatus;
   reason?: string;
   confidence?: number;
-  suggestionText?: string;
+  replacementText?: string;
   supplementDraft?: string;
 }
 

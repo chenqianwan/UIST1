@@ -159,23 +159,23 @@ class FinalizeRequest(BaseModel):
 
 class FinalizeResponse(BaseModel):
     final_text: str
-    change_report: List[Dict[str, Any]]
 
 
 class FormatRequest(BaseModel):
     final_text: str
 
 
-class FormattedBlock(BaseModel):
+class FormattedParagraphHint(BaseModel):
+    index: int
     type: Literal["heading", "paragraph", "list_item", "blank"]
-    text: str
     level: Optional[int] = 1
     indent: Optional[int] = 0
     marker: Optional[str] = None
 
 
 class FormatResponse(BaseModel):
-    blocks: List[FormattedBlock]
+    paragraph_plan: List[FormattedParagraphHint]
+    paragraph_count: int
 
 
 class UpstreamBuildTemplateRequest(BaseModel):
@@ -217,12 +217,10 @@ _monitoring_event_ids: set[str] = set()
 _monitoring_session_files: Dict[str, Path] = {}
 _monitoring_lock = Lock()
 XHUB_API_URL = os.getenv("XHUB_API_URL", "https://api3.xhub.chat/v1/chat/completions")
-XHUB_FINALIZE_MODEL = os.getenv("XHUB_FINALIZE_MODEL", "claude-3-5-sonnet-20241022-thinking")
+XHUB_FINALIZE_MODEL = os.getenv("XHUB_FINALIZE_MODEL", "claude-sonnet-4-5-20250929")
 XHUB_FORMAT_MODEL = os.getenv("XHUB_FORMAT_MODEL", "claude-sonnet-4-5-20250929-thinking")
-XHUB_STAGEA_MODEL = os.getenv("XHUB_STAGEA_MODEL", "claude-3-7-sonnet-20250219-thinking")
-XHUB_STAGEB_MODEL = os.getenv("XHUB_STAGEB_MODEL", "claude-3-7-sonnet-20250219-thinking")
-XHUB_STAGEA_CHUNK_MAX_CHARS = int(os.getenv("XHUB_STAGEA_CHUNK_MAX_CHARS", "5200"))
-XHUB_STAGEB_CHUNK_SIZE = int(os.getenv("XHUB_STAGEB_CHUNK_SIZE", "24"))
+XHUB_STAGEA_MODEL = os.getenv("XHUB_STAGEA_MODEL", "claude-sonnet-4-6")
+XHUB_STAGEB_MODEL = os.getenv("XHUB_STAGEB_MODEL", "claude-sonnet-4-6")
 _ROOT_DIR = Path(__file__).resolve().parents[1]
 _MONITORING_DIR = _ROOT_DIR / ".runtime" / "monitoring"
 _MONITORING_BY_PARTICIPANT_DIR = _MONITORING_DIR / "by_participant"
@@ -244,15 +242,7 @@ Your task is strict mapping only:
 
 Output strict JSON only:
 {
-  "final_text": "string",
-  "change_report": [
-    {
-      "opId": "string",
-      "changeType": "add|delete|revise",
-      "summary": "string",
-      "affectedSections": ["string"]
-    }
-  ]
+  "final_text": "string"
 }
 """.strip()
 
@@ -320,7 +310,7 @@ Output strict JSON only:
           "id": "string",
           "type": "delete|revise|add_clause",
           "status": "pending",
-          "suggestionText": "string",
+          "replacementText": "string",
           "supplementDraft": "string"
         }
       ]
@@ -331,34 +321,42 @@ Output strict JSON only:
 
 FORMAT_SYSTEM_PROMPT = """
 You are a legal contract formatting planner.
-Transform plain contract text into structured formatting blocks for deterministic rendering.
+Given indexed paragraphs, return only formatting anchors (do NOT return full text).
 
-Output goals:
-- Preserve original text wording exactly.
-- Infer readable structure (headings, paragraphs, list items, blank lines).
-- Keep output concise and valid JSON.
+Goal:
+- Keep output minimal and stable.
+- Classify key paragraph positions for rendering.
 
-Block rules:
-1) type:
-   - heading: title-like clause lines
-   - paragraph: regular prose
-   - list_item: bullet/lettered/numbered item
-   - blank: visual separator (text must be "")
-2) level:
-   - heading/list_item level in range 1..4
-3) indent:
-   - paragraph/list_item indent level in range 0..4
-4) marker:
-   - optional list marker like "(a)", "1.", "-" for list_item only
-5) text:
-   - verbatim source line/paragraph text; do not rewrite.
+Rules:
+1) Output only paragraph_plan entries with explicit index.
+2) index must be from provided paragraph indices.
+3) type is one of: heading, paragraph, list_item, blank.
+4) level range: 1..4 (mainly for heading/list_item).
+5) indent range: 0..4 (paragraph/list_item).
+6) marker is optional and only for list_item.
+7) Do not include paragraph text in output.
+8) If unsure, use type="paragraph".
+9) Prefer sparse output: omit default paragraphs. Default rendering is paragraph+level=1+indent=0.
+10) Prioritize only non-default anchors: heading, list_item, blank, or paragraph with indent>0.
+11) Keep output compact: avoid emitting anchors for every index.
+12) If you cannot guarantee valid strict JSON, return exactly {"paragraph_plan":[]}.
+13) NEVER use markdown code fences.
+14) Before final output, self-check JSON validity:
+    - every object in paragraph_plan is comma-separated
+    - no trailing commas
+    - top-level is one JSON object only
+15) Indentation is important:
+    - list_item should usually use indent >= 1
+    - nested numbering (e.g., 1.1 / 1.1.1 / (a) / (i)) should increase indent by level
+    - do not keep all items at indent=0
+16) For legal contracts, prefer marking numbered subclauses as list_item instead of plain paragraph.
 
 Output strict JSON only:
 {
-  "blocks": [
+  "paragraph_plan": [
     {
+      "index": 0,
       "type": "heading|paragraph|list_item|blank",
-      "text": "string",
       "level": 1,
       "indent": 0,
       "marker": "string|null"
@@ -476,7 +474,7 @@ def embed(payload: EmbedRequest):
     return EmbedResponse(embeddings=vectors.tolist())
 
 
-def _post_json(url: str, payload: dict[str, Any], api_key: str, timeout: int = 180) -> dict[str, Any]:
+def _post_json(url: str, payload: dict[str, Any], api_key: str, timeout: int = 600) -> dict[str, Any]:
     body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     req = request.Request(
         url,
@@ -527,167 +525,138 @@ def _xhub_json_completion(
         "temperature": temperature,
         "max_tokens": max_tokens,
     }
-    response = _post_json(XHUB_API_URL, req_payload, api_key, timeout=240)
+    response = _post_json(XHUB_API_URL, req_payload, api_key, timeout=600)
     if "error" in response:
         raise RuntimeError(f"Upstream API error: {json.dumps(response['error'], ensure_ascii=False)}")
     try:
         content = response["choices"][0]["message"]["content"]
     except (KeyError, IndexError, TypeError) as exc:
         raise RuntimeError(f"Unexpected upstream response shape: {json.dumps(response, ensure_ascii=False)}") from exc
-    return json.loads(_extract_json_block(content))
+    json_block = _extract_json_block(content)
+    try:
+        return json.loads(json_block)
+    except json.JSONDecodeError as exc:
+        left = max(0, exc.pos - 220)
+        right = min(len(json_block), exc.pos + 220)
+        snippet = json_block[left:right].replace("\n", "\\n")
+        has_fence = "```" in content
+        raise RuntimeError(
+            "Model JSON parse failed: "
+            f"line={exc.lineno} col={exc.colno} pos={exc.pos}, "
+            f"content_len={len(content)}, json_len={len(json_block)}, has_fence={has_fence}, "
+            f"snippet={snippet}"
+        ) from exc
 
 
-def _split_contract_text(contract_text: str, chunk_max_chars: int) -> List[str]:
-    text = contract_text.strip()
-    if not text:
-        return []
-    if len(text) <= chunk_max_chars:
-        return [text]
-
-    boundary_re = re.compile(r"^\s*(\d+(\.\d+)*|第[一二三四五六七八九十百零0-9]+条)\b")
-    lines = text.splitlines()
-    chunks: List[str] = []
-    buffer: List[str] = []
-    buffer_len = 0
-
-    def flush_buffer():
-        nonlocal buffer, buffer_len
-        if not buffer:
-            return
-        chunk_text = "\n".join(buffer).strip()
-        if chunk_text:
-            chunks.append(chunk_text)
-        buffer = []
-        buffer_len = 0
-
-    for line in lines:
-        line_len = len(line) + 1
-        is_boundary = bool(boundary_re.match(line))
-        if buffer and (buffer_len + line_len > chunk_max_chars) and is_boundary:
-            flush_buffer()
-        if buffer and (buffer_len + line_len > chunk_max_chars) and not is_boundary:
-            flush_buffer()
-        buffer.append(line)
-        buffer_len += line_len
-    flush_buffer()
-    return chunks if chunks else [text]
+def _run_stage_a_single(contract_text: str, max_tokens: int = 9000, temperature: float = 0.1) -> List[Dict[str, Any]]:
+    stage_a_resp = _xhub_json_completion(
+        model=XHUB_STAGEA_MODEL,
+        system_prompt=STAGE_A_SYSTEM_PROMPT,
+        user_content=(
+            "Run Stage A structuring for the contract below. Output strictly valid JSON only.\n\n"
+            f"{contract_text}"
+        ),
+        max_tokens=max_tokens,
+        temperature=temperature,
+    )
+    stage_a_nodes = stage_a_resp.get("nodes")
+    if not isinstance(stage_a_nodes, list):
+        raise RuntimeError("Stage A output must include a top-level nodes array.")
+    return stage_a_nodes
 
 
-def _merge_stage_a_chunk_nodes(chunk_nodes: List[List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
-    merged: List[Dict[str, Any]] = []
-    used_ids: set[str] = set()
-    root_id = "root"
-    root_seen = False
-    root_node = {
-        "id": root_id,
-        "label": "Contract",
-        "content": "Contract",
-        "type": "main",
-        "parentId": None,
-        "timePhase": "pre_sign",
-    }
-
-    def unique_id(base: str) -> str:
-        if base not in used_ids:
-            return base
-        idx = 1
-        while f"{base}__{idx}" in used_ids:
-            idx += 1
-        return f"{base}__{idx}"
-
-    for nodes in chunk_nodes:
-        id_map: Dict[str, str] = {}
-        for node in nodes:
-            old_id = str(node.get("id", "")).strip() or "node"
-            if old_id == root_id:
-                id_map[old_id] = root_id
-                if not root_seen:
-                    root_seen = True
-                    root_node["label"] = str(node.get("label") or root_node["label"])
-                    root_node["content"] = str(node.get("content") or root_node["content"])
-                continue
-            new_id = unique_id(old_id)
-            id_map[old_id] = new_id
-            used_ids.add(new_id)
-
-        for node in nodes:
-            old_id = str(node.get("id", "")).strip() or "node"
-            if old_id == root_id:
-                continue
-            parent_old = node.get("parentId")
-            parent_old_str = str(parent_old).strip() if parent_old is not None else root_id
-            parent_new = id_map.get(parent_old_str, root_id)
-            if parent_new == id_map.get(old_id):
-                parent_new = root_id
-            merged.append(
-                {
-                    "id": id_map[old_id],
-                    "label": str(node.get("label", "")),
-                    "content": str(node.get("content", "")),
-                    "type": "main" if str(node.get("type", "sub")) == "main" else "sub",
-                    "parentId": parent_new,
-                    "timePhase": str(node.get("timePhase", "execution")),
-                }
-            )
-
-    used_ids.add(root_id)
-    return [root_node, *merged]
-
-
-def _run_stage_a_with_chunking(contract_text: str, max_tokens: int = 9000, temperature: float = 0.1) -> List[Dict[str, Any]]:
-    chunks = _split_contract_text(contract_text, XHUB_STAGEA_CHUNK_MAX_CHARS)
-    if not chunks:
-        raise RuntimeError("contract_text is empty after trimming.")
-
-    chunk_results: List[List[Dict[str, Any]]] = []
-    for chunk_text in chunks:
-        stage_a_resp = _xhub_json_completion(
-            model=XHUB_STAGEA_MODEL,
-            system_prompt=STAGE_A_SYSTEM_PROMPT,
-            user_content=(
-                "Run Stage A structuring for the contract below. Output strictly valid JSON only.\n\n"
-                f"{chunk_text}"
-            ),
-            max_tokens=max_tokens,
-            temperature=temperature,
-        )
-        stage_a_nodes = stage_a_resp.get("nodes")
-        if not isinstance(stage_a_nodes, list):
-            raise RuntimeError("Stage A output must include a top-level nodes array.")
-        chunk_results.append(stage_a_nodes)
-
-    return _merge_stage_a_chunk_nodes(chunk_results)
-
-
-def _chunk_list(items: List[Dict[str, Any]], chunk_size: int) -> List[List[Dict[str, Any]]]:
-    size = max(1, chunk_size)
-    return [items[i:i + size] for i in range(0, len(items), size)]
-
-
-def _run_stage_b_with_chunking(
+def _run_stage_b_single(
     stage_a_nodes: List[Dict[str, Any]],
     contract_text: str,
     max_tokens: int = 10000,
     temperature: float = 0.0,
 ) -> List[Dict[str, Any]]:
-    node_chunks = _chunk_list(stage_a_nodes, XHUB_STAGEB_CHUNK_SIZE)
-    stage_b_nodes: List[Dict[str, Any]] = []
-    for node_chunk in node_chunks:
-        stage_b_resp = _xhub_json_completion(
-            model=XHUB_STAGEB_MODEL,
-            system_prompt=STAGE_B_SYSTEM_PROMPT,
-            user_content=(
-                "Run Stage B enrichment. Output JSON only.\n\n"
-                f"{json.dumps({'nodes_stage_a': node_chunk, 'original_contract_text': contract_text}, ensure_ascii=False)}"
-            ),
-            max_tokens=max_tokens,
-            temperature=temperature,
+    stage_b_resp = _xhub_json_completion(
+        model=XHUB_STAGEB_MODEL,
+        system_prompt=STAGE_B_SYSTEM_PROMPT,
+        user_content=(
+            "Run Stage B enrichment. Output JSON only.\n\n"
+            f"{json.dumps({'nodes_stage_a': stage_a_nodes, 'original_contract_text': contract_text}, ensure_ascii=False)}"
+        ),
+        max_tokens=max_tokens,
+        temperature=temperature,
+    )
+    raw_stage_b_nodes = stage_b_resp.get("nodes")
+    if not isinstance(raw_stage_b_nodes, list):
+        raise RuntimeError("Stage B output must include a top-level nodes array.")
+    return raw_stage_b_nodes
+
+
+def _split_format_paragraphs(final_text: str) -> List[str]:
+    text = (final_text or "").replace("\r\n", "\n").strip()
+    if not text:
+        return []
+    by_blank = [part.strip() for part in re.split(r"\n\s*\n+", text) if part.strip()]
+    if by_blank:
+        return by_blank
+    by_line = [line.strip() for line in text.split("\n") if line.strip()]
+    return by_line
+
+
+def _build_heuristic_paragraph_plan(paragraphs: List[str]) -> List[FormattedParagraphHint]:
+    plan: List[FormattedParagraphHint] = []
+    for idx, para in enumerate(paragraphs):
+        first_line = para.split("\n", 1)[0].strip()
+        if not first_line:
+            continue
+
+        block_type: Literal["heading", "paragraph", "list_item", "blank"] = "paragraph"
+        level = 1
+        indent = 0
+        marker: Optional[str] = None
+
+        if (
+            re.match(r"^(chapter|section|article)\b", first_line, flags=re.IGNORECASE)
+            or re.match(r"^第[一二三四五六七八九十百零0-9]+[章节条款]\b", first_line)
+            or (len(first_line) <= 72 and first_line.upper() == first_line and re.search(r"[A-Z]", first_line))
+        ):
+            block_type = "heading"
+            level = 1
+        else:
+            dot_num = re.match(r"^(\d+(?:\.\d+){0,4})([.)]|\s)", first_line)
+            paren_num = re.match(r"^\((\d+)\)", first_line)
+            paren_alpha = re.match(r"^\(([a-zA-ZivxIVX]+)\)", first_line)
+            alpha_list = re.match(r"^([a-zA-Z])[.)]\s", first_line)
+            bullet = re.match(r"^([-*•])\s+", first_line)
+
+            if dot_num:
+                block_type = "list_item"
+                marker = dot_num.group(1)
+                depth = marker.count(".")
+                indent = max(1, min(4, depth))
+            elif paren_num or paren_alpha:
+                block_type = "list_item"
+                token = paren_num.group(1) if paren_num else paren_alpha.group(1)
+                marker = f"({token})"
+                indent = 1
+            elif alpha_list:
+                block_type = "list_item"
+                marker = f"{alpha_list.group(1)})"
+                indent = 1
+            elif bullet:
+                block_type = "list_item"
+                marker = bullet.group(1)
+                indent = 1
+
+        if block_type == "paragraph" and indent == 0 and level == 1:
+            continue
+
+        plan.append(
+            FormattedParagraphHint(
+                index=idx,
+                type=block_type,  # type: ignore[arg-type]
+                level=level,
+                indent=indent,
+                marker=marker if block_type == "list_item" else None,
+            )
         )
-        raw_stage_b_nodes = stage_b_resp.get("nodes")
-        if not isinstance(raw_stage_b_nodes, list):
-            raise RuntimeError("Stage B output must include a top-level nodes array.")
-        stage_b_nodes.extend(raw_stage_b_nodes)
-    return stage_b_nodes
+
+    return plan
 
 
 def _sanitize_template_name(value: Optional[str]) -> Tuple[str, str]:
@@ -701,22 +670,54 @@ def _sanitize_template_name(value: Optional[str]) -> Tuple[str, str]:
 
 
 def _normalize_stage_b_nodes(stage_a_nodes: List[Dict[str, Any]], stage_b_nodes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _normalize_actions(raw_actions: Any) -> List[Dict[str, Any]]:
+        if not isinstance(raw_actions, list):
+            return []
+        normalized: List[Dict[str, Any]] = []
+        for action in raw_actions:
+            if not isinstance(action, dict):
+                continue
+            action_id = action.get("id")
+            action_type = action.get("type")
+            if not isinstance(action_id, str) or not action_id:
+                continue
+            if action_type not in {"delete", "revise", "add_clause"}:
+                continue
+            item: Dict[str, Any] = {
+                "id": action_id,
+                "type": action_type,
+                "status": "completed" if action.get("status") == "completed" else "pending",
+            }
+            reason = action.get("reason")
+            if isinstance(reason, str) and reason.strip():
+                item["reason"] = reason
+            confidence = action.get("confidence")
+            if isinstance(confidence, (int, float)):
+                item["confidence"] = max(0.0, min(1.0, float(confidence)))
+            replacement = action.get("replacementText")
+            if isinstance(replacement, str) and replacement.strip():
+                item["replacementText"] = replacement
+            supplement = action.get("supplementDraft")
+            if isinstance(supplement, str) and supplement.strip():
+                item["supplementDraft"] = supplement
+            normalized.append(item)
+        return normalized
+
     out_by_id: Dict[str, Dict[str, Any]] = {}
     for node in stage_b_nodes:
         node_id = node.get("id")
         if not isinstance(node_id, str) or not node_id:
             continue
         refs = node.get("references")
-        actions = node.get("actions")
+        actions = _normalize_actions(node.get("actions"))
         risk = node.get("riskLevel")
         out_by_id[node_id] = {
             "id": node_id,
             "references": refs if isinstance(refs, list) else [],
             "riskLevel": risk if risk in {"none", "low", "medium", "high"} else "none",
-            "actions": actions if isinstance(actions, list) else [],
+            "actions": actions,
         }
     out: List[Dict[str, Any]] = []
-    valid_ids = {n.get("id") for n in stage_a_nodes if isinstance(n.get("id"), str)}
     for node in stage_a_nodes:
         node_id = node.get("id")
         if not isinstance(node_id, str) or not node_id:
@@ -820,9 +821,8 @@ def build_upstream_template(payload: UpstreamBuildTemplateRequest):
         raise RuntimeError("contract_text is empty.")
 
     template_id, template_label = _sanitize_template_name(payload.template_name)
-    stage_a_nodes = _run_stage_a_with_chunking(contract_text, max_tokens=9000, temperature=0.1)
-
-    raw_stage_b_nodes = _run_stage_b_with_chunking(stage_a_nodes, contract_text, max_tokens=10000, temperature=0.0)
+    stage_a_nodes = _run_stage_a_single(contract_text, max_tokens=9000, temperature=0.1)
+    raw_stage_b_nodes = _run_stage_b_single(stage_a_nodes, contract_text, max_tokens=10000, temperature=0.0)
     stage_b_nodes = _normalize_stage_b_nodes(stage_a_nodes, raw_stage_b_nodes)
     merged_nodes = _merge_stage_nodes(stage_a_nodes, stage_b_nodes)
 
@@ -1180,7 +1180,7 @@ def finalize_text(payload: FinalizeRequest):
         "temperature": 0,
         "max_tokens": 8000,
     }
-    response = _post_json(XHUB_API_URL, req_payload, api_key, timeout=240)
+    response = _post_json(XHUB_API_URL, req_payload, api_key, timeout=600)
     if "error" in response:
         raise RuntimeError(f"Finalize API error: {json.dumps(response['error'], ensure_ascii=False)}")
     try:
@@ -1189,12 +1189,9 @@ def finalize_text(payload: FinalizeRequest):
         raise RuntimeError(f"Unexpected finalize response shape: {json.dumps(response, ensure_ascii=False)}") from exc
     parsed = json.loads(_extract_json_block(content))
     final_text = parsed.get("final_text")
-    change_report = parsed.get("change_report")
     if not isinstance(final_text, str):
         raise RuntimeError("Finalize output missing string field: final_text")
-    if not isinstance(change_report, list):
-        raise RuntimeError("Finalize output missing list field: change_report")
-    return FinalizeResponse(final_text=final_text, change_report=change_report)
+    return FinalizeResponse(final_text=final_text)
 
 
 @app.post("/downstream/format", response_model=FormatResponse)
@@ -1204,34 +1201,57 @@ def format_text(payload: FormatRequest):
         raise RuntimeError("Missing XHUB_API_KEY for downstream format model call.")
     final_text = (payload.final_text or "").strip()
     if not final_text:
-        return FormatResponse(blocks=[])
+        return FormatResponse(paragraph_plan=[], paragraph_count=0)
 
-    response = _xhub_json_completion(
-        model=XHUB_FORMAT_MODEL,
-        system_prompt=FORMAT_SYSTEM_PROMPT,
-        user_content=(
-            "Format the following finalized contract text into blocks. "
-            "Output JSON only.\n\n"
-            f"{json.dumps({'final_text': final_text}, ensure_ascii=False)}"
-        ),
-        max_tokens=6000,
-        temperature=0.0,
-    )
-    raw_blocks = response.get("blocks")
-    if not isinstance(raw_blocks, list):
-        raise RuntimeError("Format output must include a top-level blocks array.")
+    paragraphs = _split_format_paragraphs(final_text)
+    paragraph_items = [{"index": idx, "text": text} for idx, text in enumerate(paragraphs)]
 
-    normalized_blocks: List[FormattedBlock] = []
-    for block in raw_blocks:
-        if not isinstance(block, dict):
+    try:
+        response = _xhub_json_completion(
+            model=XHUB_FORMAT_MODEL,
+            system_prompt=FORMAT_SYSTEM_PROMPT,
+            user_content=(
+                "Return formatting anchors for the indexed paragraphs below. "
+                "Output JSON only. Do not use markdown code fences. "
+                "If uncertain, return {\"paragraph_plan\":[]}.\n\n"
+                f"{json.dumps({'paragraphs': paragraph_items}, ensure_ascii=False)}"
+            ),
+            max_tokens=2200,
+            temperature=0.0,
+        )
+    except Exception as exc:
+        # Formatting is best-effort; fallback to plain paragraph rendering when LLM output is malformed.
+        print(f"[Format] fallback to empty paragraph plan due to model parse error: {exc}")
+        return FormatResponse(paragraph_plan=[], paragraph_count=len(paragraphs))
+
+    raw_plan = response.get("paragraph_plan")
+    if not isinstance(raw_plan, list):
+        print("[Format] fallback to empty paragraph plan: missing paragraph_plan list")
+        return FormatResponse(paragraph_plan=[], paragraph_count=len(paragraphs))
+
+    normalized_plan: List[FormattedParagraphHint] = []
+    seen_indexes: set[int] = set()
+    for item in raw_plan:
+        if not isinstance(item, dict):
             continue
-        block_type = str(block.get("type", "paragraph"))
+        idx_raw = item.get("index")
+        try:
+            idx = int(idx_raw)
+        except Exception:
+            continue
+        if idx < 0 or idx >= len(paragraphs):
+            continue
+        if idx in seen_indexes:
+            continue
+        seen_indexes.add(idx)
+
+        block_type = str(item.get("type", "paragraph"))
         if block_type not in {"heading", "paragraph", "list_item", "blank"}:
             block_type = "paragraph"
-        text = str(block.get("text", ""))
-        level_raw = block.get("level", 1)
-        indent_raw = block.get("indent", 0)
-        marker_raw = block.get("marker")
+        level_raw = item.get("level", 1)
+        indent_raw = item.get("indent", 0)
+        marker_raw = item.get("marker")
+
         try:
             level = max(1, min(4, int(level_raw)))
         except Exception:
@@ -1242,19 +1262,19 @@ def format_text(payload: FormatRequest):
             indent = 0
         marker = str(marker_raw) if marker_raw is not None else None
         if block_type == "blank":
-            text = ""
             marker = None
             indent = 0
         if block_type != "list_item":
             marker = None
-        normalized_blocks.append(
-            FormattedBlock(
+        normalized_plan.append(
+            FormattedParagraphHint(
+                index=idx,
                 type=block_type,  # type: ignore[arg-type]
-                text=text,
                 level=level,
                 indent=indent,
                 marker=marker,
             )
         )
 
-    return FormatResponse(blocks=normalized_blocks)
+    normalized_plan.sort(key=lambda item: item.index)
+    return FormatResponse(paragraph_plan=normalized_plan, paragraph_count=len(paragraphs))
