@@ -16,6 +16,10 @@ import stageAData from '../../docs/simple1.stage_a.json';
 import stageBData from '../../docs/simple1.stage_b.json';
 import reneStageAData from '../../docs/reneHouseTemplate.stage_a.json';
 import reneStageBData from '../../docs/reneHouseTemplate.stage_b.json';
+import testAbStageAData from '../../docs/test_ab.stage_a.json';
+import testAbStageBData from '../../docs/test_ab.stage_b.json';
+import text2AbStageAData from '../../docs/text2_ab.stage_a.json';
+import text2AbStageBData from '../../docs/text2_ab.stage_b.json';
 import { NODE_LIBRARY } from './constants';
 import { GraphCanvas, CANVAS_WIDTH, CANVAS_HEIGHT } from './GraphCanvas';
 import { SidePanel } from './SidePanel';
@@ -71,6 +75,8 @@ const BASE_GRAPH_PRESET_OPTIONS: Array<{ id: GraphPresetId; label: string }> = [
   { id: 'standard', label: 'Standard' },
   { id: 'simple1', label: 'Simple1 (Stage A + B)' },
   { id: 'reneHouseTemplate', label: 'reneHouseTemplate (Stage A + B)' },
+  { id: 'test_ab', label: 'test_ab (Stage A + B)' },
+  { id: 'text2_ab', label: 'text2_ab (Stage A + B)' },
 ];
 
 type StageANode = {
@@ -457,6 +463,18 @@ export default function ContractConstellation() {
     return buildStageTemplates(aNodes, bNodes, 'reneHouseTemplate', 'Imported from reneHouseTemplate');
   }, []);
 
+  const testAbTemplates = useMemo<TemplateItem[]>(() => {
+    const aNodes = (testAbStageAData as { nodes?: StageANode[] }).nodes ?? [];
+    const bNodes = (testAbStageBData as { nodes?: StageBNode[] }).nodes ?? [];
+    return buildStageTemplates(aNodes, bNodes, 'test_ab', 'Imported from test_ab');
+  }, []);
+
+  const text2AbTemplates = useMemo<TemplateItem[]>(() => {
+    const aNodes = (text2AbStageAData as { nodes?: StageANode[] }).nodes ?? [];
+    const bNodes = (text2AbStageBData as { nodes?: StageBNode[] }).nodes ?? [];
+    return buildStageTemplates(aNodes, bNodes, 'text2_ab', 'Imported from text2_ab');
+  }, []);
+
   const graphPresetOptions = useMemo(
     () => [
       ...BASE_GRAPH_PRESET_OPTIONS,
@@ -468,10 +486,12 @@ export default function ContractConstellation() {
   const activeTemplatePool = useMemo(() => {
     if (graphPresetId === 'simple1') return simple1Templates;
     if (graphPresetId === 'reneHouseTemplate') return reneHouseTemplates;
+    if (graphPresetId === 'test_ab') return testAbTemplates;
+    if (graphPresetId === 'text2_ab') return text2AbTemplates;
     const uploaded = uploadedPresets.find((preset) => preset.id === graphPresetId);
     if (uploaded) return uploaded.templates;
     return NODE_LIBRARY;
-  }, [graphPresetId, simple1Templates, reneHouseTemplates, uploadedPresets]);
+  }, [graphPresetId, simple1Templates, reneHouseTemplates, testAbTemplates, text2AbTemplates, uploadedPresets]);
 
   const availableTemplates = useMemo(
     () => activeTemplatePool.filter((item) => !usedTemplateIds.includes(item.id)),

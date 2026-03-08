@@ -204,6 +204,8 @@ XHUB_API_URL = os.getenv("XHUB_API_URL", "https://api3.xhub.chat/v1/chat/complet
 XHUB_FINALIZE_MODEL = os.getenv("XHUB_FINALIZE_MODEL", "claude-3-5-sonnet-20241022-thinking")
 XHUB_STAGEA_MODEL = os.getenv("XHUB_STAGEA_MODEL", "claude-3-7-sonnet-20250219-thinking")
 XHUB_STAGEB_MODEL = os.getenv("XHUB_STAGEB_MODEL", "claude-3-7-sonnet-20250219-thinking")
+XHUB_STAGEA_CHUNK_MAX_CHARS = int(os.getenv("XHUB_STAGEA_CHUNK_MAX_CHARS", "5200"))
+XHUB_STAGEB_CHUNK_SIZE = int(os.getenv("XHUB_STAGEB_CHUNK_SIZE", "24"))
 _ROOT_DIR = Path(__file__).resolve().parents[1]
 _MONITORING_DIR = _ROOT_DIR / ".runtime" / "monitoring"
 _MONITORING_BY_PARTICIPANT_DIR = _MONITORING_DIR / "by_participant"
@@ -480,6 +482,159 @@ def _xhub_json_completion(
     return json.loads(_extract_json_block(content))
 
 
+def _split_contract_text(contract_text: str, chunk_max_chars: int) -> List[str]:
+    text = contract_text.strip()
+    if not text:
+        return []
+    if len(text) <= chunk_max_chars:
+        return [text]
+
+    boundary_re = re.compile(r"^\s*(\d+(\.\d+)*|第[一二三四五六七八九十百零0-9]+条)\b")
+    lines = text.splitlines()
+    chunks: List[str] = []
+    buffer: List[str] = []
+    buffer_len = 0
+
+    def flush_buffer():
+        nonlocal buffer, buffer_len
+        if not buffer:
+            return
+        chunk_text = "\n".join(buffer).strip()
+        if chunk_text:
+            chunks.append(chunk_text)
+        buffer = []
+        buffer_len = 0
+
+    for line in lines:
+        line_len = len(line) + 1
+        is_boundary = bool(boundary_re.match(line))
+        if buffer and (buffer_len + line_len > chunk_max_chars) and is_boundary:
+            flush_buffer()
+        if buffer and (buffer_len + line_len > chunk_max_chars) and not is_boundary:
+            flush_buffer()
+        buffer.append(line)
+        buffer_len += line_len
+    flush_buffer()
+    return chunks if chunks else [text]
+
+
+def _merge_stage_a_chunk_nodes(chunk_nodes: List[List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
+    merged: List[Dict[str, Any]] = []
+    used_ids: set[str] = set()
+    root_id = "root"
+    root_seen = False
+    root_node = {
+        "id": root_id,
+        "label": "Contract",
+        "content": "Contract",
+        "type": "main",
+        "parentId": None,
+        "timePhase": "pre_sign",
+    }
+
+    def unique_id(base: str) -> str:
+        if base not in used_ids:
+            return base
+        idx = 1
+        while f"{base}__{idx}" in used_ids:
+            idx += 1
+        return f"{base}__{idx}"
+
+    for nodes in chunk_nodes:
+        id_map: Dict[str, str] = {}
+        for node in nodes:
+            old_id = str(node.get("id", "")).strip() or "node"
+            if old_id == root_id:
+                id_map[old_id] = root_id
+                if not root_seen:
+                    root_seen = True
+                    root_node["label"] = str(node.get("label") or root_node["label"])
+                    root_node["content"] = str(node.get("content") or root_node["content"])
+                continue
+            new_id = unique_id(old_id)
+            id_map[old_id] = new_id
+            used_ids.add(new_id)
+
+        for node in nodes:
+            old_id = str(node.get("id", "")).strip() or "node"
+            if old_id == root_id:
+                continue
+            parent_old = node.get("parentId")
+            parent_old_str = str(parent_old).strip() if parent_old is not None else root_id
+            parent_new = id_map.get(parent_old_str, root_id)
+            if parent_new == id_map.get(old_id):
+                parent_new = root_id
+            merged.append(
+                {
+                    "id": id_map[old_id],
+                    "label": str(node.get("label", "")),
+                    "content": str(node.get("content", "")),
+                    "type": "main" if str(node.get("type", "sub")) == "main" else "sub",
+                    "parentId": parent_new,
+                    "timePhase": str(node.get("timePhase", "execution")),
+                }
+            )
+
+    used_ids.add(root_id)
+    return [root_node, *merged]
+
+
+def _run_stage_a_with_chunking(contract_text: str, max_tokens: int = 9000, temperature: float = 0.1) -> List[Dict[str, Any]]:
+    chunks = _split_contract_text(contract_text, XHUB_STAGEA_CHUNK_MAX_CHARS)
+    if not chunks:
+        raise RuntimeError("contract_text is empty after trimming.")
+
+    chunk_results: List[List[Dict[str, Any]]] = []
+    for chunk_text in chunks:
+        stage_a_resp = _xhub_json_completion(
+            model=XHUB_STAGEA_MODEL,
+            system_prompt=STAGE_A_SYSTEM_PROMPT,
+            user_content=(
+                "Run Stage A structuring for the contract below. Output strictly valid JSON only.\n\n"
+                f"{chunk_text}"
+            ),
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
+        stage_a_nodes = stage_a_resp.get("nodes")
+        if not isinstance(stage_a_nodes, list):
+            raise RuntimeError("Stage A output must include a top-level nodes array.")
+        chunk_results.append(stage_a_nodes)
+
+    return _merge_stage_a_chunk_nodes(chunk_results)
+
+
+def _chunk_list(items: List[Dict[str, Any]], chunk_size: int) -> List[List[Dict[str, Any]]]:
+    size = max(1, chunk_size)
+    return [items[i:i + size] for i in range(0, len(items), size)]
+
+
+def _run_stage_b_with_chunking(
+    stage_a_nodes: List[Dict[str, Any]],
+    contract_text: str,
+    max_tokens: int = 10000,
+    temperature: float = 0.0,
+) -> List[Dict[str, Any]]:
+    node_chunks = _chunk_list(stage_a_nodes, XHUB_STAGEB_CHUNK_SIZE)
+    stage_b_nodes: List[Dict[str, Any]] = []
+    for node_chunk in node_chunks:
+        stage_b_resp = _xhub_json_completion(
+            model=XHUB_STAGEB_MODEL,
+            system_prompt=STAGE_B_SYSTEM_PROMPT,
+            user_content=(
+                "Run Stage B enrichment. Output JSON only.\n\n"
+                f"{json.dumps({'nodes_stage_a': node_chunk, 'original_contract_text': contract_text}, ensure_ascii=False)}"
+            ),
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
+        raw_stage_b_nodes = stage_b_resp.get("nodes")
+        if not isinstance(raw_stage_b_nodes, list):
+            raise RuntimeError("Stage B output must include a top-level nodes array.")
+        stage_b_nodes.extend(raw_stage_b_nodes)
+    return stage_b_nodes
+
+
 def _sanitize_template_name(value: Optional[str]) -> Tuple[str, str]:
     base = (value or "uploaded_template").strip()
     if not base:
@@ -610,33 +765,9 @@ def build_upstream_template(payload: UpstreamBuildTemplateRequest):
         raise RuntimeError("contract_text is empty.")
 
     template_id, template_label = _sanitize_template_name(payload.template_name)
-    stage_a_resp = _xhub_json_completion(
-        model=XHUB_STAGEA_MODEL,
-        system_prompt=STAGE_A_SYSTEM_PROMPT,
-        user_content=(
-            "Run Stage A structuring for the contract below. Output strictly valid JSON only.\n\n"
-            f"{contract_text}"
-        ),
-        max_tokens=9000,
-        temperature=0.1,
-    )
-    stage_a_nodes = stage_a_resp.get("nodes")
-    if not isinstance(stage_a_nodes, list):
-        raise RuntimeError("Stage A output must include a top-level nodes array.")
+    stage_a_nodes = _run_stage_a_with_chunking(contract_text, max_tokens=9000, temperature=0.1)
 
-    stage_b_resp = _xhub_json_completion(
-        model=XHUB_STAGEB_MODEL,
-        system_prompt=STAGE_B_SYSTEM_PROMPT,
-        user_content=(
-            "Run Stage B enrichment. Output JSON only.\n\n"
-            f"{json.dumps({'nodes_stage_a': stage_a_nodes, 'original_contract_text': contract_text}, ensure_ascii=False)}"
-        ),
-        max_tokens=10000,
-        temperature=0.0,
-    )
-    raw_stage_b_nodes = stage_b_resp.get("nodes")
-    if not isinstance(raw_stage_b_nodes, list):
-        raise RuntimeError("Stage B output must include a top-level nodes array.")
+    raw_stage_b_nodes = _run_stage_b_with_chunking(stage_a_nodes, contract_text, max_tokens=10000, temperature=0.0)
     stage_b_nodes = _normalize_stage_b_nodes(stage_a_nodes, raw_stage_b_nodes)
     merged_nodes = _merge_stage_nodes(stage_a_nodes, stage_b_nodes)
 
