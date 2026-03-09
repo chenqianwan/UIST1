@@ -202,7 +202,18 @@ export function SidePanel({
         <div className="rounded-xl border border-slate-200 bg-white p-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Selected Node</p>
           {selectedNode && selectedNode.id !== 'root' ? (
-            <div className="mt-2 max-h-[46vh] space-y-2 overflow-y-auto pr-1">
+            <div
+              className="mt-2 max-h-[46vh] space-y-2 overflow-y-auto pr-1"
+              onPointerMove={(event) => {
+                const panelRect = event.currentTarget.getBoundingClientRect();
+                const ratioY = panelRect.height > 0 ? (event.clientY - panelRect.top) / panelRect.height : 0.5;
+                onModifyHoverSample?.({
+                  clientX: event.clientX,
+                  clientY: event.clientY,
+                  ratioY: Math.max(0, Math.min(1, ratioY)),
+                });
+              }}
+            >
               <div className="flex items-center gap-2">
                 <p className="text-sm font-semibold text-slate-800">{selectedNode.label}</p>
                 <span

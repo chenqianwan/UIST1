@@ -22,6 +22,10 @@ import testNewStageAData from '../../docs/test_new.stage_a.json';
 import testNewStageBData from '../../docs/test_new.stage_b.json';
 import text2AbStageAData from '../../docs/text2_ab.stage_a.json';
 import text2AbStageBData from '../../docs/text2_ab.stage_b.json';
+import text2AbStageAChineseData from '../../docs/text2_ab.stage_a.chinese.json';
+import text2AbStageBChineseData from '../../docs/text2_ab.stage_b.chinese.json';
+import testNewStageAChineseData from '../../docs/test_new.stage_a.chinese.json';
+import testNewStageBChineseData from '../../docs/test_new.stage_b.chinese.json';
 import { NODE_LIBRARY } from './constants';
 import { GraphCanvas, CANVAS_WIDTH, CANVAS_HEIGHT } from './GraphCanvas';
 import { SidePanel } from './SidePanel';
@@ -81,6 +85,8 @@ const BASE_GRAPH_PRESET_OPTIONS: Array<{ id: GraphPresetId; label: string }> = [
   { id: 'test_ab', label: 'test_ab (Stage A + B)' },
   { id: 'patent', label: 'patent (Stage A + B)' },
   { id: 'housing', label: 'housing (Stage A + B)' },
+  { id: 'patent_chinese', label: '专利 (中文 Stage A + B)' },
+  { id: 'housing_chinese', label: '房屋租赁 (中文 Stage A + B)' },
 ];
 
 type StageANode = {
@@ -603,6 +609,19 @@ export default function ContractConstellation() {
     return buildStageTemplates(aNodes, bNodes, 'patent', 'Imported from patent');
   }, []);
 
+  const testNewChineseTemplates = useMemo<TemplateItem[]>(() => {
+    const aNodes = (testNewStageAChineseData as { nodes?: StageANode[] }).nodes ?? [];
+    const bNodes = (testNewStageBChineseData as { nodes?: StageBNode[] }).nodes ?? [];
+    return buildStageTemplates(aNodes, bNodes, 'patent_chinese', 'Imported from patent_chinese');
+  }, []);
+
+  const text2AbChineseTemplates = useMemo<TemplateItem[]>(() => {
+    const aNodes = (text2AbStageAChineseData as { nodes?: StageANode[] }).nodes ?? [];
+    const bNodes = (text2AbStageBChineseData as { nodes?: StageBNode[] }).nodes ?? [];
+    return buildStageTemplates(aNodes, bNodes, 'housing_chinese', 'Imported from housing_chinese');
+  }, []);
+
+
   const graphPresetOptions = useMemo(
     () => [
       ...BASE_GRAPH_PRESET_OPTIONS,
@@ -617,10 +636,12 @@ export default function ContractConstellation() {
     if (graphPresetId === 'test_ab') return testAbTemplates;
     if (graphPresetId === 'patent') return testNewTemplates;
     if (graphPresetId === 'housing') return text2AbTemplates;
+    if (graphPresetId === 'patent_chinese') return testNewChineseTemplates;
+    if (graphPresetId === 'housing_chinese') return text2AbChineseTemplates;
     const uploaded = uploadedPresets.find((preset) => preset.id === graphPresetId);
     if (uploaded) return uploaded.templates;
     return NODE_LIBRARY;
-  }, [graphPresetId, simple1Templates, reneHouseTemplates, testAbTemplates, testNewTemplates, text2AbTemplates, uploadedPresets]);
+  }, [graphPresetId, simple1Templates, reneHouseTemplates, testAbTemplates, testNewTemplates, text2AbTemplates, testNewChineseTemplates, text2AbChineseTemplates, uploadedPresets]);
 
   const availableTemplates = useMemo(
     () => activeTemplatePool.filter((item) => !usedTemplateIds.includes(item.id)),

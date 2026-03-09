@@ -1,0 +1,6 @@
+
+> contract-constellation@0.0.0 build
+> tsc && vite build
+
+src/contract-constellation/ContractConstellation.tsx(606,9): error TS2451: Cannot redeclare block-scoped variable 'testNewTemplates'.
+src/contract-constellation/ContractConstellation.tsx(624,9): error TS2451: Cannot redeclare block-scoped variable 'testNewTemplates'.

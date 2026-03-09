@@ -375,30 +375,77 @@ export default function AdminDashboard() {
     if (!latestStart) return null;
 
     const tailEvents = events.filter((event) => event.ts >= latestStart.ts).sort((a, b) => a.ts - b.ts);
-    const firstAction = tailEvents.find((event) => event.event_name === 'action_executed');
     const exportStart = tailEvents.find(
       (event) => event.component_id === 'template_gate' && event.payload?.timer_action === 'export_start',
     );
     const exportSuccess = tailEvents.find((event) => event.event_name === 'export_success');
     const endTs = exportSuccess?.ts ?? nowTs;
-
-    const viewingEnd = firstAction?.ts ?? exportStart?.ts ?? endTs;
-    const viewingMs = Math.max(0, viewingEnd - latestStart.ts);
-
-    const modifyingStart = firstAction?.ts;
-    const modifyingEnd = exportStart?.ts ?? endTs;
-    const modifyingMs = modifyingStart ? Math.max(0, modifyingEnd - modifyingStart) : 0;
-
     const exportingStart = exportStart?.ts;
     const exportingMs = exportingStart ? Math.max(0, endTs - exportingStart) : 0;
+    const nonExportEndTs = exportingStart ?? endTs;
 
-    const totalMs = Math.max(1, viewingMs + modifyingMs + exportingMs);
+    const timelineEvents = tailEvents.filter((event) => {
+      if (event.ts > nonExportEndTs) return false;
+      if (event.event_name === 'canvas_interaction') return true;
+      if (event.event_name === 'node_selected' || event.event_name === 'template_added' || event.event_name === 'node_deleted' || event.event_name === 'action_executed') {
+        return true;
+      }
+      return false;
+    });
+
+    const isDimensionEvent = (event: MonitoringEvent): boolean => {
+      if (event.event_name !== 'canvas_interaction') return false;
+      const source = event.payload?.source;
+      if (source === 'semantic_pull' || source === 'risk_pull' || source === 'time_pull') return true;
+      if (source === 'hover_sample') {
+        const rawX = event.payload?.x;
+        const rawY = event.payload?.y;
+        if (typeof rawX === 'number' && typeof rawY === 'number') {
+          return inRect(rawX, rawY, DIMENSION_PANEL);
+        }
+      }
+      return false;
+    };
+
+    const isModifyEvent = (event: MonitoringEvent): boolean => {
+      if (event.event_name === 'template_added' || event.event_name === 'node_deleted') return true;
+      if (event.event_name === 'action_executed') return true;
+      if (event.event_name === 'canvas_interaction' && event.component_id === 'side_panel_action') {
+        return event.payload?.source === 'modify_hover';
+      }
+      return false;
+    };
+
+    let dimensionActionMsRaw = 0;
+    let modifyingActionMsRaw = 0;
+    for (let i = 0; i < timelineEvents.length; i += 1) {
+      const event = timelineEvents[i];
+      const currentTs = event.ts;
+      const nextTs = i + 1 < timelineEvents.length ? timelineEvents[i + 1].ts : nonExportEndTs;
+      const delta = Math.max(0, Math.min(nonExportEndTs, nextTs) - currentTs);
+      if (delta <= 0) continue;
+      if (isDimensionEvent(event)) {
+        dimensionActionMsRaw += delta;
+        continue;
+      }
+      if (isModifyEvent(event)) {
+        modifyingActionMsRaw += delta;
+      }
+    }
+
+    const taskTotalMs = Math.max(1, endTs - latestStart.ts);
+    const modifyingActionMs = Math.min(modifyingActionMsRaw, Math.max(0, nonExportEndTs - latestStart.ts));
+    const availableForDimension = Math.max(0, nonExportEndTs - latestStart.ts - modifyingActionMs);
+    const dimensionActionMs = Math.min(dimensionActionMsRaw, availableForDimension);
+    const otherActionMs = Math.max(0, taskTotalMs - exportingMs - modifyingActionMs - dimensionActionMs);
+    const totalMs = taskTotalMs;
     return {
       startedAt: latestStart.ts,
       ended: Boolean(exportSuccess),
       totalMs,
-      viewingMs,
-      modifyingMs,
+      otherActionMs,
+      dimensionActionMs,
+      modifyingMs: modifyingActionMs,
       exportingMs,
     };
   }, [events, nowTs]);
@@ -449,8 +496,13 @@ export default function AdminDashboard() {
                 <div className="flex h-full w-full">
                   <div
                     className="h-full bg-blue-400"
-                    style={{ width: `${(stageTiming.viewingMs / stageTiming.totalMs) * 100}%` }}
-                    title={`Viewing ${formatDuration(stageTiming.viewingMs)}`}
+                    style={{ width: `${(stageTiming.otherActionMs / stageTiming.totalMs) * 100}%` }}
+                    title={`Other Action ${formatDuration(stageTiming.otherActionMs)}`}
+                  />
+                  <div
+                    className="h-full bg-amber-400"
+                    style={{ width: `${(stageTiming.dimensionActionMs / stageTiming.totalMs) * 100}%` }}
+                    title={`Dimension Control ${formatDuration(stageTiming.dimensionActionMs)}`}
                   />
                   <div
                     className="h-full bg-violet-400"
@@ -464,10 +516,14 @@ export default function AdminDashboard() {
                   />
                 </div>
               </div>
-              <div className="mt-2 grid grid-cols-1 gap-2 text-xs text-slate-600 md:grid-cols-3">
+              <div className="mt-2 grid grid-cols-1 gap-2 text-xs text-slate-600 md:grid-cols-4">
                 <div className="rounded border border-slate-200 bg-slate-50 px-2 py-1.5">
-                  <div className="font-semibold text-blue-600">Viewing</div>
-                  <div>{formatDuration(stageTiming.viewingMs)}</div>
+                  <div className="font-semibold text-blue-600">Other Action</div>
+                  <div>{formatDuration(stageTiming.otherActionMs)}</div>
+                </div>
+                <div className="rounded border border-slate-200 bg-slate-50 px-2 py-1.5">
+                  <div className="font-semibold text-amber-600">Dimension Control</div>
+                  <div>{formatDuration(stageTiming.dimensionActionMs)}</div>
                 </div>
                 <div className="rounded border border-slate-200 bg-slate-50 px-2 py-1.5">
                   <div className="font-semibold text-violet-600">Modifying</div>
