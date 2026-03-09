@@ -1,0 +1,468 @@
+{
+  "nodes": [
+    {
+      "id": "root",
+      "label": "AGREEMENT OF COOPERATION ON PATENT DEVELOPMENT",
+      "content": "AGREEMENT OF COOPERATION ON PATENT DEVELOPMENT",
+      "type": "main",
+      "parentId": null,
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "preamble",
+      "label": "Preamble",
+      "content": "To guarantee the long-term good relationship between Party A and Party B and protect legal benefits for both parties, through friendly negotiation, both parties have agreed to enter into this agreement under the terms as below:",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "1",
+      "label": "1. Definitions",
+      "content": "Interpretation of Terms or expressions herein as below:",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "1.1",
+      "label": "1.1 Patents",
+      "content": "This agreement due to Patents, what mean the patents only produced during the validation period of the main contract.",
+      "type": "sub",
+      "parentId": "1",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "1.2",
+      "label": "1.2 The right to apply for patents",
+      "content": "The right to apply for patents: It means the individual, legal person or other entity  have the right to submit the patent application to the related national departments on invention & innovation in accordance with the related law and regulation or the  contract terms.",
+      "type": "sub",
+      "parentId": "1",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "1.3",
+      "label": "1.3 Patent right",
+      "content": "Patent right: It is an exclusive right granted to the patentee by the related national department to have right of exploit the patent by means of manufacturing, sale or other ways in a given period. It includes invention patent, utility model patent and design patent.",
+      "type": "sub",
+      "parentId": "1",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "1.4",
+      "label": "1.4 Patent license right",
+      "content": "Patent license right: It means individual, legal person or other entity have right to exploit the patent technology or patent product by means of manufacturing, sale or other ways in the specified regions in a given period according to the law & regulation or the contract terms.",
+      "type": "sub",
+      "parentId": "1",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "2",
+      "label": "2. Division of Ownerships",
+      "content": "During the period of cooperation, the division of ownerships of patent application right and patent right are decided in accordance with the following ways agreed by both parties.",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "execution"
+    },
+    {
+      "id": "2.1",
+      "label": "2.1 Patent application right and patent right owned by Party A",
+      "content": "The patent application right and patent right shall be owned by Party A in the following conditions:",
+      "type": "sub",
+      "parentId": "2",
+      "timePhase": "execution"
+    },
+    {
+      "id": "2.1.a",
+      "label": "2.1(a)",
+      "content": "The original idea comes from Party A and realized by self-development of Party A",
+      "type": "sub",
+      "parentId": "2.1",
+      "timePhase": "execution"
+    },
+    {
+      "id": "2.1.b",
+      "label": "2.1(b)",
+      "content": "The original idea comes from the conclusion after discussion between both parties. Party A completes technology development and possesses drawings and prototype etc. as technology carrier.",
+      "type": "sub",
+      "parentId": "2.1",
+      "timePhase": "execution"
+    },
+    {
+      "id": "2.1.c",
+      "label": "2.1(c)",
+      "content": "The original idea comes from Party B, but Party A completes the technology development and possesses drawings and prototype etc. as technology carrier.",
+      "type": "sub",
+      "parentId": "2.1",
+      "timePhase": "execution"
+    },
+    {
+      "id": "2.1.d",
+      "label": "2.1(d)",
+      "content": "The original idea comes from Party B who has provided some technical suggestion, drawings or sample as well, but Party A completes the technology development.",
+      "type": "sub",
+      "parentId": "2.1",
+      "timePhase": "execution"
+    },
+    {
+      "id": "2.1.e",
+      "label": "2.1(e)",
+      "content": "Party B completed the technology development and possesses drawings and prototype etc. as technology carrier. If Party B has not submitted the patent application to the related official departments two months after being reminded by Party A. As Party B to give up the right to apply for a patent and all patent rights, Party A has the full right to apply this patent based on having Party B been notified.",
+      "type": "sub",
+      "parentId": "2.1",
+      "timePhase": "execution"
+    },
+    {
+      "id": "2.1.f",
+      "label": "2.1(f)",
+      "content": "Party B shall breach the agreement If Party B applies the patent in his own name or assigns or bestows the patent application right owned by both parties to the third party without authorization of Party A, the ownership of patent application right and patent right will completely belong to Party A . Part B shall bear the loss caused to Party A.",
+      "type": "sub",
+      "parentId": "2.1",
+      "timePhase": "execution"
+    },
+    {
+      "id": "2.1.g",
+      "label": "2.1(g)",
+      "content": "For the patent application right owned by both parties, if Party B does not cooperate with Party A to finish the patent application and it will be considered that Party B has given up the rights, Party A will completely own the ownership of patent application right & patent right. After being granted with this patent, Party A can compensate Party B.",
+      "type": "sub",
+      "parentId": "2.1",
+      "timePhase": "execution"
+    },
+    {
+      "id": "2.2",
+      "label": "2.2 Patent application right and patent right owned by Party B",
+      "content": "The patent application right and patent right shall be owned by Party B in the following conditions:\n\nParty B provides technology and drawings while Party A has not participated in the improving of technology and the modification of drawings, in addition, Party A has not completed the technical carrier such as drawings or prototype etc.",
+      "type": "sub",
+      "parentId": "2",
+      "timePhase": "execution"
+    },
+    {
+      "id": "2.3",
+      "label": "2.3 Patent application right & patent right owned by both parties",
+      "content": "The patent application right & patent right shall be owned by both parties in   the following conditions and the third party is not allowed to share the patent application right & patent right and can not exploit this patent technology or sale the patent product without consent of both parties.",
+      "type": "sub",
+      "parentId": "2",
+      "timePhase": "execution"
+    },
+    {
+      "id": "2.3.a",
+      "label": "2.3(a)",
+      "content": "Party B provides draft which has been basically novel, creative and practicable, Party A modifies the draft and makes it better, in addition, Party A completed the technical carrier such as drawings or prototype etc.",
+      "type": "sub",
+      "parentId": "2.3",
+      "timePhase": "execution"
+    },
+    {
+      "id": "2.3.b",
+      "label": "2.3(b)",
+      "content": "Party B provides 3D design drawing which has been basically novel, creative and practicable. Party A modifies and revises the draft, in addition, Party A completed the technical carrier such as drawings or prototype etc.",
+      "type": "sub",
+      "parentId": "2.3",
+      "timePhase": "execution"
+    },
+    {
+      "id": "2.3.c",
+      "label": "2.3(c)",
+      "content": "After being granted with the patent application right according to 2.2, If Party B has not submitted the patent application to the related official departments two months after being reminded by Party A , it will be considered that Party B has given up the exclusive rights and shall share the patent application right and patent right with Party A.",
+      "type": "sub",
+      "parentId": "2.3",
+      "timePhase": "execution"
+    },
+    {
+      "id": "2.4",
+      "label": "2.4 Party B acquisition of patent application right and patent right",
+      "content": "Party B can acquire the patent application right and patent right after meeting the following one term or several terms in accordance with clause 2.1 & 2.3.\n\nParty B pays the patent fee $ 23,000 to Party A in one-time payment of royalties",
+      "type": "sub",
+      "parentId": "2",
+      "timePhase": "execution"
+    },
+    {
+      "id": "root_1",
+      "label": "Single patent buyout",
+      "content": "The patent fee paid to Party A is as below: invention patent $ 2,100  ; utility model patent $ 2,220      ; design patent $ 1,250 ; Total patents quantity:  5,000   Total patents fee:  6,000   .",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "root_2",
+      "label": "Amortization for individual product",
+      "content": "Base on the quantity of product manufactured by Party B or manufactured or sold by other parties, Party B shall pay $ 1,200     each unit to Party A.",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "execution"
+    },
+    {
+      "id": "root_3__1",
+      "label": "Sales threshold - units",
+      "content": "If the number of sales of patented products in various ways to reach more than  25,000     units sold by Party B within 2 years after the patent product being produced, Party B shall pay the patent fee $   2,000   to Party A.",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "execution"
+    },
+    {
+      "id": "root_4",
+      "label": "Sales threshold - amount",
+      "content": "If the total amount of patented products sold by Party B in various ways to reach more than $  4,000  within 2 years after the patent product being produced, Party B shall pay the patent fee $  4,000 to Party A.",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "execution"
+    },
+    {
+      "id": "root_5",
+      "label": "Patent protection responsibility",
+      "content": "Whoever does the ownership of the patent right belong to, the patentee shall be responsible for protecting the patent's validity and legality and preventing it from being infringed. In addition, Incurred expenses shall be borne by the patentee during the protection of patent's validity and legality. If the patent right is jointly owned by both parties, both parties shall bear 50% of the total expenses respectively.",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "effective"
+    },
+    {
+      "id": "root_2_5",
+      "label": "2.5 Joint ownership patent application rights",
+      "content": "In event of the joint ownership of right to apply a patent, the third party can acquire the patent application right & patent right by meeting the following requirements .\n□   Approved by both parties\n□   Approved by Party B\n□   Approved by Party A\n□   With patent-pending technology programs within six months, one is reminded of the other party, no reason not to apply or not to assist each other in the process of applying for, resulting in the patent application is on hold for up to a continuous period of up to three months",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "root_2_5_sub",
+      "label": "Third party patent assignment",
+      "content": "In the above cases, both Party A and Party B shall sign the patent application right assignment contract with the third party jointly and the third party should obtain the  right to apply for patent after the assignment fee being paid correspondingly.",
+      "type": "sub",
+      "parentId": "root_2_5",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "root_3__1",
+      "label": "3 Special provisions of patent license right",
+      "content": "Special provisions of patent license right",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "effective"
+    },
+    {
+      "id": "root_3_1",
+      "label": "3.1 Patent right granted to Party A",
+      "content": "After the application is approved and the patent right is granted to Party A",
+      "type": "sub",
+      "parentId": "root_3__1",
+      "timePhase": "effective"
+    },
+    {
+      "id": "root_3_1_a",
+      "label": "3.1 Party B no patent rights",
+      "content": "Party B is not allowed to have any patent rights including exploitation of the patent.",
+      "type": "sub",
+      "parentId": "root_3_1",
+      "timePhase": "effective"
+    },
+    {
+      "id": "root_3_1_b",
+      "label": "3.1 Party B priority use",
+      "content": "Party B has the priority to make use of the patent: Where, before the date of filing of the application for patent, any person who has already made the identical product, used the identical process, or made necessary preparations for its making or using, continues to make or use it within the original scope only;",
+      "type": "sub",
+      "parentId": "root_3_1",
+      "timePhase": "effective"
+    },
+    {
+      "id": "root_3_1_c",
+      "label": "3.1 Party B free exploitation",
+      "content": "Party B can exploit patent for free.",
+      "type": "sub",
+      "parentId": "root_3_1",
+      "timePhase": "effective"
+    },
+    {
+      "id": "root_3_1_d",
+      "label": "3.1 Party B non-free exploitation",
+      "content": "Party B can have non-free right of exploitation of the patent conditionally and shall pay the licensing fee to Party A in below ways :",
+      "type": "sub",
+      "parentId": "root_3_1",
+      "timePhase": "effective"
+    },
+    {
+      "id": "root_3_1_d_i",
+      "label": "3.1 Licensing fee structure",
+      "content": "The licensing fee paid to Party A is as below: invention patent $ 25,000 ; utility model patent $ 7,000 ; design patent $ 2,000; Total patents quantity: 125,000 . Total licensing fee: 25,000",
+      "type": "sub",
+      "parentId": "root_3_1_d",
+      "timePhase": "execution"
+    },
+    {
+      "id": "root_3_1_d_ii",
+      "label": "3.1 Sales-based licensing fee",
+      "content": "The number of the patented products sold in the  25,000  by Party B is 200  units within two years (Regardless of whether it reaches this sales volume),Party B shall pay the licensing fee $126,000 of each product to Party A. The sales number exceeds this sales volume, Party B shall pay the licensing fee $156,000 of each product to Party A.",
+      "type": "sub",
+      "parentId": "root_3_1_d",
+      "timePhase": "execution"
+    },
+    {
+      "id": "root_3_1_d_iii",
+      "label": "3.1 Patent withdrawal condition",
+      "content": "The number of patented products sold by Party B can not meet the above criteria within two years, unconditionally patent rights shall be withdrawn from Party B by Party A, And patent fee paid by Party B to Party A shall not be refundable.",
+      "type": "sub",
+      "parentId": "root_3_1_d",
+      "timePhase": "termination"
+    },
+    {
+      "id": "root_3_2",
+      "label": "3.2 Patent right granted to Party B",
+      "content": "After the application is approved and the patent right is granted to Party B",
+      "type": "sub",
+      "parentId": "root_3__1",
+      "timePhase": "effective"
+    },
+    {
+      "id": "root_3_2_a",
+      "label": "3.2 Party A no patent rights",
+      "content": "Party A is not allowed to have any patent right including the right of exploitation of the patent.",
+      "type": "sub",
+      "parentId": "root_3_2",
+      "timePhase": "effective"
+    },
+    {
+      "id": "root_3_2_b",
+      "label": "3.2 Party A priority right",
+      "content": "Party A has the priority right of exploitation of the patent.",
+      "type": "sub",
+      "parentId": "root_3_2",
+      "timePhase": "effective"
+    },
+    {
+      "id": "root_3_2_c",
+      "label": "3.2 Party A free exploitation",
+      "content": "Party A has a free right of exploitation of the patent.",
+      "type": "sub",
+      "parentId": "root_3_2",
+      "timePhase": "effective"
+    },
+    {
+      "id": "root_3_2_d",
+      "label": "3.2 Party A non-free exploitation",
+      "content": "Party A can have a non-free right of exploitation of the patent conditionally, the licensing fee paid to Party B is as below: invention patent $ 5,000 ; utility model patent $ 125,000 ; design patent 4,000 ; Total patents quantity: 25,000. Total licensing fee 125,000",
+      "type": "sub",
+      "parentId": "root_3_2",
+      "timePhase": "execution"
+    },
+    {
+      "id": "root_3_3",
+      "label": "3.3 Third party joint ownership rights",
+      "content": "The third party can only obtain the non-free patent right conditionally if the patent right is jointly owned by both Party A and Party B. The conditions are as below:\n□   Approved by both parties\n□   Approved by Party B\n□   Approved by Party A\n□   Neither Party A nor Party B has implemented patent two years after granted patent right.",
+      "type": "sub",
+      "parentId": "root_3__1",
+      "timePhase": "effective"
+    },
+    {
+      "id": "root_1__1",
+      "label": "Patent Licensing Procedures",
+      "content": "If the third party obtain the right of patent licence ，both Party A and Party B shall sign the patent licensing contract with the third party and the contract should be reported to the related official departments for record. Otherwise, the patent license right will be invalid.",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "root_2__1",
+      "label": "Payment Method of Licensing Fee",
+      "content": "The method of payment of the licensing fee shall be specified in the contract signed by three parties and be implemented by the third party who has the non-free right of exploitation of patent.",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "execution"
+    },
+    {
+      "id": "4",
+      "label": "Responsibility of breaching the agreement",
+      "content": "Responsibility of breaching the agreement",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "termination"
+    },
+    {
+      "id": "4.1",
+      "label": "4.1",
+      "content": "The party who breaches any clauses of this agreement shall reimburse $500，000 to the counter party as compensation. If the compensation can not recoup the loss, Defaulting party shall bear the responsibility to compensate the direct & indirect loss, including, without limitation, lost margin, market share, reputation and cost for redevelop the market etc.",
+      "type": "sub",
+      "parentId": "4",
+      "timePhase": "termination"
+    },
+    {
+      "id": "4.2",
+      "label": "4.2",
+      "content": "During the validation period of the patent, the loss caused to other parties shall be borne by patentee if the patent has been infringed or been identified as the ultimate invalid.\n\nIf the patent has been infringed or been identified as the ultimate invalid. 50% of the total loss caused to other parties should be borne by both patentees respectively who jointly owned the patent",
+      "type": "sub",
+      "parentId": "4",
+      "timePhase": "post_termination"
+    },
+    {
+      "id": "4.3",
+      "label": "4.3",
+      "content": "If one party breaches the agreement, the counter party has the right to terminate this agreement and the main contract immediately. Additionally, the responsibility of the defaulting party shall be prosecuted",
+      "type": "sub",
+      "parentId": "4",
+      "timePhase": "termination"
+    },
+    {
+      "id": "5",
+      "label": "Other provisions",
+      "content": "Other provisions",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "effective"
+    },
+    {
+      "id": "5.1",
+      "label": "5.1",
+      "content": "This agreement is with the same validation period of the main contract. The obligation of patent protection borne by both parties shall survive notwithstanding this agreement has been terminated or rescinded.",
+      "type": "sub",
+      "parentId": "5",
+      "timePhase": "post_termination"
+    },
+    {
+      "id": "5.2",
+      "label": "5.2",
+      "content": "Other unmentioned terms can be specified in the supplementary agreement signed by both parties after consultation. If the supplementary agreement is in conflict with this agreement, the content in the supplementary agreement will be applied. If the dispute occurred during the implementation of this agreement can not be solved after consultation, the case will be submit to the people's court of      for solving and shall be governed by the laws of the People's Republic of China.",
+      "type": "sub",
+      "parentId": "5",
+      "timePhase": "execution"
+    },
+    {
+      "id": "5.3",
+      "label": "5.3",
+      "content": "This agreement is written in duplicate, each party respectively holds the Chinese & English versions, which are with the same legal binding force on both parties. If there is conflict between the Chinese version and English version, the explanation of the Chinese version will be applied. This agreement becomes effective after being signed & stamped by both parties based on the validation of the main contract and will be invalid if the main contract is out of validation.As part of the terms in this Agreement be or become invalid or null, does not affect the validity of the other terms of the agreement.",
+      "type": "sub",
+      "parentId": "5",
+      "timePhase": "effective"
+    },
+    {
+      "id": "8",
+      "label": "8",
+      "content": "If Party A owns the ownership of patent application right & patent right, blacken the corresponding squares according to the actual situation.",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "9",
+      "label": "9",
+      "content": "If Party B owns the ownership of patent application right & patent right, blacken the corresponding squares according to the actual situation.",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "10",
+      "label": "10",
+      "content": "For the right of exploitation of patent owned by the third party, blacken the corresponding squares according to the actual situation.",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "11",
+      "label": "11",
+      "content": "The merchandisers fill this \"Patent Ownership Agreement\" and submit it to the department manager for check, and then this agreement shall be reviewed by the regional general manager and final approved by CTO.",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "execution"
+    }
+  ]
+}

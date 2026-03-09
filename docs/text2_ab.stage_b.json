@@ -1,0 +1,639 @@
+{
+  "nodes": [
+    {
+      "id": "preamble",
+      "references": [
+        "cl_1",
+        "cl_2",
+        "cl_14_1",
+        "cl_signature"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "cl_1",
+      "references": [
+        "cl_1_p2",
+        "cl_6_1",
+        "cl_8_1",
+        "cl_8_3"
+      ],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "act_cl_1_revise",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "1. Premises and Basic Information\nParty A agrees to lease to Party B the office premises located at Unit 1001, Tower 8, Excellence Qianhai Financial Center (Phase I), Guiwan Area, Nanshan District, Shenzhen, Guangdong, PRC (the \"Premises\"). Party A warrants that it holds lawful title or leasing authority over the Premises and that the Premises is free from encumbrances that would materially impair Party B's quiet enjoyment during the Term."
+        }
+      ]
+    },
+    {
+      "id": "cl_1_p2",
+      "references": [
+        "cl_1",
+        "cl_8_1",
+        "cl_6_1",
+        "cl_6_2"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "cl_2",
+      "references": [
+        "cl_2_timeline",
+        "cl_6_1",
+        "cl_10_2",
+        "cl_10_3",
+        "cl_11_1"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "cl_2_timeline",
+      "references": [
+        "cl_2",
+        "cl_3_2",
+        "cl_4_1",
+        "cl_5_3",
+        "cl_6_1"
+      ],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "act_cl_2_timeline_revise",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "For purposes of administration, review, and compliance monitoring, the Parties acknowledge the following timeline:\n(a) 15 November 2025: Agreement executed;\n(b) 20 November 2025: Security deposit due under Section 4.1;\n(c) 1 December 2025: Delivery deadline under Section 6.1;\n(d) 1 December 2025: Joint inspection and handover under Section 6.2;\n(e) 5th day of each calendar month: Monthly rent due under Section 3.2;\n(f) Upon occurrence of breach: Notice and cure process under Sections 5.3, 11.2;\n(g) 30 days before Expiration Date: Renewal request deadline under Section 8.2;\n(h) Upon expiration or early termination: Return, settlement, and post-termination obligations under Sections 9.1 to 9.3.\nThis timeline is for administrative reference only and does not alter the substantive obligations set out in the referenced sections."
+        }
+      ]
+    },
+    {
+      "id": "cl_3",
+      "references": [
+        "cl_3_1",
+        "cl_3_2",
+        "cl_3_3"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "cl_3_1",
+      "references": [
+        "cl_3_2",
+        "cl_3_3",
+        "cl_4_1",
+        "cl_11_1",
+        "cl_11_2"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "cl_3_2",
+      "references": [
+        "cl_3_1",
+        "cl_3_3",
+        "cl_6_1",
+        "cl_11_1",
+        "cl_11_2"
+      ],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "act_cl_3_2_revise",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "3.2 Payment Date\nParty B shall pay the Monthly Rent on or before the 5th day of each calendar month during the Term. The first month's rent shall be payable no later than the Commencement Date. If the Commencement Date is delayed due to Party A's breach under Section 6.1, rent commencement shall be adjusted to the actual delivery date, and no rent shall accrue for the period of delay attributable to Party A. Where the Term commences or ends on a day other than the first or last day of a calendar month, rent for that partial month shall be prorated on a daily basis."
+        }
+      ]
+    },
+    {
+      "id": "cl_3_3",
+      "references": [
+        "cl_3_1",
+        "cl_3_2",
+        "cl_5_3",
+        "cl_11_2"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "cl_4",
+      "references": [
+        "cl_4_1",
+        "cl_4_2",
+        "cl_4_3"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "cl_4_1",
+      "references": [
+        "cl_4_2",
+        "cl_4_3",
+        "cl_3_1",
+        "cl_2_timeline"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "cl_4_2",
+      "references": [
+        "cl_4_1",
+        "cl_4_3",
+        "cl_5_2",
+        "cl_5_3",
+        "cl_8_1"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "cl_4_3",
+      "references": [
+        "cl_4_1",
+        "cl_4_2",
+        "cl_9_3",
+        "cl_11_1",
+        "cl_11_2"
+      ],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "act_cl_4_3_revise",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "4.3 Return of Deposit\nWithin fifteen (15) days after the earlier of the Expiration Date or lawful termination of this Agreement, Party A shall return the unused balance of the Security Deposit to Party B without interest after deducting any unpaid rent, unpaid charges, repair costs properly chargeable to Party B, holdover amounts, and liquidated damages payable by Party B. Party A shall provide Party B with a written itemized statement of all deductions at the time of return or within the same fifteen (15) day period. If Party A fails to return the deposit or provide the itemized statement within such period, Party A shall pay interest on the overdue amount at the rate of 0.05% per day from the date of default until full repayment."
+        },
+        {
+          "id": "act_cl_4_3_add",
+          "type": "add_clause",
+          "status": "pending",
+          "supplementDraft": "4.3A Deposit Deduction Procedure\nBefore making any deduction from the Security Deposit, Party A shall: (i) provide Party B with written notice specifying each item of deduction, the amount claimed, and supporting evidence (including photographs, repair invoices, or third-party assessments) no later than ten (10) days after the return inspection under Section 9.3; (ii) allow Party B five (5) business days to raise written objections to any claimed deduction; and (iii) where Party B raises a timely objection, the disputed portion shall be held in escrow or separately accounted for pending resolution under the dispute resolution mechanism. Undisputed portions of the deposit shall be returned within the period specified in Section 4.3 regardless of any ongoing dispute over other deductions."
+        }
+      ]
+    },
+    {
+      "id": "cl_5",
+      "references": [
+        "cl_5_1",
+        "cl_5_2",
+        "cl_5_3"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "cl_5_1",
+      "references": [
+        "cl_5_2",
+        "cl_10_3"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "cl_5_2",
+      "references": [
+        "cl_5_1",
+        "cl_5_3",
+        "cl_4_2",
+        "cl_11_2",
+        "cl_14_3"
+      ],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "act_cl_5_2_revise",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "5.2 Tenant Charges\nDuring the Term, Party B shall bear all fees arising from its use and occupancy of the Premises, including but not limited to electricity charges, water charges, internet charges, telephone charges, waste handling charges, and property management fees. The initial reference rates are as follows:\nWater: RMB 6.50 per ton\nElectricity: RMB 1.28 per kWh\nProperty management fee: RMB 18.00 per square meter per month\nInternet service: according to the third-party provider selected by Party B\nActual charges may be adjusted by utility providers or property managers in accordance with applicable law or policy, provided that Party A shall give Party B not less than fifteen (15) days' prior written notice of any rate adjustment within Party A's control. Failure to pay such charges may constitute a payment breach under Sections 5.3 and 11.2(1)."
+        },
+        {
+          "id": "act_cl_5_2_add",
+          "type": "add_clause",
+          "status": "pending",
+          "supplementDraft": "5.2A Utility Verification and Dispute Procedure\nParty A shall provide Party B with monthly utility statements supported by meter readings recorded in the format set out in Appendix 2 no later than the 10th day of each calendar month for the preceding month. Party B shall have five (5) business days from receipt to raise a written objection specifying the disputed item and basis. Where a dispute is raised: (i) Party B shall pay the undisputed portion within the period specified in Section 5.3; (ii) the disputed portion shall be held pending resolution; (iii) the Parties shall attempt to resolve the dispute within ten (10) business days through good-faith discussion, failing which either Party may escalate to the dispute resolution mechanism under Section 12 (as revised). If Party B's objection is upheld, any overpayment shall be credited against the next monthly statement or refunded within five (5) business days."
+        }
+      ]
+    },
+    {
+      "id": "cl_5_3",
+      "references": [
+        "cl_5_2",
+        "cl_4_2",
+        "cl_11_2",
+        "cl_3_3"
+      ],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "act_cl_5_3_revise",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "5.3 Payment After Notice\nParty B shall pay any undisputed amount due under Section 5.2 within three (3) business days after receiving written notice, invoice, or supporting proof from Party A or the relevant service provider. If Party B fails to pay an undisputed amount within such period, any late fee, default charge, service interruption, or third-party claim arising therefrom shall be borne by Party B. Repeated or material non-payment of undisputed amounts under this Section may be treated as a payment default under Section 11.2(1). Disputed amounts shall be handled in accordance with Section 5.2A."
+        }
+      ]
+    },
+    {
+      "id": "cl_6",
+      "references": [
+        "cl_6_1",
+        "cl_6_2"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "cl_6_1",
+      "references": [
+        "cl_2",
+        "cl_2_timeline",
+        "cl_3_2",
+        "cl_6_2",
+        "cl_10_3"
+      ],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "act_cl_6_1_revise",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "6.1 Delivery Deadline\nParty A shall deliver the Premises to Party B no later than 1 December 2025, in a condition safe for ordinary office use and compliant with the fit-out description set out in Appendix 3. \"Compliant with the fit-out description\" means that all items listed in Appendix 3 are present, functional, and free from material defects. If Party A fails to deliver by the agreed date, Party B's remedies shall be as set out in Sections 10.3(1) and 11.1(2)."
+        }
+      ]
+    },
+    {
+      "id": "cl_6_2",
+      "references": [
+        "cl_6_1",
+        "cl_4_3",
+        "cl_7",
+        "cl_9_3",
+        "cl_14_3"
+      ],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "act_cl_6_2_revise",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "6.2 Joint Inspection\nOn the delivery date, the Parties shall jointly inspect the Premises and sign the Handover Confirmation Record (Appendix 1) confirming the status of the Premises, existing defects, meter readings, keys, access cards, and fixtures. The inspection record shall be used for purposes of maintenance allocation under Section 7, deposit adjustment under Section 4.3, and return obligations under Section 9.3."
+        },
+        {
+          "id": "act_cl_6_2_add",
+          "type": "add_clause",
+          "status": "pending",
+          "supplementDraft": "6.2A Handover Fallback Procedure\nIf either Party fails to attend the scheduled joint inspection without reasonable cause, the attending Party may conduct a unilateral inspection in the presence of a neutral third-party witness (such as a property management representative) and document the condition by written record and photographic evidence. Such unilateral record shall be deemed prima facie evidence of the Premises' condition at handover unless the absent Party provides written objection with supporting evidence within five (5) business days of receiving a copy of the record. If a Party attends but refuses to sign the Handover Confirmation Record, that Party shall provide written reasons within two (2) business days. If the refusing Party's objections are not substantiated, the record signed by the attending Party shall be deemed accepted. Defect attribution disputes arising at handover shall be resolved by reference to the fit-out description in Appendix 3 and, if unresolved within ten (10) business days, escalated to the dispute resolution mechanism under Section 12 (as revised)."
+        }
+      ]
+    },
+    {
+      "id": "cl_7",
+      "references": [
+        "cl_6_2",
+        "cl_4_3",
+        "cl_9_3",
+        "cl_10_2",
+        "cl_11_2"
+      ],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "act_cl_7_revise",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "7. Maintenance and Repair Allocation\nDuring the Term:\n(a) Party B shall use the Premises and all fixtures in a prudent and reasonable manner;\n(b) Party B shall promptly notify Party A in writing of any damage, malfunction, leakage, electrical issue, or safety hazard;\n(c) Party A shall repair structural defects and landlord-owned fixtures within five (5) days after receiving written notice, unless emergency conditions require immediate action, in which case Party A shall act within twenty-four (24) hours;\n(d) if Party A fails to repair within such period, or if emergency conditions make prior notice impracticable, Party B may arrange necessary repairs and recover reasonable costs from Party A by written demand with supporting invoices, or offset such costs against rent only with Party A's prior written acknowledgment or a legally effective determination by a competent authority;\n(e) if the repair materially interferes with Party B's use of the Premises for more than two (2) consecutive days, rent shall be reduced proportionately for the period of interference or the Term shall be extended by an equivalent period, as the Parties may agree in writing.\nDamage caused by Party B's misuse, negligence, unauthorized alteration, or non-compliance with this Section 7 shall be repaired at Party B's sole cost and may trigger liability under Sections 4.3, 9.3, and 11.2(5)."
+        }
+      ]
+    },
+    {
+      "id": "cl_8",
+      "references": [
+        "cl_8_1",
+        "cl_8_2",
+        "cl_8_3"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "cl_8_1",
+      "references": [
+        "cl_1_p2",
+        "cl_10_2",
+        "cl_11_2"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "cl_8_2",
+      "references": [
+        "cl_2",
+        "cl_2_timeline",
+        "cl_8_3",
+        "cl_11_1",
+        "cl_11_2"
+      ],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "act_cl_8_2_revise",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "8.2 Renewal Request\nIf Party B wishes to renew the lease, Party B shall submit a written renewal request at least thirty (30) days before the Expiration Date. Any renewal shall be subject to mutual written agreement on terms. If Party A intends to continue leasing the Premises to any third party under substantially similar commercial terms, Party B shall have a priority right to renew on equal terms, provided Party B is not then in material default under Sections 10 or 11. Upon receiving Party B's renewal request, Party A shall respond in writing within fifteen (15) days, specifying whether it intends to continue leasing and, if so, the proposed terms. If Party A proposes to lease to a third party on terms equal to or less favorable than those offered to Party B, Party B shall have ten (10) days from receipt of Party A's written notice of such third-party offer to exercise its priority right by written acceptance. If Party A leases to a third party without complying with this priority procedure, Party B shall be entitled to damages equal to two (2) months' rent as liquidated damages, without prejudice to other proven losses."
+        }
+      ]
+    },
+    {
+      "id": "cl_8_3",
+      "references": [
+        "cl_8_2",
+        "cl_1"
+      ],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "act_cl_8_3_revise",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "8.3 Priority Purchase Right\nIf Party A proposes to sell the Premises during the Term, Party A shall give Party B written notice of the proposed sale price and payment terms at least thirty (30) days before entering into any binding agreement with a third party. Party B shall have fifteen (15) days from receipt of such notice to exercise its priority right to purchase the Premises on the same price and payment terms by delivering written acceptance to Party A. If Party B does not exercise its priority right within such period, Party A may proceed to sell to a third party on terms no more favorable than those notified to Party B. The priority purchase right does not apply where the sale involves the entire building, a larger integrated property package, or an enforcement disposal by a competent authority. If Party A sells the Premises in breach of this priority procedure, Party B shall be entitled to damages equal to the difference between the sale price and the fair market value at the time of sale, as determined by a qualified independent valuer, in addition to any other remedies available at law."
+        }
+      ]
+    },
+    {
+      "id": "cl_9",
+      "references": [
+        "cl_9_1",
+        "cl_9_2",
+        "cl_9_3"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "cl_9_1",
+      "references": [
+        "cl_2",
+        "cl_9_2",
+        "cl_9_3",
+        "cl_4_3",
+        "cl_11_2"
+      ],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "act_cl_9_1_revise",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "9.1 Timely Vacating and Handover\nUpon expiration or early termination of this Agreement, Party B shall vacate and return the Premises within three (3) days, complete meter settlement, remove its belongings, restore the Premises to the condition required under Section 9.3, and deliver keys, access cards, and related materials to Party A. If Party B fails to vacate on time, Party A shall first issue written notice and provide a grace period of not less than seven (7) days before taking further action, except in cases of emergency or abandonment as defined in Section 9.2. Holdover damages shall apply in accordance with Section 11.2(4) for each day of overdue vacation."
+        }
+      ]
+    },
+    {
+      "id": "cl_9_2",
+      "references": [
+        "cl_9_1",
+        "cl_9_3",
+        "cl_4_3",
+        "cl_11_2"
+      ],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "act_cl_9_2_revise",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "9.2 Leftover Property\nIf Party B leaves property in the Premises after the deadline specified in Section 9.1 and after the expiry of the seven (7) day grace period provided in Section 9.1, Party A shall: (i) conduct a written inventory and photographic record of all leftover property; (ii) issue written notice to Party B at its correspondence address specifying the items left and requiring removal within a further five (5) days; and (iii) if Party B fails to remove the property within such additional period, Party A may arrange for storage of the property at Party B's cost, or, where the property has no apparent commercial value or poses a safety or hygiene risk, dispose of it after providing a further written notice of not less than three (3) days. Party A shall retain photographic evidence of any disposal. Party B shall bear reasonable storage and disposal costs. Party A shall not be liable for loss or damage to leftover property handled in accordance with this procedure."
+        }
+      ]
+    },
+    {
+      "id": "cl_9_3",
+      "references": [
+        "cl_9_1",
+        "cl_9_2",
+        "cl_4_3",
+        "cl_6_2",
+        "cl_12"
+      ],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "act_cl_9_3_revise",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "9.3 Return Inspection\nUpon return of the Premises, the Parties shall jointly inspect the Premises using the Handover Confirmation Record (Appendix 1) as reference, recording condition, damage, meter readings, and outstanding obligations. The return record shall be signed by both Parties and used for final deposit settlement under Section 4.3 and dispute resolution under Section 12. The fallback procedure in Section 6.2A shall apply mutatis mutandis if either Party fails to attend or refuses to sign the return inspection record. The standard for assessing damage shall exclude fair wear and tear attributable to ordinary office use during the Term."
+        }
+      ]
+    },
+    {
+      "id": "cl_10",
+      "references": [
+        "cl_10_1",
+        "cl_10_2",
+        "cl_10_3"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "cl_10_1",
+      "references": [
+        "cl_10_2",
+        "cl_10_3",
+        "cl_4_3",
+        "cl_11_1",
+        "cl_11_2"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "cl_10_2",
+      "references": [
+        "cl_5_3",
+        "cl_6_2",
+        "cl_7",
+        "cl_8_1",
+        "cl_9_1"
+      ],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "act_cl_10_2_revise",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "10.2 Landlord's Right to Terminate\nParty A may terminate this Agreement by written notice if Party B:\n(1) fails to pay rent or other payable charges within thirty (30) days after written demand and expiry of the cure period under Section 11.2(2);\n(2) unreasonably refuses to sign the handover record after the Premises satisfies the agreed delivery standard under Section 6.2, and such refusal is not cured within five (5) business days of written notice;\n(3) alters the structure of the Premises without authorization in breach of Section 7 and fails to restore within ten (10) days of written notice;\n(4) changes the permitted use in breach of Sections 1.2 and 8.1 and fails to cease such change within seven (7) days of written notice; or\n(5) subleases or transfers possession in breach of Section 8.1.\nIn all cases, Party A shall exercise its termination right by written notice specifying the ground for termination and the effective date, which shall be no earlier than three (3) days after delivery of the notice. Party A shall not take self-help measures including locking access, removing personnel, or disposing of property without a legally effective court order or arbitral award, except in cases of genuine emergency posing immediate risk to life or property, in which case Party A shall notify Party B and the relevant authorities simultaneously and document the emergency circumstances."
+        }
+      ]
+    },
+    {
+      "id": "cl_10_3",
+      "references": [
+        "cl_6_1",
+        "cl_7",
+        "cl_5_1",
+        "cl_11_1",
+        "cl_12"
+      ],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "act_cl_10_3_revise",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "10.3 Tenant's Right to Terminate\nParty B may terminate this Agreement by written notice if Party A:\n(1) fails to deliver the Premises for more than seven (7) days after the agreed delivery date under Section 6.1;\n(2) lacks the lawful right to lease the Premises, or the delivered Premises materially fails to conform to the contractual requirements in Appendix 3 and such non-conformance seriously affects Party B's use, safety, or health and is not remedied within fifteen (15) days of written notice; or\n(3) fails to perform repair obligations under Section 7 or pay charges that should be borne by Party A under Section 5.1, thereby materially preventing Party B's normal use of the Premises, and such failure is not remedied within ten (10) days of written notice.\nUpon lawful termination by Party B under this Section, Party A's obligations under Section 11.1(1) shall apply."
+        }
+      ]
+    },
+    {
+      "id": "cl_11",
+      "references": [
+        "cl_11_1",
+        "cl_11_2"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "cl_11_1",
+      "references": [
+        "cl_10_3",
+        "cl_4_3",
+        "cl_3_1",
+        "cl_6_1",
+        "cl_8_2"
+      ],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "act_cl_11_1_revise",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "11.1 Landlord Breach\nIf Party A is in breach:\n(1) where Party B lawfully terminates under Section 10.3, Party A shall, within fifteen (15) days after the effective date of termination, return the Security Deposit and any unused prepaid rent, and pay liquidated damages equal to one (1) month's rent, without prejudice to additional losses proven by Party B;\n(2) if Party A delays delivery or otherwise commits a breach under Section 10.3(2) or 10.3(3) but Party B does not terminate, Party A shall pay liquidated damages equal to two (2) times the daily rent for each day of breach, capped at two (2) months' rent in aggregate, and Party B may elect proportionate rent reduction or lease extension under Sections 6.1 and 8.2;\n(3) if Party A purports to terminate this Agreement without a contractual basis under Section 10.2, Party A shall give at least thirty (30) days' written notice, return the Security Deposit and unused prepaid rent, and pay liquidated damages equal to two (2) months' rent, without prejudice to additional proven loss.\nFor the avoidance of doubt, cross-references in this Section to \"Section 11.3\" are references to Section 10.3 of this Agreement."
+        }
+      ]
+    },
+    {
+      "id": "cl_11_2",
+      "references": [
+        "cl_10_2",
+        "cl_4_3",
+        "cl_3_1",
+        "cl_5_2",
+        "cl_5_3"
+      ],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "act_cl_11_2_revise",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "11.2 Tenant Breach\nIf Party B is in breach:\n(1) where Party A lawfully terminates under Section 10.2, Party B shall pay liquidated damages equal to one (1) month's rent, without prejudice to additional losses proven by Party A;\n(2) if Party B fails to pay rent, deposit, utilities, management fees, or other amounts due, Party A shall first issue written demand and grant a cure period of not less than five (5) days. If Party B still fails to pay and the breach does not yet trigger termination, or Party A elects not to terminate, Party B shall pay late damages equal to two (2) times the daily rent for each overdue day, calculated from the date the payment was due until the date of actual payment;\n(3) if Party B purports to terminate this Agreement without a contractual basis under Section 10.3, Party B shall give at least thirty (30) days' written notice and pay liquidated damages equal to two (2) months' rent;\n(4) if Party B fails to vacate or return the Premises on time under Section 9.1, Party B shall pay holdover damages at a rate of two (2) times the daily rent for each day of overdue vacation;\n(5) if Party B performs unauthorized alteration, fit-out, installation, or other conduct prohibited by Section 7, Party B shall restore the Premises to its original condition within fifteen (15) days of written notice, compensate Party A for resulting loss supported by documented evidence, and indemnify Party A against third-party claims arising therefrom.\nBefore making any deduction from the Security Deposit or issuing a separate payment demand for losses, Party A shall provide Party B with a written itemized statement of claimed losses and supporting evidence within thirty (30) days of the event giving rise to the claim. Party B shall have ten (10) business days to respond. Undisputed amounts shall be paid or deducted within five (5) business days of the response period. Disputed amounts shall be resolved under Section 12."
+        }
+      ]
+    },
+    {
+      "id": "cl_12",
+      "references": [
+        "cl_5_3",
+        "cl_6_2",
+        "cl_8_2",
+        "cl_9_3",
+        "cl_10_2"
+      ],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "act_cl_12_delete",
+          "type": "delete",
+          "status": "pending",
+          "replacementText": "12. Dispute Resolution\nAny dispute arising out of or in connection with this Agreement, including any question regarding its existence, validity, or termination, shall first be resolved through good-faith negotiation between the Parties within thirty (30) days of written notice of the dispute by either Party. If the dispute is not resolved through negotiation within such period, either Party may submit the dispute to the Shenzhen Arbitration Commission for arbitration in accordance with its then-current arbitration rules. The arbitration shall be conducted in Shenzhen in the Chinese language. The arbitral award shall be final and binding on both Parties. Nothing in this Section shall prevent either Party from seeking urgent interim or injunctive relief from a competent people's court."
+        }
+      ]
+    },
+    {
+      "id": "cl_13",
+      "references": [
+        "cl_14_1",
+        "cl_10_1"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "cl_14",
+      "references": [
+        "cl_14_1",
+        "cl_14_2",
+        "cl_14_3"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "cl_14_1",
+      "references": [
+        "cl_14_2",
+        "cl_13",
+        "cl_signature"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "cl_14_2",
+      "references": [
+        "cl_14_1",
+        "cl_1",
+        "cl_2"
+      ],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "act_cl_14_2_revise",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "14.2 Filing and Registration\nWithin ten (10) days after execution, the Parties shall cooperate in completing any lease filing or registration formalities required by the competent housing lease administration authority. Party A shall be primarily responsible for initiating the filing process and shall bear any administrative fees associated with such filing. Party B shall provide all reasonably required documentation within three (3) business days of Party A's written request. Failure to complete filing due to Party A's inaction shall not affect the validity of this Agreement between the Parties but may expose Party A to regulatory liability."
+        }
+      ]
+    },
+    {
+      "id": "cl_14_3",
+      "references": [
+        "cl_6_1",
+        "cl_6_2",
+        "cl_5_2",
+        "cl_9_3"
+      ],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "act_cl_14_3_revise",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "14.3 Appendices\nThe following appendices form an integral part of this Agreement and have the same legal effect as the main body of this Agreement. In the event of conflict between an appendix and the main body, the main body shall prevail unless the appendix expressly states otherwise:\n- Appendix 1: Premises Handover Confirmation Record Template\n- Appendix 2: Utility Meter Reading Record Template\n- Appendix 3: Fit-out Scope Description"
+        }
+      ]
+    },
+    {
+      "id": "cl_signature",
+      "references": [
+        "cl_14_1",
+        "preamble"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    }
+  ]
+}

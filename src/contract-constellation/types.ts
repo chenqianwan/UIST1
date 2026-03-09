@@ -21,6 +21,8 @@ export interface TemplateDetailItem {
   content: string;
   timePhase?: TimePhase;
   references?: string[];
+  riskLevel?: RiskLevel;
+  actions?: NodeActionItem[];
 }
 
 export interface TemplateSubItem {
@@ -30,6 +32,8 @@ export interface TemplateSubItem {
   details?: TemplateDetailItem[];
   timePhase?: TimePhase;
   references?: string[];
+  riskLevel?: RiskLevel;
+  actions?: NodeActionItem[];
 }
 
 export interface TemplateItem {

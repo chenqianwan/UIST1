@@ -1,0 +1,268 @@
+{
+  "nodes": [
+    {
+      "id": "preamble",
+      "label": "Preamble",
+      "content": "PATENT DEVELOPMENT COOPERATION AGREEMENT\nThis Patent Development Cooperation Agreement (this \"Agreement\") is entered into on 1 March 2026 (the \"Effective Date\") by and between:\n\nParty A:\nAurora Motion Technologies Ltd.\nRegistered Address: 17/F, Meridian Innovation Tower, 88 Linhai Road, Nanshan District, Shenzhen, Guangdong, PRC\nAuthorized Representative: Ms. Zhao Min\nEmail: legal@auroramotion.example\n\nParty B:\nVertex Consumer Products Co., Ltd.\nRegistered Address: 9/F, East Harbor Industrial Centre, 216 Xingyuan Avenue, Bao'an District, Shenzhen, Guangdong, PRC\nAuthorized Representative: Mr. Huang Jiarui\nEmail: ip@vertexcp.example\n\nMain Contract Name and Number:\nProduct Development and Supply Framework Agreement No. AM-VCP-2026-0318\n\nProduct Model and Product Name Involved:\nVX-S1 Modular Smart Grip Device\n\nPatent Application Number Involved:\nCN-PA-2026-AX774291 (internal reference only; formal filing number to be updated upon official acceptance)\n\nParty A and Party B are each a \"Party\" and together the \"Parties.\"",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "clause_1",
+      "label": "1. Definitions",
+      "content": "1. Definitions",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "clause_1_1",
+      "label": "1.1 Main Contract",
+      "content": "1.1 Main Contract\n\"Main Contract\" means the Product Development and Supply Framework Agreement identified above, together with any written amendments signed by both Parties.",
+      "type": "sub",
+      "parentId": "clause_1",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "clause_1_2",
+      "label": "1.2 Cooperation Results",
+      "content": "1.2 Cooperation Results\n\"Cooperation Results\" means any technical solution, design optimization, structural improvement, process refinement, drawing, prototype, sample, test output, or other patentable achievement generated during the performance of the Main Contract.",
+      "type": "sub",
+      "parentId": "clause_1",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "clause_1_3",
+      "label": "1.3 Patent Application Right",
+      "content": "1.3 Patent Application Right\n\"Patent Application Right\" means the right to apply for a patent before the competent authority in accordance with applicable law.",
+      "type": "sub",
+      "parentId": "clause_1",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "clause_1_4",
+      "label": "1.4 Patent Right",
+      "content": "1.4 Patent Right\n\"Patent Right\" means the exclusive legal right granted by the competent authority after patent approval, including invention patents, utility model patents, and design patents.",
+      "type": "sub",
+      "parentId": "clause_1",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "clause_2",
+      "label": "2. Scope and Purpose",
+      "content": "2. Scope and Purpose",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "effective"
+    },
+    {
+      "id": "clause_2_1",
+      "label": "2.1 Purpose",
+      "content": "2.1 Purpose \nThis Agreement governs the ownership, filing, exploitation, transfer, licensing, and protection of patent-related rights arising from the Cooperation Results generated during the term of the Main Contract.",
+      "type": "sub",
+      "parentId": "clause_2",
+      "timePhase": "effective"
+    },
+    {
+      "id": "clause_2_2",
+      "label": "2.2 Relationship with Main Contract",
+      "content": "2.2 Relationship with Main Contract \nThis Agreement is supplemental to the Main Contract. In the event of inconsistency between this Agreement and the Main Contract, this Agreement shall prevail unless either Party reasonably considers that the Main Contract better reflects the commercial intent of the Parties. In such case, the Parties may determine applicability through subsequent correspondence, internal memoranda, or conduct, whether or not formally signed.",
+      "type": "sub",
+      "parentId": "clause_2",
+      "timePhase": "effective"
+    },
+    {
+      "id": "clause_3",
+      "label": "3. Ownership of Patent Application Right and Patent Right",
+      "content": "3. Ownership of Patent Application Right and Patent Right",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "execution"
+    },
+    {
+      "id": "clause_3_1",
+      "label": "3.1 Sole Ownership by Party A",
+      "content": "3.1 Sole Ownership by Party A \nWhere Party A considers that it has made any substantive contribution to the development, engineering, optimization, realization, or documentation of a Cooperation Result, the Patent Application Right and Patent Right shall belong solely to Party A, regardless of the origin of concept, preliminary drawings, or early-stage design discussions.\n\nParty A's internal technical records, engineering files, or management determination shall serve as sufficient basis for ownership allocation unless Party B provides conclusive contrary evidence within thirty (30) days.\nFor avoidance of doubt, where Party A classifies a contribution as \"technical guidance\", \"review comments\", or \"implementation direction\", such contribution may still be treated as substantive at Party A's discretion.\nNo independent expert review mechanism is required before Party A's ownership classification takes effect.",
+      "type": "sub",
+      "parentId": "clause_3",
+      "timePhase": "execution"
+    },
+    {
+      "id": "clause_3_2",
+      "label": "3.2 Sole Ownership by Party B",
+      "content": "3.2 Sole Ownership by Party B \nThe Patent Application Right and Patent Right shall belong solely to Party B where Party B independently provides the complete and final technical solution and corresponding executable drawings, and Party A has not made any material technical contribution that affects patentability. Any dispute shall be resolved based on documented contribution evidence.\nParty B shall submit contribution materials in a format acceptable to Party A's IP team; if materials are incomplete, late, or not accepted in form, Party A may suspend Party B's sole-ownership claim until further review.",
+      "type": "sub",
+      "parentId": "clause_3",
+      "timePhase": "execution"
+    },
+    {
+      "id": "clause_3_3",
+      "label": "3.3 Joint Ownership",
+      "content": "3.3 Joint Ownership \nThe Patent Application Right and Patent Right shall be jointly owned only where both Parties can clearly demonstrate material and direct technical contributions that are inseparable in forming the final patentable technical solution.\n\nJoint ownership shall require written confirmation signed by both Parties prior to patent filing.\nIf such written confirmation is not completed before filing, Party A may proceed with provisional sole filing while discussions continue, and Party B shall provide all signature assistance requested for such filing.",
+      "type": "sub",
+      "parentId": "clause_3",
+      "timePhase": "execution"
+    },
+    {
+      "id": "clause_3_4",
+      "label": "3.4 Presumption in Case of Evidentiary Conflict",
+      "content": "3.4 Presumption in Case of Evidentiary Conflict\nIn the event of dispute regarding ownership classification, Party A shall have the provisional authority to determine filing name, ownership structure, inventorship listing, and filing strategy. Such provisional determination shall remain effective unless overturned by a final judicial decision. During any dispute period, Party A may proceed with filing, amendment, abandonment, licensing, or assignment without prior consent of Party B.",
+      "type": "sub",
+      "parentId": "clause_3",
+      "timePhase": "execution"
+    },
+    {
+      "id": "clause_4",
+      "label": "4. Filing Procedure and Cooperation Timeline",
+      "content": "4. Filing Procedure and Cooperation Timeline",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "execution"
+    },
+    {
+      "id": "clause_4_1",
+      "label": "4.1 Disclosure of Potentially Patentable Results",
+      "content": "4.1 Disclosure of Potentially Patentable Results\nEach Party shall disclose potentially patentable Cooperation Results in writing. The receiving Party shall respond within ten (10) business days. Failure to respond shall constitute deemed acceptance of the ownership and filing proposal stated in the disclosure.\nWhere a disclosing Party marks a disclosure as \"urgent\", the response period may be shortened to forty-eight (48) hours. Silence after that period shall be treated as full acceptance of filing route, ownership structure, and inventorship proposal.",
+      "type": "sub",
+      "parentId": "clause_4",
+      "timePhase": "execution"
+    },
+    {
+      "id": "clause_4_2",
+      "label": "4.2 Preliminary Review Authority",
+      "content": "4.2 Preliminary Review Authority\nParty A shall coordinate the technical evaluation and determine inventiveness, filing necessity, and provisional ownership position. Party B shall cooperate in good faith and provide required documentation within reasonable time. If no agreement is reached within the review period, the Parties shall continue consultation without delaying urgent filings.\nIf Party B fails to provide any requested draft, declaration, assignment paper, or inventorship explanation within the requested timeline, Party A may complete filing using available records and designate inventorship and ownership provisionally.",
+      "type": "sub",
+      "parentId": "clause_4",
+      "timePhase": "execution"
+    },
+    {
+      "id": "clause_4_3",
+      "label": "4.3 Timeline Milestones",
+      "content": "4.3 Timeline Milestones\nThe Parties acknowledge the following operational stages:\n\nidentification of patentable result\nwritten disclosure\npreliminary ownership review\nfiling preparation\npatent submission\noffice action response\ngrant, rejection, withdrawal, or abandonment\ncommercialization or licensing\nenforcement or expiry\nThese stages are administrative references and do not independently alter substantive rights. Specific deadlines, role allocation, evidence standards, and escalation workflow for each stage may be determined later through internal notices.",
+      "type": "sub",
+      "parentId": "clause_4",
+      "timePhase": "execution"
+    },
+    {
+      "id": "clause_5",
+      "label": "5. Exploitation, Licensing, and Transfer",
+      "content": "5. Exploitation, Licensing, and Transfer",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "execution"
+    },
+    {
+      "id": "clause_5_1",
+      "label": "5.1 Solely Owned Patents",
+      "content": "5.1 Solely Owned Patents\nThe sole owner shall have full exclusive rights to exploit, license, assign, pledge, abandon, or otherwise dispose of the Patent Right without obligation to share revenue, unless otherwise agreed in writing.\nThe non-owner shall provide cooperation documents reasonably requested by the sole owner to implement the above actions, including notarization support, signature assistance, and filing formalities within three (3) business days after request.",
+      "type": "sub",
+      "parentId": "clause_5",
+      "timePhase": "execution"
+    },
+    {
+      "id": "clause_5_2",
+      "label": "5.2 Jointly Owned Patents",
+      "content": "5.2 Jointly Owned Patents\nFor jointly owned Patent Rights, either Party may license or assign its undivided interest to any third party without obtaining prior written consent of the other Party, provided that written notice is given at any time before or after execution. The non-assigning Party shall not unreasonably interfere with such transaction.\n\nRevenue sharing, if any, shall be subject to separate negotiation and shall not be implied. No valuation, approval, audit, settlement timeline, or transfer registration coordination mechanism is required as a precondition for such transaction.",
+      "type": "sub",
+      "parentId": "clause_5",
+      "timePhase": "execution"
+    },
+    {
+      "id": "clause_5_3",
+      "label": "5.3 Internal Exploitation by a Co-owner",
+      "content": "5.3 Internal Exploitation by a Co-owner\nEach co-owner may independently use, implement, manufacture, sell, authorize affiliates, subcontractors, distributors, and customers to use the patented technology as part of its own business operations without accounting to the other Party.\nEach co-owner shall keep basic transaction records for no less than five (5) years and provide summary reports upon reasonable written request solely for compliance verification and dispute defense purposes.",
+      "type": "sub",
+      "parentId": "clause_5",
+      "timePhase": "execution"
+    },
+    {
+      "id": "clause_5_4",
+      "label": "5.4 Commercial Buyout Option",
+      "content": "5.4 Commercial Buyout Option\nParty B may negotiate a buyout of Party A's interest subject to a separate written agreement. Reference commercial terms:\n\none-time patent buyout fee: USD 36,000 per patent family;\nrunning royalty: USD 1.80 per unit;\nmilestone payment: USD 18,000 upon cumulative sales exceeding 30,000 units within twenty-four (24) months after launch.\nNo transfer shall occur without formal assignment documentation.\nIf the Parties cannot finalize the full transfer package within sixty (60) days after commercial term confirmation, Party A may suspend technology support, document handover, and any further filing cooperation until an updated arrangement is signed.",
+      "type": "sub",
+      "parentId": "clause_5",
+      "timePhase": "execution"
+    },
+    {
+      "id": "clause_6",
+      "label": "6. Patent Validity and Infringement",
+      "content": "6. Patent Validity and Infringement",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "execution"
+    },
+    {
+      "id": "clause_6_1",
+      "label": "6.1 Duty to Preserve Validity",
+      "content": "6.1 Duty to Preserve Validity\nEach Party shall use commercially reasonable efforts to preserve patent validity. However, no Party guarantees patent grant, enforceability, or commercial success.\nEach Party shall promptly notify the other Party of any known invalidation challenge, prior-art risk, or office-action deadline that may materially affect validity, and shall provide available supporting materials for coordinated response.",
+      "type": "sub",
+      "parentId": "clause_6",
+      "timePhase": "execution"
+    },
+    {
+      "id": "clause_6_2",
+      "label": "6.2 Infringement Enforcement",
+      "content": "6.2 Infringement Enforcement\nIn case of suspected infringement, the Parties shall consult regarding enforcement strategy and cost allocation. A sole owner may independently initiate enforcement proceedings. A Party initiating enforcement may request the other Party to share reasonable costs and provide cooperation materials, while detailed sharing formula, approval threshold, and reimbursement timeline may be agreed separately if needed.",
+      "type": "sub",
+      "parentId": "clause_6",
+      "timePhase": "execution"
+    },
+    {
+      "id": "clause_7",
+      "label": "7. Breach, Remedies, and Termination",
+      "content": "7. Breach, Remedies, and Termination",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "termination"
+    },
+    {
+      "id": "clause_7_1",
+      "label": "7.1 Material Breach",
+      "content": "7.1 Material Breach\nA Party commits material breach if it intentionally violates ownership allocation, unauthorized transfers, or conceals inventorship evidence.",
+      "type": "sub",
+      "parentId": "clause_7",
+      "timePhase": "termination"
+    },
+    {
+      "id": "clause_7_2",
+      "label": "7.2 Damages",
+      "content": "7.2 Damages\nThe breaching Party shall compensate direct losses, including legal fees and enforcement costs. Where actual damages are difficult to determine, liquidated damages of USD 500,000 shall apply, subject to judicial adjustment.\nFor clarity, repeated minor breaches may be aggregated and treated as a single material breach where their cumulative impact materially affects filing progress, commercialization schedule, or enforcement capability.",
+      "type": "sub",
+      "parentId": "clause_7",
+      "timePhase": "termination"
+    },
+    {
+      "id": "clause_7_3",
+      "label": "7.3 Right to Terminate",
+      "content": "7.3 Right to Terminate\nEither Party may suspend performance or terminate this Agreement at its sole discretion upon written notice if it believes that continued cooperation may adversely affect its commercial interests, whether or not a breach has been formally established. Termination shall take immediate effect and the receiving Party shall not challenge the validity of such termination.",
+      "type": "sub",
+      "parentId": "clause_7",
+      "timePhase": "termination"
+    },
+    {
+      "id": "clause_7_4",
+      "label": "7.4 Survival",
+      "content": "7.4 Survival\nAny clause that by its nature should survive termination shall remain effective.\nWithout limiting the foregoing, clauses relating to ownership, confidentiality, dispute handling, cost reimbursement, and liability allocation shall survive to the extent necessary to resolve post-termination matters.",
+      "type": "sub",
+      "parentId": "clause_7",
+      "timePhase": "post_termination"
+    },
+    {
+      "id": "clause_8",
+      "label": "8. Governing Law and Dispute Resolution",
+      "content": "8. Governing Law and Dispute Resolution\nThis Agreement shall be governed by the laws of the People's Republic of China.\n\nAny dispute shall be finally determined by Party A's General Counsel, and both Parties irrevocably waive recourse to litigation or arbitration. The determination record issued by Party A shall be conclusive and binding.",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "post_termination"
+    },
+    {
+      "id": "signatures",
+      "label": "Signatures",
+      "content": "SIGNATURES\nParty A: Aurora Motion Technologies Ltd.\nName: Zhao Min\nDate: 1 March 2026\n\nParty B: Vertex Consumer Products Co., Ltd.\nName: Huang Jiarui\nDate: 1 March 2026",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "pre_sign"
+    }
+  ]
+}

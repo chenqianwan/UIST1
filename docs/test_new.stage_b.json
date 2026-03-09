@@ -1,0 +1,518 @@
+{
+  "nodes": [
+    {
+      "id": "preamble",
+      "references": [
+        "clause_1_1",
+        "clause_2_1",
+        "clause_2_2"
+      ],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "action_preamble_1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "PATENT DEVELOPMENT COOPERATION AGREEMENT\nThis Patent Development Cooperation Agreement (this \"Agreement\") is entered into on 1 March 2026 (the \"Effective Date\") by and between:\n\nParty A:\nAurora Motion Technologies Ltd.\nRegistered Address: 17/F, Meridian Innovation Tower, 88 Linhai Road, Nanshan District, Shenzhen, Guangdong, PRC\nAuthorized Representative: Ms. Zhao Min\nEmail: legal@auroramotion.example\n\nParty B:\nVertex Consumer Products Co., Ltd.\nRegistered Address: 9/F, East Harbor Industrial Centre, 216 Xingyuan Avenue, Bao'an District, Shenzhen, Guangdong, PRC\nAuthorized Representative: Mr. Huang Jiarui\nEmail: ip@vertexcp.example\n\nMain Contract Name and Number:\nProduct Development and Supply Framework Agreement No. AM-VCP-2026-0318\n\nProduct Model and Product Name Involved:\nVX-S1 Modular Smart Grip Device\n\nPatent Application Number Involved:\nCN-PA-2026-AX774291 (internal reference only; formal filing number shall be updated in writing by both Parties upon official acceptance by the competent authority)\n\nParty A and Party B are each a \"Party\" and together the \"Parties.\""
+        }
+      ]
+    },
+    {
+      "id": "clause_1",
+      "references": [
+        "clause_1_1",
+        "clause_1_2",
+        "clause_1_3",
+        "clause_1_4"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "clause_1_1",
+      "references": [
+        "preamble",
+        "clause_2_2"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "clause_1_2",
+      "references": [
+        "clause_2_1",
+        "clause_3_1",
+        "clause_3_2",
+        "clause_3_3"
+      ],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "action_1_2_1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "1.2 Cooperation Results\n\"Cooperation Results\" means any technical solution, design optimization, structural improvement, process refinement, drawing, prototype, sample, test output, or other patentable achievement generated jointly or independently by either Party specifically in the course of performing the Main Contract, excluding any technology, know-how, or intellectual property that a Party can demonstrate was developed independently outside the scope of the Main Contract or was in existence prior to the Effective Date (\"Pre-existing IP\")."
+        }
+      ]
+    },
+    {
+      "id": "clause_1_3",
+      "references": [
+        "clause_3_1",
+        "clause_3_2",
+        "clause_3_3",
+        "clause_4_1"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "clause_1_4",
+      "references": [
+        "clause_3_1",
+        "clause_3_2",
+        "clause_3_3",
+        "clause_5_1",
+        "clause_5_2"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "clause_2",
+      "references": [
+        "clause_2_1",
+        "clause_2_2"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "clause_2_1",
+      "references": [
+        "clause_1_2",
+        "clause_3_1",
+        "clause_3_2",
+        "clause_3_3",
+        "clause_5_1"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "clause_2_2",
+      "references": [
+        "clause_1_1",
+        "clause_2_1",
+        "clause_8"
+      ],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "action_2_2_1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "2.2 Relationship with Main Contract\nThis Agreement is supplemental to the Main Contract. In the event of any inconsistency between this Agreement and the Main Contract with respect to patent ownership, filing, exploitation, licensing, transfer, or protection of Cooperation Results, this Agreement shall prevail. For all other matters not addressed in this Agreement, the Main Contract shall govern. Any modification to the order of precedence established herein must be made by a written amendment signed by authorized representatives of both Parties."
+        }
+      ]
+    },
+    {
+      "id": "clause_3",
+      "references": [
+        "clause_3_1",
+        "clause_3_2",
+        "clause_3_3",
+        "clause_3_4"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "clause_3_1",
+      "references": [
+        "clause_1_2",
+        "clause_3_2",
+        "clause_3_3",
+        "clause_3_4",
+        "clause_4_1"
+      ],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "action_3_1_1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "3.1 Sole Ownership by Party A\nThe Patent Application Right and Patent Right shall belong solely to Party A where Party A has made a material and direct technical contribution to the inventive concept of a Cooperation Result and Party B has not made any material technical contribution that affects patentability, as determined by objective documented evidence from both Parties.\n\nOwnership allocation shall be based on contemporaneous technical records, engineering files, and contribution logs maintained by both Parties. Neither Party's unilateral internal determination shall be conclusive. In the event of a dispute, the Parties shall follow the dispute resolution procedure set out in Clause 8."
+        },
+        {
+          "id": "action_3_1_2",
+          "type": "add_clause",
+          "status": "pending",
+          "supplementDraft": "3.1A Independent Expert Review\nWhere either Party disputes an ownership classification under Clauses 3.1, 3.2, or 3.3, either Party may request appointment of an independent technical expert mutually agreed upon by both Parties within fifteen (15) business days of the dispute notice. The expert shall review all available contribution evidence from both Parties and issue a non-binding written opinion within thirty (30) days of appointment. Costs of the expert review shall be shared equally unless the expert's opinion finds one Party's claim to be wholly without merit, in which case that Party shall bear the full cost. The expert opinion shall be considered by both Parties in good faith before any filing proceeds under a disputed ownership classification."
+        }
+      ]
+    },
+    {
+      "id": "clause_3_2",
+      "references": [
+        "clause_1_2",
+        "clause_3_1",
+        "clause_3_3",
+        "clause_3_4",
+        "clause_4_1"
+      ],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "action_3_2_1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "3.2 Sole Ownership by Party B\nThe Patent Application Right and Patent Right shall belong solely to Party B where Party B independently provides the complete and final technical solution and corresponding executable drawings, and Party A has not made any material technical contribution that affects patentability, as determined by objective documented evidence from both Parties.\n\nParty B shall submit contribution materials in a mutually agreed standard format within twenty (20) business days of the relevant disclosure under Clause 4.1. If Party B's materials are substantively incomplete, Party A shall provide written notice specifying the deficiencies, and Party B shall have a further ten (10) business days to cure. Failure to cure after notice shall not automatically extinguish Party B's ownership claim but shall be considered in any subsequent dispute resolution proceeding."
+        }
+      ]
+    },
+    {
+      "id": "clause_3_3",
+      "references": [
+        "clause_3_1",
+        "clause_3_2",
+        "clause_3_4",
+        "clause_4_1",
+        "clause_5_2"
+      ],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "action_3_3_1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "3.3 Joint Ownership\nThe Patent Application Right and Patent Right shall be jointly owned where both Parties have made material and direct technical contributions that are inseparable in forming the final patentable technical solution, as evidenced by contemporaneous documentation from both Parties.\n\nJoint ownership shall be confirmed by a written Joint Ownership Confirmation signed by authorized representatives of both Parties prior to patent filing. If such written confirmation is not completed before a statutory or regulatory filing deadline, the Parties shall jointly appoint a mutually agreed patent agent to file provisionally in both Parties' names, and shall complete the Joint Ownership Confirmation within thirty (30) days after such provisional filing. Neither Party may file solely in its own name for a jointly developed Cooperation Result without the other Party's prior written consent."
+        }
+      ]
+    },
+    {
+      "id": "clause_3_4",
+      "references": [
+        "clause_3_1",
+        "clause_3_2",
+        "clause_3_3",
+        "clause_4_2",
+        "clause_8"
+      ],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "action_3_4_1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "3.4 Provisional Filing Pending Dispute Resolution\nIn the event of a genuine dispute regarding ownership classification that cannot be resolved within thirty (30) days of written notice, and where a statutory or regulatory filing deadline is imminent, the Parties shall jointly instruct a mutually agreed patent agent to file provisionally in both Parties' names to preserve filing priority. Such provisional filing shall not prejudice either Party's ultimate ownership claim. Neither Party may unilaterally proceed with filing, amendment, abandonment, licensing, or assignment of a disputed Cooperation Result without the other Party's prior written consent, except as required to meet an imminent statutory deadline. All disputes regarding ownership shall be resolved in accordance with Clause 8."
+        }
+      ]
+    },
+    {
+      "id": "clause_4",
+      "references": [
+        "clause_4_1",
+        "clause_4_2",
+        "clause_4_3"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "clause_4_1",
+      "references": [
+        "clause_3_1",
+        "clause_3_2",
+        "clause_3_3",
+        "clause_3_4",
+        "clause_4_2"
+      ],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "action_4_1_1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "4.1 Disclosure of Potentially Patentable Results\nEach Party shall disclose potentially patentable Cooperation Results to the other Party in writing, including a description of the technical contribution, the contributing personnel, and the proposed ownership classification with supporting rationale. The receiving Party shall respond in writing within ten (10) business days, either accepting the proposal, requesting further information, or raising a reasoned objection.\n\nFailure to respond within ten (10) business days shall constitute a request for a five (5) business day extension. If no response is received after the extended period, the receiving Party shall be deemed to have accepted the ownership and filing proposal, provided the disclosure was complete and clearly identified the deemed-acceptance consequence.\n\nWhere a disclosing Party marks a disclosure as \"urgent\" and provides written justification for the urgency (including the applicable statutory deadline), the response period shall be shortened to five (5) business days. Silence after that period shall be treated as acceptance of the filing route only, not of the ownership structure or inventorship proposal, which shall remain subject to the standard review process."
+        }
+      ]
+    },
+    {
+      "id": "clause_4_2",
+      "references": [
+        "clause_3_1",
+        "clause_3_2",
+        "clause_3_4",
+        "clause_4_1",
+        "clause_4_3"
+      ],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "action_4_2_1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "4.2 Preliminary Review Authority\nThe Parties shall jointly coordinate the technical evaluation of each disclosed Cooperation Result. Party A shall prepare a preliminary inventiveness and ownership assessment within fifteen (15) business days of receiving a complete disclosure, and shall share such assessment with Party B for review and comment. Party B shall provide written comments within ten (10) business days of receiving Party A's assessment.\n\nIf no agreement is reached within thirty (30) days of the initial disclosure, either Party may invoke the dispute resolution procedure under Clause 8. Where a statutory filing deadline is imminent, the Parties shall follow the provisional filing procedure under Clause 3.4.\n\nNeither Party may unilaterally designate inventorship or ownership in a filing without the other Party's written consent, except pursuant to the provisional filing procedure under Clause 3.4."
+        }
+      ]
+    },
+    {
+      "id": "clause_4_3",
+      "references": [
+        "clause_4_1",
+        "clause_4_2",
+        "clause_3_1",
+        "clause_3_2",
+        "clause_3_3"
+      ],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "action_4_3_1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "4.3 Timeline Milestones\nThe Parties acknowledge the following operational stages for each Cooperation Result:\n\n(a) identification of patentable result;\n(b) written disclosure (within ten (10) business days of identification);\n(c) preliminary ownership review (within fifteen (15) business days of disclosure);\n(d) filing preparation (within twenty (20) business days of ownership confirmation);\n(e) patent submission;\n(f) office action response (within applicable statutory deadlines);\n(g) grant, rejection, withdrawal, or abandonment;\n(h) commercialization or licensing;\n(i) enforcement or expiry.\n\nThe Parties shall agree in writing on specific deadlines, role allocation, evidence standards, and escalation workflow for each stage within thirty (30) days of the Effective Date, and shall update such agreement as needed. In the absence of a specific written agreement for a given stage, the Parties shall cooperate in good faith to meet applicable statutory deadlines."
+        }
+      ]
+    },
+    {
+      "id": "clause_5",
+      "references": [
+        "clause_5_1",
+        "clause_5_2",
+        "clause_5_3",
+        "clause_5_4"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "clause_5_1",
+      "references": [
+        "clause_3_1",
+        "clause_3_2",
+        "clause_5_2",
+        "clause_5_4"
+      ],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "action_5_1_1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "5.1 Solely Owned Patents\nThe sole owner shall have full exclusive rights to exploit, license, assign, pledge, abandon, or otherwise dispose of the Patent Right without obligation to share revenue, unless otherwise agreed in writing.\n\nThe non-owner shall provide cooperation documents reasonably requested by the sole owner to implement the above actions, including notarization support, signature assistance, and filing formalities, within five (5) business days after written request. If the non-owner reasonably requires additional time due to the complexity of the requested documentation, it shall notify the sole owner within the initial five (5) business day period and the Parties shall agree on a reasonable extended timeline. Unreasonable refusal or delay by the non-owner shall constitute a breach of this Agreement."
+        }
+      ]
+    },
+    {
+      "id": "clause_5_2",
+      "references": [
+        "clause_3_3",
+        "clause_5_3",
+        "clause_5_4"
+      ],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "action_5_2_1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "5.2 Jointly Owned Patents\nFor jointly owned Patent Rights, neither Party may license or assign its undivided interest to any third party without obtaining prior written consent of the other Party, which shall not be unreasonably withheld or delayed. A Party seeking to license or assign its interest shall provide the other Party with written notice including the identity of the proposed transferee, the proposed terms, and a right of first refusal exercisable within thirty (30) days of such notice.\n\nRevenue sharing from any joint licensing or assignment shall be negotiated in good faith by the Parties prior to execution of any such transaction, taking into account each Party's relative contribution to the relevant Cooperation Result. Any joint licensing or assignment agreement shall include provisions for valuation, approval, audit rights, settlement timeline, and transfer registration coordination."
+        }
+      ]
+    },
+    {
+      "id": "clause_5_3",
+      "references": [
+        "clause_3_3",
+        "clause_5_2"
+      ],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "action_5_3_1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "5.3 Internal Exploitation by a Co-owner\nEach co-owner may independently use, implement, manufacture, and sell products embodying the patented technology as part of its own business operations without accounting to the other Party for such internal exploitation. Each co-owner may authorize its own affiliates and wholly-owned subsidiaries to use the patented technology on the same basis, provided that such authorization does not constitute a license to an independent third party (which shall be subject to Clause 5.2).\n\nEach co-owner shall keep basic transaction records relating to its exploitation of the jointly owned Patent Right for no less than five (5) years and shall provide summary reports to the other co-owner upon reasonable written request, solely for compliance verification and dispute defense purposes."
+        }
+      ]
+    },
+    {
+      "id": "clause_5_4",
+      "references": [
+        "clause_3_1",
+        "clause_5_1",
+        "clause_5_2",
+        "clause_7_1"
+      ],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "action_5_4_1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "5.4 Commercial Buyout Option\nParty B shall have the option to purchase Party A's entire interest in any solely or jointly owned Patent Right subject to a separate written assignment agreement executed by both Parties. Reference commercial terms for negotiation purposes only (not binding until incorporated in a signed assignment agreement):\n\n(a) one-time patent buyout fee: USD 36,000 per patent family;\n(b) running royalty alternative: USD 1.80 per unit sold;\n(c) milestone payment: USD 18,000 upon cumulative sales exceeding 30,000 units within twenty-four (24) months after commercial launch.\n\nNo transfer of ownership shall occur without execution of formal assignment documentation and completion of applicable registration with the competent authority.\n\nIf the Parties cannot finalize and execute the full transfer package within sixty (60) days after written confirmation of commercial terms by both Parties, either Party may request a thirty (30) day extension by written notice. If the transfer package remains unexecuted after any such extension, either Party may refer the matter to the dispute resolution procedure under Clause 8. Party A shall not suspend technology support, document handover, or filing cooperation solely on account of the failure to finalize the transfer package within the above period, unless Party B is in material breach of its payment obligations."
+        }
+      ]
+    },
+    {
+      "id": "clause_6",
+      "references": [
+        "clause_6_1",
+        "clause_6_2"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "clause_6_1",
+      "references": [
+        "clause_3_1",
+        "clause_3_2",
+        "clause_3_3",
+        "clause_6_2",
+        "clause_7_1"
+      ],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "action_6_1_1",
+          "type": "add_clause",
+          "status": "pending",
+          "supplementDraft": "6.1A Cost Allocation for Validity Preservation\nThe costs of maintaining, defending, and preserving the validity of a Patent Right (including annuity fees, response to invalidation challenges, and prior-art searches) shall be borne by the sole owner in the case of solely owned patents. For jointly owned patents, such costs shall be shared equally unless the Parties agree otherwise in writing. If one co-owner elects not to contribute to maintenance or defense costs, it shall notify the other co-owner in writing within fifteen (15) business days of the relevant cost notice, and the contributing co-owner may, at its election, assume sole responsibility for such costs and receive a corresponding adjustment in revenue sharing or ownership interest as agreed in writing by the Parties."
+        }
+      ]
+    },
+    {
+      "id": "clause_6_2",
+      "references": [
+        "clause_5_1",
+        "clause_5_2",
+        "clause_6_1",
+        "clause_7_1",
+        "clause_7_2"
+      ],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "action_6_2_1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "6.2 Infringement Enforcement\nIn case of suspected infringement of a Patent Right, the Party that first becomes aware shall promptly notify the other Party in writing with available evidence. The Parties shall consult in good faith within fifteen (15) business days of such notice regarding enforcement strategy, cost allocation, and recovery sharing.\n\nFor solely owned patents, the sole owner may independently initiate enforcement proceedings at its own cost and shall retain all recoveries. For jointly owned patents, enforcement proceedings shall require the written consent of both co-owners, which shall not be unreasonably withheld. If one co-owner declines to participate in enforcement, the other co-owner may proceed independently at its own cost, and the non-participating co-owner shall provide reasonable cooperation and shall be entitled to a proportionate share of net recoveries after deduction of the enforcing co-owner's costs.\n\nThe Parties shall agree in writing on cost-sharing formula, approval thresholds, and reimbursement timelines before initiating any joint enforcement action."
+        }
+      ]
+    },
+    {
+      "id": "clause_7",
+      "references": [
+        "clause_7_1",
+        "clause_7_2",
+        "clause_7_3",
+        "clause_7_4"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "clause_7_1",
+      "references": [
+        "clause_3_1",
+        "clause_3_2",
+        "clause_3_3",
+        "clause_3_4",
+        "clause_7_2"
+      ],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "action_7_1_1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "7.1 Material Breach\nA Party commits material breach of this Agreement if it:\n(a) intentionally misrepresents or conceals inventorship evidence or contribution records;\n(b) makes an unauthorized transfer, assignment, pledge, or abandonment of a Patent Right or Patent Application Right in violation of this Agreement;\n(c) fails to comply with an ownership allocation confirmed in writing by both Parties or determined by a competent authority;\n(d) fails to provide required cooperation documents within the timeframes specified in this Agreement after written notice and a ten (10) business day cure period; or\n(e) materially breaches any other obligation under this Agreement and fails to cure such breach within thirty (30) days of written notice specifying the breach in reasonable detail."
+        }
+      ]
+    },
+    {
+      "id": "clause_7_2",
+      "references": [
+        "clause_7_1",
+        "clause_7_3",
+        "clause_8"
+      ],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "action_7_2_1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "7.2 Damages\nThe breaching Party shall compensate the non-breaching Party for all direct losses caused by the breach, including reasonable legal fees and enforcement costs actually incurred.\n\nWhere actual damages are difficult to quantify, the Parties agree that liquidated damages of USD 500,000 represent a genuine pre-estimate of loss and shall apply as the default measure, subject to adjustment by a competent court or arbitral tribunal if such amount is found to be disproportionate to the actual harm suffered.\n\nRepeated minor breaches of the same obligation, where their cumulative impact materially affects filing progress, commercialization schedule, or enforcement capability, may be treated as a single material breach for the purpose of triggering remedies under this Clause, provided that the non-breaching Party has given written notice of each individual breach."
+        }
+      ]
+    },
+    {
+      "id": "clause_7_3",
+      "references": [
+        "clause_7_1",
+        "clause_7_2",
+        "clause_7_4",
+        "clause_8"
+      ],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "action_7_3_1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "7.3 Right to Terminate\nEither Party may terminate this Agreement upon written notice to the other Party if:\n(a) the other Party commits a material breach as defined in Clause 7.1 and fails to cure such breach within thirty (30) days of written notice specifying the breach; or\n(b) the other Party becomes insolvent, is subject to bankruptcy or liquidation proceedings, or ceases to carry on business.\n\nTermination shall take effect thirty (30) days after delivery of the termination notice, unless the breach is incapable of cure, in which case termination shall take effect on the date specified in the notice. Termination of this Agreement shall not affect any rights or obligations that have accrued prior to termination, and shall not affect the survival provisions of Clause 7.4."
+        }
+      ]
+    },
+    {
+      "id": "clause_7_4",
+      "references": [
+        "clause_3_1",
+        "clause_3_2",
+        "clause_3_3",
+        "clause_7_1",
+        "clause_7_2"
+      ],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "action_7_4_1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "7.4 Survival\nThe following clauses shall survive the expiry or termination of this Agreement for any reason: Clause 1 (Definitions), Clause 3 (Ownership of Patent Application Right and Patent Right), Clause 5 (Exploitation, Licensing, and Transfer) to the extent of rights already vested, Clause 6 (Patent Validity and Infringement), Clause 7.2 (Damages), this Clause 7.4, and Clause 8 (Governing Law and Dispute Resolution). Survival of confidentiality obligations shall be governed by the Main Contract or any separate confidentiality agreement between the Parties."
+        }
+      ]
+    },
+    {
+      "id": "clause_8",
+      "references": [
+        "clause_2_2",
+        "clause_3_4",
+        "clause_7_1",
+        "clause_7_2",
+        "clause_7_3"
+      ],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "action_8_1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "8. Governing Law and Dispute Resolution\nThis Agreement shall be governed by and construed in accordance with the laws of the People's Republic of China.\n\nAny dispute, controversy, or claim arising out of or relating to this Agreement, or the breach, termination, or validity thereof, shall be resolved as follows:\n\n(a) Negotiation: The Parties shall first attempt to resolve the dispute through good-faith negotiation between senior representatives of both Parties within thirty (30) days of written notice of the dispute.\n\n(b) Arbitration: If the dispute is not resolved through negotiation within the period specified in (a), either Party may submit the dispute to the Shenzhen Court of International Arbitration (SCIA) for final and binding arbitration in accordance with its then-current arbitration rules. The arbitration shall be conducted in Mandarin Chinese, the seat of arbitration shall be Shenzhen, and the arbitral award shall be final and binding on both Parties.\n\n(c) Interim Relief: Nothing in this Clause shall prevent either Party from seeking urgent interim or injunctive relief from a competent court to preserve its rights pending resolution of the dispute."
+        }
+      ]
+    },
+    {
+      "id": "signatures",
+      "references": [
+        "preamble"
+      ],
+      "riskLevel": "none",
+      "actions": []
+    }
+  ]
+}

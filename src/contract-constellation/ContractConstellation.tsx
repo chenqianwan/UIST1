@@ -18,6 +18,8 @@ import reneStageAData from '../../docs/reneHouseTemplate.stage_a.json';
 import reneStageBData from '../../docs/reneHouseTemplate.stage_b.json';
 import testAbStageAData from '../../docs/test_ab.stage_a.json';
 import testAbStageBData from '../../docs/test_ab.stage_b.json';
+import testNewStageAData from '../../docs/test_new.stage_a.json';
+import testNewStageBData from '../../docs/test_new.stage_b.json';
 import text2AbStageAData from '../../docs/text2_ab.stage_a.json';
 import text2AbStageBData from '../../docs/text2_ab.stage_b.json';
 import { NODE_LIBRARY } from './constants';
@@ -77,7 +79,8 @@ const BASE_GRAPH_PRESET_OPTIONS: Array<{ id: GraphPresetId; label: string }> = [
   { id: 'simple1', label: 'Simple1 (Stage A + B)' },
   { id: 'reneHouseTemplate', label: 'reneHouseTemplate (Stage A + B)' },
   { id: 'test_ab', label: 'test_ab (Stage A + B)' },
-  { id: 'text2_ab', label: 'text2_ab (Stage A + B)' },
+  { id: 'patent', label: 'patent (Stage A + B)' },
+  { id: 'housing', label: 'housing (Stage A + B)' },
 ];
 
 type StageANode = {
@@ -133,6 +136,7 @@ function buildStageTemplates(
       .map((refId) => `${templatePrefix}::${refId}`);
 
   const buildSatellite = (node: StageANode) => {
+    const b = bMap.get(node.id);
     const grandchildren = childrenByParent.get(node.id) ?? [];
     return {
       id: `${templatePrefix}::${node.id}`,
@@ -140,13 +144,20 @@ function buildStageTemplates(
       content: node.content,
       timePhase: node.timePhase ?? 'execution',
       references: mapReferences(node.id),
-      details: grandchildren.map((detail) => ({
-        id: `${templatePrefix}::${detail.id}`,
-        label: detail.label,
-        content: detail.content,
-        timePhase: detail.timePhase ?? 'execution',
-        references: mapReferences(detail.id),
-      })),
+      riskLevel: b?.riskLevel ?? 'none',
+      actions: b?.actions,
+      details: grandchildren.map((detail) => {
+        const detailB = bMap.get(detail.id);
+        return {
+          id: `${templatePrefix}::${detail.id}`,
+          label: detail.label,
+          content: detail.content,
+          timePhase: detail.timePhase ?? 'execution',
+          references: mapReferences(detail.id),
+          riskLevel: detailB?.riskLevel ?? 'none',
+          actions: detailB?.actions,
+        };
+      }),
     };
   };
 
@@ -583,7 +594,13 @@ export default function ContractConstellation() {
   const text2AbTemplates = useMemo<TemplateItem[]>(() => {
     const aNodes = (text2AbStageAData as { nodes?: StageANode[] }).nodes ?? [];
     const bNodes = (text2AbStageBData as { nodes?: StageBNode[] }).nodes ?? [];
-    return buildStageTemplates(aNodes, bNodes, 'text2_ab', 'Imported from text2_ab');
+    return buildStageTemplates(aNodes, bNodes, 'housing', 'Imported from housing');
+  }, []);
+
+  const testNewTemplates = useMemo<TemplateItem[]>(() => {
+    const aNodes = (testNewStageAData as { nodes?: StageANode[] }).nodes ?? [];
+    const bNodes = (testNewStageBData as { nodes?: StageBNode[] }).nodes ?? [];
+    return buildStageTemplates(aNodes, bNodes, 'patent', 'Imported from patent');
   }, []);
 
   const graphPresetOptions = useMemo(
@@ -598,11 +615,12 @@ export default function ContractConstellation() {
     if (graphPresetId === 'simple1') return simple1Templates;
     if (graphPresetId === 'reneHouseTemplate') return reneHouseTemplates;
     if (graphPresetId === 'test_ab') return testAbTemplates;
-    if (graphPresetId === 'text2_ab') return text2AbTemplates;
+    if (graphPresetId === 'patent') return testNewTemplates;
+    if (graphPresetId === 'housing') return text2AbTemplates;
     const uploaded = uploadedPresets.find((preset) => preset.id === graphPresetId);
     if (uploaded) return uploaded.templates;
     return NODE_LIBRARY;
-  }, [graphPresetId, simple1Templates, reneHouseTemplates, testAbTemplates, text2AbTemplates, uploadedPresets]);
+  }, [graphPresetId, simple1Templates, reneHouseTemplates, testAbTemplates, testNewTemplates, text2AbTemplates, uploadedPresets]);
 
   const availableTemplates = useMemo(
     () => activeTemplatePool.filter((item) => !usedTemplateIds.includes(item.id)),

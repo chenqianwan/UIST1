@@ -1,0 +1,348 @@
+{
+  "nodes": [
+    {
+      "id": "preamble",
+      "label": "Preamble",
+      "content": "PREMISES LEASE AGREEMENT\n\nThis Office Premises Lease Agreement (this \"Agreement\") is made and entered into on 15 November 2025 (the \"Effective Date\") by and between:\n\nLandlord (Party A):\nQianhai Horizon Asset Operations Co., Ltd.\nUnified Social Credit Code: 91440300MA5K8F7X2L\nRegistered Address: Room 2103, Tower B, Coastal Gateway Center, Qianhai Shenzhen-Hong Kong Cooperation Zone, Nanshan District, Shenzhen, Guangdong, PRC\nCorrespondence Address: Room 2103, Tower B, Coastal Gateway Center, Qianhai Shenzhen-Hong Kong Cooperation Zone, Nanshan District, Shenzhen, Guangdong, PRC\nAuthorized Representative: Ms. Lin Yuesheng\nRepresentative ID Type: Resident Identity Card\nRepresentative ID No.: 440305198812143526\nTelephone: +86 755 2688 3101\nEmail: leasing@qhorizon-ops.example\nand\n\nTenant (Party B):\nNovaLex Consulting (Shenzhen) Co., Ltd.\nUnified Social Credit Code: 91440300MA6R2P9K4M\nRegistered Address: Suite 1208, Innovation Plaza, 188 Xinghai Avenue, Nanshan District, Shenzhen, Guangdong, PRC\nCorrespondence Address: Suite 1208, Innovation Plaza, 188 Xinghai Avenue, Nanshan District, Shenzhen, Guangdong, PRC\nLegal Representative: Mr. Chen Haoran\nRepresentative ID Type: Resident Identity Card\nRepresentative ID No.: 440303199103082417\nTelephone: +86 755 2219 4408\nEmail: admin@novalex-sz.example",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "cl_1",
+      "label": "1. Premises and Basic Information",
+      "content": "1. Premises and Basic Information\nParty A agrees to lease to Party B the office premises located at Unit 1001, Tower 8, Excellence Qianhai Financial Center (Phase I), Guiwan Area, Nanshan District, Shenzhen, Guangdong, PRC (the \"Premises\").",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "cl_1_p2",
+      "label": "1. Premises and Basic Information – Use and Area",
+      "content": "The Premises shall be leased on an exclusive whole-unit basis for office use only, subject to Section 8.1. The gross floor area of the Premises is 58.6 square meters.",
+      "type": "sub",
+      "parentId": "cl_1",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "cl_2",
+      "label": "2. Lease Term and Timeline",
+      "content": "2. Lease Term and Timeline\nThe lease term shall commence on 1 December 2025 (the \"Commencement Date\") and expire on 30 November 2026 (the \"Expiration Date\"), unless earlier terminated in accordance with Section 11. The lease term is referred to as the \"Term.\"",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "cl_2_timeline",
+      "label": "2. Lease Term and Timeline – Administration Timeline",
+      "content": "For purposes of administration, review, and compliance monitoring, the Parties acknowledge the following timeline:\n(a) 15 November 2025: Agreement executed;\n(b) 20 November 2025: Security deposit due under Section 4.1;\n(c) 1 December 2025: Delivery deadline under Section 6.1;\n(d) 1 December 2025: Joint inspection and handover under Section 6.2;\n(e) 5th day of each calendar month: Monthly rent due under Section 3.2;\n(f) Upon occurrence of breach: Notice and cure process under Sections 5.3, 11.2;\n(g) 30 days before Expiration Date: Renewal request deadline under Section 9.2;\n(h) Upon expiration or early termination: Return, settlement, and post-termination obligations under Sections 10.1 to 10.3.",
+      "type": "sub",
+      "parentId": "cl_2",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "cl_3",
+      "label": "3. Rent",
+      "content": "3. Rent",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "effective"
+    },
+    {
+      "id": "cl_3_1",
+      "label": "3.1 Monthly Rent",
+      "content": "3.1 Monthly Rent\nThe monthly rent for the Premises shall be RMB 8,800 (Renminbi Eight Thousand Eight Hundred Only) (the \"Monthly Rent\").",
+      "type": "sub",
+      "parentId": "cl_3",
+      "timePhase": "effective"
+    },
+    {
+      "id": "cl_3_2",
+      "label": "3.2 Payment Date",
+      "content": "3.2 Payment Date\nParty B shall pay the Monthly Rent on or before the 5th day of each calendar month during the Term. The first month's rent shall be payable no later than the Commencement Date. If the Commencement Date is delayed due to Party A's breach under Section 6.1, rent commencement shall be adjusted.",
+      "type": "sub",
+      "parentId": "cl_3",
+      "timePhase": "execution"
+    },
+    {
+      "id": "cl_3_3",
+      "label": "3.3 Payment Method",
+      "content": "3.3 Payment Method\nAll payments shall be made by bank transfer to the following designated account of Party A:\nAccount Name: Qianhai Horizon Asset Operations Co., Ltd.\nBank: Shenzhen Branch, Industrial and Commercial Bank of China\nAccount Number: 4402 3100 9988 1176 235\nPayment shall be deemed completed only upon actual receipt of cleared funds in Party A's designated account. Delayed or incomplete payment shall be handled in accordance with Sections 5.3, 11.2(1).",
+      "type": "sub",
+      "parentId": "cl_3",
+      "timePhase": "execution"
+    },
+    {
+      "id": "cl_4",
+      "label": "4. Security Deposit",
+      "content": "4. Security Deposit",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "cl_4_1",
+      "label": "4.1 Amount and Payment",
+      "content": "4.1 Amount and Payment\nWithin five (5) days after the Effective Date, Party B shall pay to Party A a security deposit in the amount of RMB 17,600, being equivalent to two (2) months' rent (the \"Security Deposit\"). Party A shall issue a receipt upon collection.",
+      "type": "sub",
+      "parentId": "cl_4",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "cl_4_2",
+      "label": "4.2 Nature of Deposit",
+      "content": "4.2 Nature of Deposit\nThe Security Deposit is not an advance payment of rent or fees. It is held solely as security for Party B's performance of its obligations under this Agreement, including obligations under Sections 5.2, 5.3, 8.1, 10.1, 10.3, 11.2, and 12.2.",
+      "type": "sub",
+      "parentId": "cl_4",
+      "timePhase": "effective"
+    },
+    {
+      "id": "cl_4_3",
+      "label": "4.3 Return of Deposit",
+      "content": "4.3 Return of Deposit\nWithin five (5) days after the earlier of the Expiration Date or lawful termination of this Agreement, Party A shall return the unused balance of the Security Deposit to Party B without interest after deducting any unpaid rent, unpaid charges, repair costs properly chargeable to Party B, holdover amounts, and liquidated damages payable by Party B.",
+      "type": "sub",
+      "parentId": "cl_4",
+      "timePhase": "post_termination"
+    },
+    {
+      "id": "cl_5",
+      "label": "5. Taxes, Utilities, and Other Charges",
+      "content": "5. Taxes, Utilities, and Other Charges",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "effective"
+    },
+    {
+      "id": "cl_5_1",
+      "label": "5.1 Landlord Charges",
+      "content": "5.1 Landlord Charges\nParty A shall bear taxes and statutory charges that are by law payable by a landlord in connection with the ownership and leasing of the Premises.",
+      "type": "sub",
+      "parentId": "cl_5",
+      "timePhase": "effective"
+    },
+    {
+      "id": "cl_5_2",
+      "label": "5.2 Tenant Charges",
+      "content": "5.2 Tenant Charges\nDuring the Term, Party B shall bear all fees arising from its use and occupancy of the Premises, including but not limited to electricity charges, water charges, internet charges, telephone charges, waste handling charges, and property management fees. The initial reference rates are as follows:\nWater: RMB 6.50 per ton\nElectricity: RMB 1.28 per kWh\nProperty management fee: RMB 18.00 per square meter per month\nInternet service: according to the third-party provider selected by Party B\nActual charges may be adjusted by utility providers or property managers in accordance with law or policy. Failure to pay such charges may constitute a payment breach under Sections 5.3, 11.2(1), and 12.2(2). The Parties agree that detailed meter-reading verification method, shared-evidence format, objection timeline, and reconciliation escalation path may be determined later through operational notices.",
+      "type": "sub",
+      "parentId": "cl_5",
+      "timePhase": "execution"
+    },
+    {
+      "id": "cl_5_3",
+      "label": "5.3 Payment After Notice",
+      "content": "5.3 Payment After Notice\nParty B shall pay any amount due under Section 5.2 within three (3) business days after receiving written notice, invoice, or supporting proof from Party A or the relevant service provider. If Party B fails to do so, any late fee, default charge, service interruption, or third-party claim arising therefrom shall be borne by Party B. Repeated or material non-payment under this Section may be treated as a payment default. The Parties have not yet agreed on a formal cure workflow for disputed invoices, including interim payment obligations, dispute holdback thresholds, evidence submission format, and final adjudication timeline.",
+      "type": "sub",
+      "parentId": "cl_5",
+      "timePhase": "execution"
+    },
+    {
+      "id": "cl_6",
+      "label": "6. Delivery, Inspection, and Acceptance",
+      "content": "6. Delivery, Inspection, and Acceptance",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "acceptance"
+    },
+    {
+      "id": "cl_6_1",
+      "label": "6.1 Delivery Deadline",
+      "content": "6.1 Delivery Deadline\nParty A shall deliver the Premises to Party B no later than 1 December 2025, in a condition safe for ordinary office use and compliant with the fit-out description.",
+      "type": "sub",
+      "parentId": "cl_6",
+      "timePhase": "acceptance"
+    },
+    {
+      "id": "cl_6_2",
+      "label": "6.2 Joint Inspection",
+      "content": "6.2 Joint Inspection\nOn the delivery date, the Parties shall jointly inspect the Premises and sign Handover Confirmation Record confirming the status of the Premises, existing defects, meter readings, keys, access cards, and fixtures. The inspection record shall be used for purposes of maintenance allocation under Section 8.2, deposit adjustment under Section 4.3, and return obligations under Section 10.3. The Agreement does not specify fallback handling if one Party refuses to sign the handover record, does not attend inspection, or disputes defect attribution at handover.",
+      "type": "sub",
+      "parentId": "cl_6",
+      "timePhase": "acceptance"
+    },
+    {
+      "id": "cl_7",
+      "label": "7. Maintenance and Repair Allocation",
+      "content": "7. Maintenance and Repair Allocation\nDuring the Term:\n(a) Party B shall use the Premises and all fixtures in a prudent and reasonable manner;\n(b) Party B shall promptly notify Party A of any damage, malfunction, leakage, electrical issue, or safety hazard;\n(c) Party A shall repair structural defects and landlord-owned fixtures within five (5) days after receiving notice, unless emergency conditions require immediate action;\n(d) if Party A fails to repair within such period, or if emergency conditions make prior notice impracticable, Party B may arrange necessary repairs and recover reasonable costs from Party A, or offset such costs against rent only with Party A's written acknowledgment or a legally effective determination;\n(e) if the repair materially interferes with Party B's use of the Premises, rent shall be reduced proportionately or the Term shall be extended, as appropriate.\nDamage caused by Party B's misuse, negligence, unauthorized alteration, or non-compliance with Section 7 shall be repaired at Party B's sole cost and may trigger liability under Sections 4.3, 10.3, and 12.2(5).",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "execution"
+    },
+    {
+      "id": "cl_8",
+      "label": "8. Sublease, Renewal, and Priority Rights",
+      "content": "8. Sublease, Renewal, and Priority Rights",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "effective"
+    },
+    {
+      "id": "cl_8_1",
+      "label": "8.1 No Sublease",
+      "content": "8.1 No Sublease\nParty B shall not sublease, assign, share possession of, license, or otherwise transfer the Premises or any part thereof to any third party without Party A's prior written consent. Any breach of this Section shall constitute a material default under Section 11.2(5).",
+      "type": "sub",
+      "parentId": "cl_8",
+      "timePhase": "effective"
+    },
+    {
+      "id": "cl_8_2",
+      "label": "8.2 Renewal Request",
+      "content": "8.2 Renewal Request\nIf Party B wishes to renew the lease, Party B shall submit a written renewal request at least thirty (30) days before the Expiration Date. Any renewal shall be subject to mutual written agreement. If Party A intends to continue leasing the Premises under substantially similar commercial terms, Party B shall have a priority right to renew on equal terms, provided Party B is not then in default under Sections 11 or 12. The Parties have not specified the offer-matching procedure, response period, evidence of \"equal terms,\" or remedy if Party A leases to a third party during ongoing renewal discussions.",
+      "type": "sub",
+      "parentId": "cl_8",
+      "timePhase": "termination"
+    },
+    {
+      "id": "cl_8_3",
+      "label": "8.3 Priority Purchase Right",
+      "content": "8.3 Priority Purchase Right\nIf Party A proposes to sell the Premises during the Term, Party B shall have a priority right to purchase the Premises on equal price and payment terms, unless the sale involves the entire building, a larger integrated property package, or an enforcement disposal scenario referred to in Sections 1.2 and 11.4(3).",
+      "type": "sub",
+      "parentId": "cl_8",
+      "timePhase": "effective"
+    },
+    {
+      "id": "cl_9",
+      "label": "9. Return of Premises and Post-Term Obligations",
+      "content": "9. Return of Premises and Post-Term Obligations",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "termination"
+    },
+    {
+      "id": "cl_9_1",
+      "label": "9.1 Timely Vacating and Handover",
+      "content": "9.1 Timely Vacating and Handover\nUpon expiration or early termination of this Agreement, Party B shall vacate and return the Premises within three (3) days, complete meter settlement, remove its belongings, and deliver keys, access cards, and related materials to Party A. If Party B fails to vacate on time, Party A shall first issue written notice under Section 14.1 and provide a grace period of not less than seven (7) days before taking further action, except in cases of emergency or abandonment.",
+      "type": "sub",
+      "parentId": "cl_9",
+      "timePhase": "termination"
+    },
+    {
+      "id": "cl_9_2",
+      "label": "9.2 Leftover Property",
+      "content": "9.2 Leftover Property\nIf Party B leaves property in the Premises after the deadline in Section 10.1, Party A may immediately dispose of such property at Party A's sole discretion without prior notice, valuation, inventory, storage, or photographic record. Party B irrevocably waives any claim arising from such disposal, including compensation claims, procedural challenges, and ownership objections.",
+      "type": "sub",
+      "parentId": "cl_9",
+      "timePhase": "post_termination"
+    },
+    {
+      "id": "cl_9_3",
+      "label": "9.3 Return Inspection",
+      "content": "9.3 Return Inspection\nUpon return, the Parties shall inspect the Premises, recording condition, damage, meter readings, and outstanding obligations. The return record shall be used for final settlement under Section 4.3 and dispute resolution under Section 15.",
+      "type": "sub",
+      "parentId": "cl_9",
+      "timePhase": "post_termination"
+    },
+    {
+      "id": "cl_10",
+      "label": "10. Termination",
+      "content": "10. Termination",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "termination"
+    },
+    {
+      "id": "cl_10_1",
+      "label": "10.1 Termination by Mutual Agreement",
+      "content": "10.1 Termination by Mutual Agreement\nThe Parties may terminate this Agreement at any time by mutual written agreement.",
+      "type": "sub",
+      "parentId": "cl_10",
+      "timePhase": "termination"
+    },
+    {
+      "id": "cl_10_2",
+      "label": "10.2 Landlord's Right to Terminate",
+      "content": "10.2 Landlord's Right to Terminate\nParty A may terminate this Agreement by written notice if Party B:\n(1) fails to pay rent or other payable charges for thirty (30) days, subject to written demand and cure procedures;\n(2) unreasonably refuses to sign the handover record after the Premises satisfies the agreed delivery standard under Section 6.2;\n(3) alters the structure of the Premises without authorization in breach of Section 7;\n(4) changes the permitted use in breach of Sections 1.1 and 8.1;\n(5) subleases or transfers possession in breach of Section 9.1; or\nParty A may, without prior notice, immediately lock access to the Premises, remove Tenant personnel, dispose of on-site property, and terminate occupancy rights if Party A believes business, regulatory, or reputational risk may exist.",
+      "type": "sub",
+      "parentId": "cl_10",
+      "timePhase": "termination"
+    },
+    {
+      "id": "cl_10_3",
+      "label": "10.3 Tenant's Right to Terminate",
+      "content": "10.3 Tenant's Right to Terminate\nParty B may terminate this Agreement by written notice if Party A:\n(1) fails to deliver the Premises for more than seven (7) days after the agreed delivery date;\n(2) lacks the lawful right to lease the Premises, or the delivered Premises materially fails to conform to contractual requirements and seriously affects Party B's use, safety, or health; or\n(3) fails to perform repair obligations or pay charges that should be borne by Party A, thereby materially preventing Party B's normal use of the Premises under Sections 5.1 and 8.2.",
+      "type": "sub",
+      "parentId": "cl_10",
+      "timePhase": "termination"
+    },
+    {
+      "id": "cl_11",
+      "label": "11. Liability for Breach",
+      "content": "11. Liability for Breach",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "execution"
+    },
+    {
+      "id": "cl_11_1",
+      "label": "11.1 Landlord Breach",
+      "content": "11.1 Landlord Breach\nIf Party A is in breach:\n(1) where Party B lawfully terminates under Section 11.3, Party A shall, within five (5) days after termination, return the Security Deposit and any unused prepaid rent, and pay liquidated damages equal to one month's rent, without prejudice to additional losses proven by Party B;\n(2) if Party A delays delivery or otherwise commits a breach under Section 11.3(2) or 11.3(3) but Party B does not terminate, Party A shall pay liquidated damages equal to two times the daily rent for each day of breach, capped at two months' rent, and Party B may elect proportionate rent reduction or lease extension under Sections 6.4 and 8.2;\n(3) if Party A terminates this Agreement without contractual basis under Section 11, Party A shall give at least thirty (30) days' written notice, return the Security Deposit and unused rent, and pay liquidated damages equal to two months' rent, without prejudice to additional proven loss.",
+      "type": "sub",
+      "parentId": "cl_11",
+      "timePhase": "execution"
+    },
+    {
+      "id": "cl_11_2",
+      "label": "11.2 Tenant Breach",
+      "content": "11.2 Tenant Breach\nIf Party B is in breach:\n(1) where Party A lawfully terminates under Section 11.2, Party B shall pay liquidated damages equal to one month's rent, without prejudice to additional losses;\n(2) if Party B fails to pay rent, deposit, utilities, management fees, or other amounts due, Party A shall first issue written demand and grant a cure period of not less than five (5) days. If Party B still fails to pay and the breach does not yet trigger termination, or Party A elects not to terminate, Party B shall pay late damages equal to two times the daily rent for each overdue day;\n(3) if Party B terminates this Agreement without contractual basis under Section 11, Party B shall give at least thirty (30) days' written notice and pay liquidated damages equal to two months' rent;\n(4) if Party B fails to vacate or return the Premises on time, Party B shall pay holdover damages under Section 10.4;\n(5) if Party B performs unauthorized alteration, fit-out, installation, or other conduct prohibited by Section 7, Party B shall restore the Premises, compensate Party A for resulting loss, and indemnify Party A against third-party claims arising therefrom.\nFor operational handling, the Agreement does not define a capped timeline for Party A to quantify claimed losses, nor a mandatory evidence package that must be provided before deduction from deposit or separate payment demand.",
+      "type": "sub",
+      "parentId": "cl_11",
+      "timePhase": "execution"
+    },
+    {
+      "id": "cl_12",
+      "label": "12. Dispute Resolution",
+      "content": "12. Dispute Resolution\nAny dispute arising out of or in connection with this Agreement shall be finally and exclusively determined by Party A's in-house legal director. The Parties irrevocably waive any right to submit disputes to arbitration or to any people's court. The internal written decision issued by Party A shall be conclusive, binding, and immediately enforceable against Party B.",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "execution"
+    },
+    {
+      "id": "cl_13",
+      "label": "13. Amendment",
+      "content": "13. Amendment\nNo amendment, waiver, supplement, or modification of this Agreement shall be effective unless made in writing and signed by both Parties. No course of dealing, temporary indulgence, or failure to enforce any provision shall constitute a waiver of future enforcement, except as expressly stated in writing.",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "effective"
+    },
+    {
+      "id": "cl_14",
+      "label": "14. Registration, Effectiveness, and Entire Agreement",
+      "content": "14. Registration, Effectiveness, and Entire Agreement",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "cl_14_1",
+      "label": "14.1 Effectiveness",
+      "content": "14.1 Effectiveness\nThis Agreement shall take effect on the Effective Date upon signature or seal by both Parties.",
+      "type": "sub",
+      "parentId": "cl_14",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "cl_14_2",
+      "label": "14.2 Filing and Registration",
+      "content": "14.2 Filing and Registration\nWithin ten (10) days after execution, the Parties shall cooperate in completing any lease filing or registration formalities required by the competent housing lease administration authority.",
+      "type": "sub",
+      "parentId": "cl_14",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "cl_14_3",
+      "label": "14.3 Appendices",
+      "content": "14.3 Appendices\nThe following appendices form an integral part of this Agreement and have the same legal effect:\n- Appendix 1: Premises Handover Confirmation Record Template\n- Appendix 2: Utility Meter Reading Record Template\n- Appendix 3: Fit-out Scope Description",
+      "type": "sub",
+      "parentId": "cl_14",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "cl_signature",
+      "label": "Signature Page",
+      "content": "SIGNATURE PAGE\nParty A: Qianhai Horizon Asset Operations Co., Ltd.\nName: Lin Yuesheng\nTitle: Authorized Representative\nDate: 15 November 2025\nParty B: NovaLex Consulting (Shenzhen) Co., Ltd.\nName: Chen Haoran\nTitle: Legal Representative\nDate: 15 November 2025",
+      "type": "sub",
+      "parentId": "cl_14",
+      "timePhase": "pre_sign"
+    }
+  ]
+}

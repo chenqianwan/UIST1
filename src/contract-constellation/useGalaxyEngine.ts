@@ -286,8 +286,8 @@ export function useGalaxyEngine(
 
       const satellites = (template.satellites ?? []).map((item, index, arr) => {
         const angle = (index / Math.max(arr.length, 1)) * Math.PI * 2;
-        const riskLevel: GraphNode['riskLevel'] = 'none';
-        const actions = undefined;
+        const riskLevel: GraphNode['riskLevel'] = item.riskLevel ?? 'none';
+        const actions = riskLevel === 'none' ? undefined : normalizeActions(item.actions);
         const timePhase = item.timePhase ?? inferTimePhaseFromText(`${item.label}. ${item.content}`);
         const satelliteId = item.id ?? `sub_${id}_${index}`;
         return {
@@ -320,8 +320,8 @@ export function useGalaxyEngine(
         const uy = Math.sin(satAngle);
 
         return details.map((detail, detailIndex) => {
-          const riskLevel: GraphNode['riskLevel'] = 'none';
-          const actions = undefined;
+          const riskLevel: GraphNode['riskLevel'] = detail.riskLevel ?? 'none';
+          const actions = riskLevel === 'none' ? undefined : normalizeActions(detail.actions);
           const timePhase = detail.timePhase ?? inferTimePhaseFromText(`${detail.label}. ${detail.content}`);
           const detailId = detail.id ?? `sub_${id}_${index}_${detailIndex}`;
           return {

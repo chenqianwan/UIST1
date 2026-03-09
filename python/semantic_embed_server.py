@@ -265,6 +265,18 @@ Hard constraints:
 4) FIELD ALIGNMENT:
    - type: "main" | "sub"
    - timePhase: "pre_sign" | "effective" | "execution" | "acceptance" | "termination" | "post_termination"
+5) PREAMBLE CONSOLIDATION (STRICT):
+   - All unnumbered introductory text before the first explicitly numbered clause
+     (e.g. title, effective date sentence, party identification, recitals, references to main agreement/product/annexes)
+     MUST be merged into exactly ONE node.
+   - Use:
+     - id: "preamble"
+     - label: "Preamble"
+     - type: "main"
+     - parentId: "root"
+     - timePhase: "pre_sign"
+   - Do not split preamble into multiple nodes unless there are explicit numbered headings.
+   - Keep preamble content fully verbatim (lossless).
 
 Output strictly valid JSON only:
 {
@@ -296,7 +308,50 @@ Non-Negotiable Constraints:
 3) NO-RISK POLICY: If riskLevel is none, actions must be [].
 4) ACTION EXCLUSIVITY: If delete exists, do not output revise/add_clause for same node.
 5) REFERENCE VALIDITY: references must only contain existing node ids and must not self-reference.
-6) CONSERVATIVE INFERENCE: If uncertain, use riskLevel none.
+6) EVIDENCE-FIRST CALIBRATION:
+   - Do not over-classify risk.
+   - Assign risk only when a concrete, clause-specific defect is identifiable from the text.
+
+Risk Assessment Dimensions (must assess all three):
+1) Completeness of key terms.
+2) Clarity and enforceability.
+3) Consistency with related clauses, main agreement, and annexes.
+
+Risk Levels:
+- none:
+  Use only when the clause is fully specified, operationally clear, internally coherent, and does not omit protection mechanisms normally expected for this clause type.
+  There must be no identifiable substantive defect.
+- low:
+  Clause is generally workable but has minor ambiguity, drafting looseness, missing auxiliary protections, or terminology that should be improved.
+  Main rights and obligations remain executable.
+- medium:
+  Clause has at least one material incompleteness/ambiguity in a key element (scope, timing, trigger, payment mechanics, liability boundary, notice process, acceptance standard, IP ownership, remedy structure).
+  Clause is usable but likely to create disputes or require revision.
+- high:
+  Clause has major legal/commercial risk (serious imbalance, missing core protection, direct inconsistency with other clauses, unclear authorization, unenforceable liability arrangement, ownership uncertainty, or defects likely to undermine performance/dispute resolution).
+
+Additional Decision Rules:
+- If any substantive drafting defect exists, the clause cannot be none.
+- If no concrete substantive defect is identified, assign riskLevel = none.
+- Treat missing operational details (timeline, approval gate, audit path, evidence format, cure workflow, fallback handling) as missing mechanisms unless they are explicitly and enforceably defined.
+- If a key element is missing or vague AND this materially impairs enforceability or performance certainty, rate at least medium.
+- If clause conflicts with another clause, omits core safeguard, or creates high-probability disputes, rate high.
+- Use medium/high only when defect impact is material and explainable by enforceability, performance certainty, or conflict.
+- Use low for minor drafting quality issues that do not materially impair execution.
+- "Mentioned" does not mean low risk: if present but not operational/measurable/enforceable, increase risk.
+
+Defect-to-Risk Mapping:
+- major defect: affects legality, core rights/obligations, enforceability, ownership, remedies, or major risk allocation -> high.
+- moderate defect: materially increases dispute risk or weakens performance certainty -> medium (or high if impact is severe).
+- minor defect: drafting can be improved but does not seriously impair execution -> low.
+
+Action Routing Rules:
+- Prefer revise when the clause is fundamentally valid but wording is ambiguous, incomplete, or operationally weak.
+- If the issue is a missing mechanism/procedure/remedy/timeline/approval gate/evidence requirement that cannot be fixed by rewriting one sentence, actions MUST include add_clause.
+- Missing mechanism identification should be practical rather than formalistic: if the clause is present but not operational/measurable/enforceable, treat it as a missing mechanism and include add_clause.
+- Prefer delete when the clause is clearly unenforceable, self-contradictory, or directly conflicts with mandatory law / governing dispute framework.
+- revise and add_clause may co-exist for the same node when wording must be corrected and a missing mechanism must be added.
+- If outputting delete, include a concrete legal or structural reason in action.reason.
 
 Output strict JSON only:
 {
@@ -670,6 +725,12 @@ def _sanitize_template_name(value: Optional[str]) -> Tuple[str, str]:
 
 
 def _normalize_stage_b_nodes(stage_a_nodes: List[Dict[str, Any]], stage_b_nodes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    valid_ids = {
+        node.get("id")
+        for node in stage_a_nodes
+        if isinstance(node.get("id"), str) and node.get("id")
+    }
+
     def _normalize_actions(raw_actions: Any) -> List[Dict[str, Any]]:
         if not isinstance(raw_actions, list):
             return []
@@ -701,6 +762,9 @@ def _normalize_stage_b_nodes(stage_a_nodes: List[Dict[str, Any]], stage_b_nodes:
             if isinstance(supplement, str) and supplement.strip():
                 item["supplementDraft"] = supplement
             normalized.append(item)
+        # Enforce delete exclusivity: if delete exists for a node, keep only delete actions.
+        if any(item.get("type") == "delete" for item in normalized):
+            return [item for item in normalized if item.get("type") == "delete"]
         return normalized
 
     out_by_id: Dict[str, Dict[str, Any]] = {}
