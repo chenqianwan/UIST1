@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState, useEffect, useRef } from 'react';
+import { Fragment, useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import type { MonitoringEvent } from './types';
 
 const API_BASE = (import.meta.env.VITE_SEMANTIC_API_BASE ?? 'http://127.0.0.1:8008').replace(/\/$/, '');
@@ -6,7 +6,6 @@ const CANVAS_WIDTH = 760;
 const CANVAS_HEIGHT = 620;
 const SIDE_PANEL_WIDTH = 320;
 const LAYOUT_WIDTH = CANVAS_WIDTH + SIDE_PANEL_WIDTH;
-const EXPANDED_PANEL_GAP = 22;
 const DIMENSION_PANEL = {
   x: CANVAS_WIDTH - 16 - 470,
   y: CANVAS_HEIGHT - 16 - 96,
@@ -14,17 +13,17 @@ const DIMENSION_PANEL = {
   h: 96,
 };
 const MODIFY_PANEL = {
-  x: LAYOUT_WIDTH + EXPANDED_PANEL_GAP,
-  y: 190,
+  x: CANVAS_WIDTH + SIDE_PANEL_WIDTH - 16 - 190,
+  y: 92,
   w: 190,
-  h: 280,
+  h: 190,
 };
-const TOTAL_LAYOUT_WIDTH = MODIFY_PANEL.x + MODIFY_PANEL.w;
+const TOTAL_LAYOUT_WIDTH = LAYOUT_WIDTH;
 const MODIFY_SOURCE_PANEL = {
   x: CANVAS_WIDTH + 20,
-  y: 280,
+  y: 320,
   w: SIDE_PANEL_WIDTH - 40,
-  h: 180,
+  h: 170,
 };
 const EXPORT_PANEL = {
   x: CANVAS_WIDTH + 16,
@@ -45,18 +44,81 @@ const HEATMAP_COLOR_LEVELS = 9;
 const HEATMAP_RED_BAND_START = 0.82;
 
 type AreaName = 'Canvas' | 'Modify' | 'Export' | 'Dimension' | 'Trash' | 'Other';
+type Rect = { x: number; y: number; w: number; h: number };
 
 function inRect(x: number, y: number, rect: { x: number; y: number; w: number; h: number }): boolean {
   return x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h;
 }
 
 function resolveAreaName(x: number, y: number): AreaName {
-  if (inRect(x, y, MODIFY_PANEL)) return 'Modify';
+  if (inRect(x, y, MODIFY_SOURCE_PANEL)) return 'Modify';
   if (inRect(x, y, DIMENSION_PANEL)) return 'Dimension';
   if (inRect(x, y, EXPORT_PANEL)) return 'Export';
   if (inRect(x, y, TRASH_PANEL)) return 'Trash';
   if (x <= CANVAS_WIDTH && y >= 0 && y <= CANVAS_HEIGHT) return 'Canvas';
   return 'Other';
+}
+
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value));
+}
+
+function getSpaceRect(space: string): Rect | null {
+  if (space === 'canvas') return { x: 0, y: 0, w: CANVAS_WIDTH, h: CANVAS_HEIGHT };
+  if (space === 'modify') return MODIFY_SOURCE_PANEL;
+  if (space === 'export') return EXPORT_PANEL;
+  if (space === 'dimension') return DIMENSION_PANEL;
+  if (space === 'trash') return TRASH_PANEL;
+  return null;
+}
+
+function mapEventToLayoutPoint(event: MonitoringEvent): { x: number; y: number } | null {
+  const payload = event.payload ?? {};
+  const space = payload.space_id;
+  const u = payload.space_u;
+  const v = payload.space_v;
+  if (typeof space === 'string' && typeof u === 'number' && typeof v === 'number') {
+    const rect = getSpaceRect(space);
+    if (rect) {
+      return {
+        x: rect.x + clamp01(u) * rect.w,
+        y: rect.y + clamp01(v) * rect.h,
+      };
+    }
+  }
+
+  const rawX = payload.x;
+  const rawY = payload.y;
+  if (typeof rawX !== 'number' || typeof rawY !== 'number') return null;
+  const sourceW =
+    typeof payload.layout_w === 'number' && payload.layout_w > 0
+      ? payload.layout_w
+      : typeof payload.canvas_w === 'number' && payload.canvas_w > 0
+        ? payload.canvas_w
+        : LAYOUT_WIDTH;
+  const sourceH =
+    typeof payload.layout_h === 'number' && payload.layout_h > 0
+      ? payload.layout_h
+      : typeof payload.canvas_h === 'number' && payload.canvas_h > 0
+        ? payload.canvas_h
+        : CANVAS_HEIGHT;
+  let x = Math.max(0, Math.min(LAYOUT_WIDTH - 1, (rawX / sourceW) * LAYOUT_WIDTH));
+  let y = Math.max(0, Math.min(CANVAS_HEIGHT - 1, (rawY / sourceH) * CANVAS_HEIGHT));
+  if (event.component_id === 'side_panel_action') {
+    const actionType = payload.action_type;
+    const hoverRatioY =
+      typeof payload.modify_ratio_y === 'number'
+        ? Math.max(0, Math.min(1, payload.modify_ratio_y))
+        : 0.5;
+    const ratioY = event.event_name === 'action_executed'
+      ? (actionType === 'delete' ? 0.34 : actionType === 'revise' ? 0.52 : actionType === 'add_clause' ? 0.7 : 0.5)
+      : hoverRatioY;
+    x = MODIFY_SOURCE_PANEL.x + MODIFY_SOURCE_PANEL.w * 0.5;
+    y = MODIFY_SOURCE_PANEL.y + MODIFY_SOURCE_PANEL.h * ratioY;
+  } else {
+    x = Math.max(0, Math.min(LAYOUT_WIDTH - 1, x));
+  }
+  return { x, y };
 }
 
 function formatTs(ts: number): string {
@@ -150,12 +212,52 @@ export default function AdminDashboard() {
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
   const [nowTs, setNowTs] = useState<number>(Date.now());
   const latestTsRef = useRef<number>(events.length > 0 ? events[events.length - 1].ts : 0);
+  const heatBucketRef = useRef<number[]>(new Array<number>(HEATMAP_GRID_X * HEATMAP_GRID_Y).fill(0));
+  const heatPointsRef = useRef<number>(0);
+  const heatWeightedPointsRef = useRef<number>(0);
+  const heatSeenIdsRef = useRef<Set<string>>(new Set());
+  const [heatmapVersion, setHeatmapVersion] = useState<number>(0);
+
+  const resetHeatmapAccumulator = useCallback(() => {
+    heatBucketRef.current = new Array<number>(HEATMAP_GRID_X * HEATMAP_GRID_Y).fill(0);
+    heatPointsRef.current = 0;
+    heatWeightedPointsRef.current = 0;
+    heatSeenIdsRef.current = new Set();
+    setHeatmapVersion((prev) => prev + 1);
+  }, []);
+
+  const ingestHeatmapEvents = useCallback((incoming: MonitoringEvent[]) => {
+    if (incoming.length === 0) return;
+    let ingested = 0;
+    const bucket = heatBucketRef.current;
+    const seen = heatSeenIdsRef.current;
+    incoming.forEach((event) => {
+      if (seen.has(event.id)) return;
+      seen.add(event.id);
+      if (event.component_id === 'side_panel_action') return;
+      const point = mapEventToLayoutPoint(event);
+      if (!point) return;
+      const x = point.x;
+      const y = point.y;
+      const ix = Math.max(0, Math.min(HEATMAP_GRID_X - 1, Math.floor((x / TOTAL_LAYOUT_WIDTH) * HEATMAP_GRID_X)));
+      const iy = Math.max(0, Math.min(HEATMAP_GRID_Y - 1, Math.floor((y / CANVAS_HEIGHT) * HEATMAP_GRID_Y)));
+      const weight = getHeatWeight(event);
+      bucket[iy * HEATMAP_GRID_X + ix] += weight;
+      heatPointsRef.current += 1;
+      heatWeightedPointsRef.current += weight;
+      ingested += 1;
+    });
+    if (ingested > 0) {
+      setHeatmapVersion((prev) => prev + 1);
+    }
+  }, []);
 
   useEffect(() => {
     setEvents([]);
     latestTsRef.current = 0;
     setExpandedEventId(null);
-  }, [participantId]);
+    resetHeatmapAccumulator();
+  }, [participantId, resetHeatmapAccumulator]);
 
   useEffect(() => {
     let stopped = false;
@@ -170,6 +272,7 @@ export default function AdminDashboard() {
         const data = (await response.json()) as { events?: MonitoringEvent[] };
         const next = Array.isArray(data.events) ? data.events : [];
         if (next.length === 0 || stopped) return;
+        ingestHeatmapEvents(next);
         setEvents((prev) => {
           const merged = mergeByEventId(prev, next);
           latestTsRef.current = merged.length > 0 ? merged[merged.length - 1].ts : latestTsRef.current;
@@ -187,7 +290,7 @@ export default function AdminDashboard() {
       stopped = true;
       window.clearInterval(timer);
     };
-  }, [participantId]);
+  }, [ingestHeatmapEvents, participantId]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNowTs(Date.now()), 1000);
@@ -218,61 +321,14 @@ export default function AdminDashboard() {
   const heatmap = useMemo(() => {
     const gridX = HEATMAP_GRID_X;
     const gridY = HEATMAP_GRID_Y;
-    const bucket = new Array<number>(gridX * gridY).fill(0);
-    let points = 0;
-    let weightedPoints = 0;
-
-    events.slice(-2000).forEach((event) => {
-      const payload = event.payload ?? {};
-      const rawX = payload.x;
-      const rawY = payload.y;
-      if (typeof rawX !== 'number' || typeof rawY !== 'number') return;
-      const sourceW =
-        typeof payload.layout_w === 'number' && payload.layout_w > 0
-          ? payload.layout_w
-          : typeof payload.canvas_w === 'number' && payload.canvas_w > 0
-            ? payload.canvas_w
-            : LAYOUT_WIDTH;
-      const sourceH =
-        typeof payload.layout_h === 'number' && payload.layout_h > 0
-          ? payload.layout_h
-          : typeof payload.canvas_h === 'number' && payload.canvas_h > 0
-            ? payload.canvas_h
-            : CANVAS_HEIGHT;
-      let x = Math.max(0, Math.min(LAYOUT_WIDTH - 1, (rawX / sourceW) * LAYOUT_WIDTH));
-      let y = Math.max(0, Math.min(CANVAS_HEIGHT - 1, (rawY / sourceH) * CANVAS_HEIGHT));
-      if (event.component_id === 'side_panel_action') {
-        const actionType = payload.action_type;
-        const hoverRatioY =
-          typeof payload.modify_ratio_y === 'number'
-            ? Math.max(0, Math.min(1, payload.modify_ratio_y))
-            : 0.5;
-        const ratioY = event.event_name === 'action_executed'
-          ? (actionType === 'delete' ? 0.34 : actionType === 'revise' ? 0.52 : actionType === 'add_clause' ? 0.7 : 0.5)
-          : hoverRatioY;
-        x = MODIFY_PANEL.x + MODIFY_PANEL.w * 0.5;
-        y = MODIFY_PANEL.y + MODIFY_PANEL.h * ratioY;
-      } else {
-        x = Math.max(0, Math.min(LAYOUT_WIDTH - 1, x));
-      }
-      const ix = Math.max(0, Math.min(gridX - 1, Math.floor((x / TOTAL_LAYOUT_WIDTH) * gridX)));
-      const iy = Math.max(0, Math.min(gridY - 1, Math.floor((y / CANVAS_HEIGHT) * gridY)));
-      const weight = getHeatWeight(event);
-      bucket[iy * gridX + ix] += weight;
-      points += 1;
-      weightedPoints += weight;
-    });
-
-    const smoothBucket = smoothHeatBucket(bucket, gridX, gridY, 5);
+    const points = heatPointsRef.current;
+    const weightedPoints = heatWeightedPointsRef.current;
+    const smoothBucket = smoothHeatBucket(heatBucketRef.current, gridX, gridY, 5);
     const constrainedBucket = smoothBucket.map((value, index) => {
       if (value <= 0) return 0;
       const cellW = TOTAL_LAYOUT_WIDTH / gridX;
-      const cellH = CANVAS_HEIGHT / gridY;
       const cx = (index % gridX) * cellW + cellW * 0.5;
-      const cy = Math.floor(index / gridX) * cellH + cellH * 0.5;
-      if (cx > LAYOUT_WIDTH && !inRect(cx, cy, MODIFY_PANEL)) {
-        return 0;
-      }
+      if (cx > LAYOUT_WIDTH) return 0;
       return value;
     });
     const max = constrainedBucket.reduce((acc, value) => Math.max(acc, value), 0);
@@ -286,12 +342,100 @@ export default function AdminDashboard() {
     const shareLower = percentile(shares, 0.2);
     const shareUpper = Math.max(percentile(shares, 0.992), shareLower + 1e-8);
     return { gridX, gridY, bucket: constrainedBucket, max, points, weightedPoints, shareLower, shareUpper };
+  }, [heatmapVersion]);
+
+  const modifyExpandedHeatmap = useMemo(() => {
+    const gridX = 40;
+    const gridY = 40;
+    const bucket = new Array<number>(gridX * gridY).fill(0);
+    let points = 0;
+    let weightedPoints = 0;
+    events.forEach((event) => {
+      if (event.component_id !== 'side_panel_action') return;
+      if (event.event_name !== 'canvas_interaction' && event.event_name !== 'action_executed') return;
+      const payload = event.payload ?? {};
+      const actionType = payload.action_type;
+      const rawX = payload.x;
+      const rawY = payload.y;
+      const sourceW =
+        typeof payload.layout_w === 'number' && payload.layout_w > 0
+          ? payload.layout_w
+          : typeof payload.canvas_w === 'number' && payload.canvas_w > 0
+            ? payload.canvas_w
+            : LAYOUT_WIDTH;
+      const sourceH =
+        typeof payload.layout_h === 'number' && payload.layout_h > 0
+          ? payload.layout_h
+          : typeof payload.canvas_h === 'number' && payload.canvas_h > 0
+            ? payload.canvas_h
+            : CANVAS_HEIGHT;
+
+      const hasRawPoint = typeof rawX === 'number' && typeof rawY === 'number';
+      const layoutX = hasRawPoint ? Math.max(0, Math.min(LAYOUT_WIDTH - 1, (rawX / sourceW) * LAYOUT_WIDTH)) : null;
+      const layoutY = hasRawPoint ? Math.max(0, Math.min(CANVAS_HEIGHT - 1, (rawY / sourceH) * CANVAS_HEIGHT)) : null;
+
+      const fallbackRatioY =
+        typeof payload.modify_ratio_y === 'number'
+          ? Math.max(0, Math.min(1, payload.modify_ratio_y))
+          : event.event_name === 'action_executed'
+            ? (actionType === 'delete' ? 0.34 : actionType === 'revise' ? 0.52 : actionType === 'add_clause' ? 0.7 : 0.5)
+            : 0.5;
+      const fallbackRatioX = event.event_name === 'action_executed'
+        ? (actionType === 'delete' ? 0.35 : actionType === 'revise' ? 0.5 : actionType === 'add_clause' ? 0.65 : 0.5)
+        : 0.5;
+
+      const ratioX = layoutX == null
+        ? fallbackRatioX
+        : clamp01((layoutX - MODIFY_SOURCE_PANEL.x) / MODIFY_SOURCE_PANEL.w);
+      const ratioY = layoutY == null
+        ? fallbackRatioY
+        : clamp01((layoutY - MODIFY_SOURCE_PANEL.y) / MODIFY_SOURCE_PANEL.h);
+      const ix = Math.max(0, Math.min(gridX - 1, Math.floor(ratioX * gridX)));
+      const iy = Math.max(0, Math.min(gridY - 1, Math.floor(ratioY * gridY)));
+      const weight = getHeatWeight(event);
+      bucket[iy * gridX + ix] += weight;
+      points += 1;
+      weightedPoints += weight;
+    });
+    const smoothBucket = smoothHeatBucket(bucket, gridX, gridY, 4);
+    const max = smoothBucket.reduce((acc, value) => Math.max(acc, value), 0);
+    const shares =
+      weightedPoints > 0
+        ? smoothBucket
+            .filter((value) => value > 0)
+            .map((value) => value / weightedPoints)
+            .sort((a, b) => a - b)
+        : [];
+    const shareLower = percentile(shares, 0.2);
+    const shareUpper = Math.max(percentile(shares, 0.992), shareLower + 1e-8);
+    return { gridX, gridY, bucket: smoothBucket, max, points, weightedPoints, shareLower, shareUpper };
   }, [events]);
+
+  const unifiedHeatScale = useMemo(() => {
+    const totalWeighted = heatmap.weightedPoints + modifyExpandedHeatmap.weightedPoints;
+    if (totalWeighted <= 0) {
+      return {
+        totalWeighted: 0,
+        shareLower: 0,
+        shareUpper: 1e-8,
+      };
+    }
+    const mainShares = heatmap.bucket
+      .filter((value) => value > 0)
+      .map((value) => value / totalWeighted);
+    const modifyShares = modifyExpandedHeatmap.bucket
+      .filter((value) => value > 0)
+      .map((value) => value / totalWeighted);
+    const shares = [...mainShares, ...modifyShares].sort((a, b) => a - b);
+    const shareLower = percentile(shares, 0.2);
+    const shareUpper = Math.max(percentile(shares, 0.992), shareLower + 1e-8);
+    return { totalWeighted, shareLower, shareUpper };
+  }, [heatmap, modifyExpandedHeatmap]);
 
   const areaMetrics = useMemo(() => {
     const areaPx: Record<AreaName, number> = {
       Canvas: CANVAS_WIDTH * CANVAS_HEIGHT,
-      Modify: MODIFY_PANEL.w * MODIFY_PANEL.h,
+      Modify: MODIFY_SOURCE_PANEL.w * MODIFY_SOURCE_PANEL.h,
       Export: EXPORT_PANEL.w * EXPORT_PANEL.h,
       Dimension: DIMENSION_PANEL.w * DIMENSION_PANEL.h,
       Trash: TRASH_PANEL.w * TRASH_PANEL.h,
@@ -299,7 +443,7 @@ export default function AdminDashboard() {
         1,
         TOTAL_LAYOUT_WIDTH * CANVAS_HEIGHT -
           CANVAS_WIDTH * CANVAS_HEIGHT -
-          MODIFY_PANEL.w * MODIFY_PANEL.h -
+          MODIFY_SOURCE_PANEL.w * MODIFY_SOURCE_PANEL.h -
           EXPORT_PANEL.w * EXPORT_PANEL.h -
           DIMENSION_PANEL.w * DIMENSION_PANEL.h -
           TRASH_PANEL.w * TRASH_PANEL.h,
@@ -314,42 +458,14 @@ export default function AdminDashboard() {
       Other: 0,
     };
     events.slice(-2000).forEach((event) => {
-      const payload = event.payload ?? {};
-      const rawX = payload.x;
-      const rawY = payload.y;
-      if (typeof rawX !== 'number' || typeof rawY !== 'number') return;
       if (event.component_id === 'side_panel_action') {
         sums.Modify += getHeatWeight(event);
         return;
       }
-      const sourceW =
-        typeof payload.layout_w === 'number' && payload.layout_w > 0
-          ? payload.layout_w
-          : typeof payload.canvas_w === 'number' && payload.canvas_w > 0
-            ? payload.canvas_w
-            : LAYOUT_WIDTH;
-      const sourceH =
-        typeof payload.layout_h === 'number' && payload.layout_h > 0
-          ? payload.layout_h
-          : typeof payload.canvas_h === 'number' && payload.canvas_h > 0
-            ? payload.canvas_h
-            : CANVAS_HEIGHT;
-      let x = Math.max(0, Math.min(LAYOUT_WIDTH - 1, (rawX / sourceW) * LAYOUT_WIDTH));
-      let y = Math.max(0, Math.min(CANVAS_HEIGHT - 1, (rawY / sourceH) * CANVAS_HEIGHT));
-      if (event.component_id === 'side_panel_action') {
-        const actionType = payload.action_type;
-        const hoverRatioY =
-          typeof payload.modify_ratio_y === 'number'
-            ? Math.max(0, Math.min(1, payload.modify_ratio_y))
-            : 0.5;
-        const ratioY = event.event_name === 'action_executed'
-          ? (actionType === 'delete' ? 0.34 : actionType === 'revise' ? 0.52 : actionType === 'add_clause' ? 0.7 : 0.5)
-          : hoverRatioY;
-        x = MODIFY_PANEL.x + MODIFY_PANEL.w * 0.5;
-        y = MODIFY_PANEL.y + MODIFY_PANEL.h * ratioY;
-      } else {
-        x = Math.max(0, Math.min(LAYOUT_WIDTH - 1, x));
-      }
+      const point = mapEventToLayoutPoint(event);
+      if (!point) return;
+      const x = point.x;
+      const y = point.y;
       const area = resolveAreaName(x, y);
       sums[area] += getHeatWeight(event);
     });
@@ -395,14 +511,12 @@ export default function AdminDashboard() {
 
     const isDimensionEvent = (event: MonitoringEvent): boolean => {
       if (event.event_name !== 'canvas_interaction') return false;
+      if (event.payload?.space_id === 'dimension') return true;
       const source = event.payload?.source;
       if (source === 'semantic_pull' || source === 'risk_pull' || source === 'time_pull') return true;
       if (source === 'hover_sample') {
-        const rawX = event.payload?.x;
-        const rawY = event.payload?.y;
-        if (typeof rawX === 'number' && typeof rawY === 'number') {
-          return inRect(rawX, rawY, DIMENSION_PANEL);
-        }
+        const point = mapEventToLayoutPoint(event);
+        if (point) return inRect(point.x, point.y, DIMENSION_PANEL);
       }
       return false;
     };
@@ -479,7 +593,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+        <div className="w-full md:w-[420px] rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
           <div className="mb-2 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-slate-700">Task Stage Timeline</h3>
             {stageTiming ? (
@@ -544,7 +658,7 @@ export default function AdminDashboard() {
           <div className="mb-2 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-slate-700">Interaction Heatmap</h3>
             <span className="text-xs text-slate-500">
-              {heatmap.points} samples (weighted {heatmap.weightedPoints.toFixed(1)})
+              {heatmap.points} samples (weighted {heatmap.weightedPoints.toFixed(1)} / total {unifiedHeatScale.totalWeighted.toFixed(1)})
             </span>
           </div>
           <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-100 p-2">
@@ -557,27 +671,21 @@ export default function AdminDashboard() {
                 <clipPath id="heatmap-clip">
                   <rect x={0} y={0} width={TOTAL_LAYOUT_WIDTH} height={CANVAS_HEIGHT} />
                 </clipPath>
-                <marker id="expand-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-                  <path d="M0,0 L8,4 L0,8 z" fill="#7a86a6" />
-                </marker>
               </defs>
               <rect x={0} y={0} width={TOTAL_LAYOUT_WIDTH} height={CANVAS_HEIGHT} fill="#f9fbff" />
               <rect x={0.5} y={0.5} width={TOTAL_LAYOUT_WIDTH - 1} height={CANVAS_HEIGHT - 1} fill="none" stroke="#d6deea" strokeWidth={1} />
               <rect x={0} y={0} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} fill="#f7faff" />
               <rect x={CANVAS_WIDTH} y={0} width={SIDE_PANEL_WIDTH} height={CANVAS_HEIGHT} fill="#f7faff" />
-              <rect x={LAYOUT_WIDTH} y={0} width={TOTAL_LAYOUT_WIDTH - LAYOUT_WIDTH} height={CANVAS_HEIGHT} fill="#f9fbff" />
-              <rect x={MODIFY_PANEL.x} y={MODIFY_PANEL.y} width={MODIFY_PANEL.w} height={MODIFY_PANEL.h} fill="#f7faff" />
               <line x1={CANVAS_WIDTH} y1={0} x2={CANVAS_WIDTH} y2={CANVAS_HEIGHT} stroke="#d4ddea" strokeWidth={1.8} />
-              <line x1={LAYOUT_WIDTH} y1={0} x2={LAYOUT_WIDTH} y2={CANVAS_HEIGHT} stroke="#d4ddea" strokeWidth={1.3} />
               <g filter="url(#heatmap-soft-blur)" clipPath="url(#heatmap-clip)">
                 {heatmap.bucket.map((count, index) => {
-                  if (count <= 0 || heatmap.max <= 0 || heatmap.weightedPoints <= 0) return null;
+                  if (count <= 0 || heatmap.max <= 0 || unifiedHeatScale.totalWeighted <= 0) return null;
                   const cellW = TOTAL_LAYOUT_WIDTH / heatmap.gridX;
                   const cellH = CANVAS_HEIGHT / heatmap.gridY;
                   const x = (index % heatmap.gridX) * cellW;
                   const y = Math.floor(index / heatmap.gridX) * cellH;
-                  const share = count / heatmap.weightedPoints;
-                  const stretched = (share - heatmap.shareLower) / (heatmap.shareUpper - heatmap.shareLower);
+                  const share = count / unifiedHeatScale.totalWeighted;
+                  const stretched = (share - unifiedHeatScale.shareLower) / (unifiedHeatScale.shareUpper - unifiedHeatScale.shareLower);
                   const normalized = Math.max(0, Math.min(1, stretched));
                   // Smoothstep keeps more values in the mid-band (yellow/orange) vs hard red/green split.
                   const smooth = normalized * normalized * (3 - 2 * normalized);
@@ -607,21 +715,9 @@ export default function AdminDashboard() {
                 })}
               </g>
               <rect x={DIMENSION_PANEL.x} y={DIMENSION_PANEL.y} width={DIMENSION_PANEL.w} height={DIMENSION_PANEL.h} fill="none" stroke="#6f8aa2" strokeOpacity={0.72} strokeWidth={1.5} strokeDasharray="6 7" />
-              <rect x={MODIFY_PANEL.x} y={MODIFY_PANEL.y} width={MODIFY_PANEL.w} height={MODIFY_PANEL.h} fill="none" stroke="#7a86a6" strokeOpacity={0.7} strokeWidth={1.5} strokeDasharray="6 7" />
               <rect x={EXPORT_PANEL.x} y={EXPORT_PANEL.y} width={EXPORT_PANEL.w} height={EXPORT_PANEL.h} fill="none" stroke="#867da4" strokeOpacity={0.7} strokeWidth={1.5} strokeDasharray="6 7" />
               <rect x={TRASH_PANEL.x} y={TRASH_PANEL.y} width={TRASH_PANEL.w} height={TRASH_PANEL.h} fill="none" stroke="#8b8f9d" strokeOpacity={0.7} strokeWidth={1.5} strokeDasharray="6 7" />
               <rect x={MODIFY_SOURCE_PANEL.x} y={MODIFY_SOURCE_PANEL.y} width={MODIFY_SOURCE_PANEL.w} height={MODIFY_SOURCE_PANEL.h} fill="none" stroke="#7a86a6" strokeOpacity={0.45} strokeWidth={1.2} strokeDasharray="4 6" />
-              <line
-                x1={MODIFY_SOURCE_PANEL.x + MODIFY_SOURCE_PANEL.w}
-                y1={MODIFY_SOURCE_PANEL.y + MODIFY_SOURCE_PANEL.h * 0.45}
-                x2={MODIFY_PANEL.x - 8}
-                y2={MODIFY_PANEL.y + MODIFY_PANEL.h * 0.2}
-                stroke="#7a86a6"
-                strokeOpacity={0.65}
-                strokeWidth={1.4}
-                strokeDasharray="5 5"
-                markerEnd="url(#expand-arrow)"
-              />
               <text x={12} y={24} fill="#475569" fontSize={14} fontWeight={600}>
                 Main Canvas Area
                 </text>
@@ -634,15 +730,75 @@ export default function AdminDashboard() {
               <text x={DIMENSION_PANEL.x + 10} y={DIMENSION_PANEL.y - 8} fill="#647f97" fontSize={11.5} fontWeight={600}>
                 Dimension Control Panel
                 </text>
-              <text x={MODIFY_PANEL.x + 10} y={MODIFY_PANEL.y - 8} fill="#6b7ea0" fontSize={11.5} fontWeight={600}>
-                Modify Area (expanded)
-                </text>
               <text x={EXPORT_PANEL.x + 10} y={EXPORT_PANEL.y - 8} fill="#726e98" fontSize={11.5} fontWeight={600}>
                 Export Area
                 </text>
               <text x={TRASH_PANEL.x + 10} y={TRASH_PANEL.y - 8} fill="#7e8392" fontSize={11.5} fontWeight={600}>
                 Trash Area
               </text>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="w-[320px] max-w-full rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-slate-700">Modify Expanded Heatmap</h3>
+            <span className="text-xs text-slate-500">
+              {modifyExpandedHeatmap.points} samples (weighted {modifyExpandedHeatmap.weightedPoints.toFixed(1)} / total {unifiedHeatScale.totalWeighted.toFixed(1)})
+            </span>
+          </div>
+          <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-100 p-2">
+            <div className="w-full rounded-md border border-slate-200 bg-white p-1 shadow-sm">
+              <svg viewBox={`0 0 ${MODIFY_PANEL.w} ${MODIFY_PANEL.h}`} className="h-auto w-full">
+                <defs>
+                  <filter id="modify-heatmap-soft-blur" x="-8%" y="-8%" width="116%" height="116%">
+                    <feGaussianBlur stdDeviation={HEATMAP_BLUR_STD} />
+                  </filter>
+                  <clipPath id="modify-heatmap-clip">
+                    <rect x={0} y={0} width={MODIFY_PANEL.w} height={MODIFY_PANEL.h} />
+                  </clipPath>
+                </defs>
+                <rect x={0} y={0} width={MODIFY_PANEL.w} height={MODIFY_PANEL.h} fill="#f9fbff" />
+                <rect x={0.5} y={0.5} width={MODIFY_PANEL.w - 1} height={MODIFY_PANEL.h - 1} fill="none" stroke="#d6deea" strokeWidth={1} />
+                <g filter="url(#modify-heatmap-soft-blur)" clipPath="url(#modify-heatmap-clip)">
+                  {modifyExpandedHeatmap.bucket.map((count, index) => {
+                    if (count <= 0 || modifyExpandedHeatmap.max <= 0 || unifiedHeatScale.totalWeighted <= 0) return null;
+                    const cellW = MODIFY_PANEL.w / modifyExpandedHeatmap.gridX;
+                    const cellH = MODIFY_PANEL.h / modifyExpandedHeatmap.gridY;
+                    const x = (index % modifyExpandedHeatmap.gridX) * cellW;
+                    const y = Math.floor(index / modifyExpandedHeatmap.gridX) * cellH;
+                    const share = count / unifiedHeatScale.totalWeighted;
+                    const stretched = (share - unifiedHeatScale.shareLower) / (unifiedHeatScale.shareUpper - unifiedHeatScale.shareLower);
+                    const normalized = Math.max(0, Math.min(1, stretched));
+                    const smooth = normalized * normalized * (3 - 2 * normalized);
+                    const intensity = Math.pow(smooth, 0.95);
+                    const levelCount = Math.max(2, HEATMAP_COLOR_LEVELS);
+                    const level = Math.round(intensity * (levelCount - 1));
+                    const band = level / (levelCount - 1);
+                    const redStart = HEATMAP_RED_BAND_START;
+                    const h = band < redStart
+                      ? 220 - (band / redStart) * 170
+                      : 50 - ((band - redStart) / (1 - redStart)) * 46;
+                    const s = 74 + band * 18;
+                    const l = 87 - band * 42;
+                    const a = 0.2 + band * 0.66;
+                    return (
+                      <rect
+                        key={`modify-heat-cell-${index}`}
+                        x={x}
+                        y={y}
+                        width={cellW + 0.28}
+                        height={cellH + 0.28}
+                        fill={`hsla(${h}, ${s}%, ${l}%, ${a})`}
+                      />
+                    );
+                  })}
+                </g>
+                <rect x={0.5} y={0.5} width={MODIFY_PANEL.w - 1} height={MODIFY_PANEL.h - 1} fill="none" stroke="#7a86a6" strokeOpacity={0.65} strokeWidth={1.4} strokeDasharray="6 7" />
+                <text x={10} y={16} fill="#6b7ea0" fontSize={11.5} fontWeight={600}>
+                  Modify Area (expanded)
+                </text>
               </svg>
             </div>
           </div>

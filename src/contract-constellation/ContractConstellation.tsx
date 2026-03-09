@@ -388,6 +388,7 @@ export default function ContractConstellation() {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const trashRef = useRef<HTMLDivElement | null>(null);
+  const analysisControlsRef = useRef<HTMLDivElement | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isDragOverCanvas, setIsDragOverCanvas] = useState(false);
   const [usedTemplateIds, setUsedTemplateIds] = useState<string[]>([]);
@@ -438,14 +439,31 @@ export default function ContractConstellation() {
   }, [height, width]);
   const getLayoutPointFromClient = useCallback((clientX: number, clientY: number) => {
     if (!rootRef.current) return null;
-    const rect = rootRef.current.getBoundingClientRect();
-    const x = ((clientX - rect.left) / rect.width) * layoutWidth;
-    const y = ((clientY - rect.top) / rect.height) * layoutHeight;
+    const rootRect = rootRef.current.getBoundingClientRect();
+    const rootWidth = Math.max(1, rootRect.width);
+    const rootHeight = Math.max(1, rootRect.height);
+    const y = ((clientY - rootRect.top) / rootHeight) * layoutHeight;
+
+    let x: number;
+    const canvasRect = svgRef.current?.getBoundingClientRect();
+    if (canvasRect && canvasRect.width > 0) {
+      if (clientX <= canvasRect.right) {
+        const canvasRatio = (clientX - canvasRect.left) / canvasRect.width;
+        x = Math.max(0, Math.min(1, canvasRatio)) * width;
+      } else {
+        const sideWidthPx = Math.max(1, rootRect.right - canvasRect.right);
+        const sideRatio = (clientX - canvasRect.right) / sideWidthPx;
+        x = width + Math.max(0, Math.min(1, sideRatio)) * SIDE_PANEL_WIDTH;
+      }
+    } else {
+      const xRatio = (clientX - rootRect.left) / rootWidth;
+      x = Math.max(0, Math.min(1, xRatio)) * layoutWidth;
+    }
     return {
       x: Math.max(0, Math.min(layoutWidth, x)),
       y: Math.max(0, Math.min(layoutHeight, y)),
     };
-  }, [layoutHeight, layoutWidth]);
+  }, [height, layoutHeight, layoutWidth, width]);
 
   const {
     nodes,
@@ -1449,18 +1467,35 @@ export default function ContractConstellation() {
       sliderIndex: number,
       value: number,
       force = false,
+      pointer?: { clientX: number; clientY: number },
     ) => {
       const now = Date.now();
       if (!force && now - sliderSampleAtRef.current < SLIDER_SAMPLE_INTERVAL_MS) return;
       sliderSampleAtRef.current = now;
+      const pointerLayoutPoint = pointer ? getLayoutPointFromClient(pointer.clientX, pointer.clientY) : null;
       const panelLeft = width - 16 - CONTROLS_PANEL_WIDTH;
+      const panelTop = height - 16 - CONTROLS_PANEL_HEIGHT;
       const panelCenterY = height - 16 - CONTROLS_PANEL_HEIGHT / 2;
       const sliderCenterX = panelLeft + CONTROLS_PANEL_WIDTH * ((sliderIndex + 0.5) / ANALYSIS_SLIDER_COUNT);
+      const pointX = pointerLayoutPoint ? pointerLayoutPoint.x : sliderCenterX;
+      const pointY = pointerLayoutPoint ? pointerLayoutPoint.y : panelCenterY;
+      let spaceU = Math.max(0, Math.min(1, (pointX - panelLeft) / CONTROLS_PANEL_WIDTH));
+      let spaceV = Math.max(0, Math.min(1, (pointY - panelTop) / CONTROLS_PANEL_HEIGHT));
+      if (pointer && analysisControlsRef.current) {
+        const controlsRect = analysisControlsRef.current.getBoundingClientRect();
+        if (controlsRect.width > 0 && controlsRect.height > 0) {
+          spaceU = Math.max(0, Math.min(1, (pointer.clientX - controlsRect.left) / controlsRect.width));
+          spaceV = Math.max(0, Math.min(1, (pointer.clientY - controlsRect.top) / controlsRect.height));
+        }
+      }
       track('canvas_interaction', {
         componentId: 'analysis_controls',
         payload: {
-          x: Math.round(sliderCenterX),
-          y: Math.round(panelCenterY),
+          x: Math.round(pointX),
+          y: Math.round(pointY),
+          space_id: 'dimension',
+          space_u: Number(spaceU.toFixed(4)),
+          space_v: Number(spaceV.toFixed(4)),
           source,
           value: Number(value.toFixed(2)),
           heat_weight: SLIDER_HEAT_WEIGHT,
@@ -1471,7 +1506,7 @@ export default function ContractConstellation() {
         },
       });
     },
-    [height, layoutHeight, layoutWidth, track, width],
+    [getLayoutPointFromClient, height, layoutHeight, layoutWidth, track, width],
   );
 
   const handleSemanticBiasChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
@@ -1493,19 +1528,68 @@ export default function ContractConstellation() {
   }, [trackDimensionPanelInteraction]);
 
   const handleSemanticBiasCommit = useCallback((event: PointerEvent<HTMLInputElement>) => {
-    trackDimensionPanelInteraction('semantic_pull', 0, Number((event.target as HTMLInputElement).value), true);
+    trackDimensionPanelInteraction(
+      'semantic_pull',
+      0,
+      Number((event.target as HTMLInputElement).value),
+      true,
+      { clientX: event.clientX, clientY: event.clientY },
+    );
   }, [trackDimensionPanelInteraction]);
 
   const handleRiskBiasCommit = useCallback((event: PointerEvent<HTMLInputElement>) => {
-    trackDimensionPanelInteraction('risk_pull', 1, Number((event.target as HTMLInputElement).value), true);
+    trackDimensionPanelInteraction(
+      'risk_pull',
+      1,
+      Number((event.target as HTMLInputElement).value),
+      true,
+      { clientX: event.clientX, clientY: event.clientY },
+    );
   }, [trackDimensionPanelInteraction]);
 
   const handleTimeBiasCommit = useCallback((event: PointerEvent<HTMLInputElement>) => {
-    trackDimensionPanelInteraction('time_pull', 2, Number((event.target as HTMLInputElement).value), true);
+    trackDimensionPanelInteraction(
+      'time_pull',
+      2,
+      Number((event.target as HTMLInputElement).value),
+      true,
+      { clientX: event.clientX, clientY: event.clientY },
+    );
+  }, [trackDimensionPanelInteraction]);
+
+  const handleSemanticBiasPointerMove = useCallback((event: PointerEvent<HTMLInputElement>) => {
+    trackDimensionPanelInteraction(
+      'semantic_pull',
+      0,
+      Number((event.target as HTMLInputElement).value),
+      false,
+      { clientX: event.clientX, clientY: event.clientY },
+    );
+  }, [trackDimensionPanelInteraction]);
+
+  const handleRiskBiasPointerMove = useCallback((event: PointerEvent<HTMLInputElement>) => {
+    trackDimensionPanelInteraction(
+      'risk_pull',
+      1,
+      Number((event.target as HTMLInputElement).value),
+      false,
+      { clientX: event.clientX, clientY: event.clientY },
+    );
+  }, [trackDimensionPanelInteraction]);
+
+  const handleTimeBiasPointerMove = useCallback((event: PointerEvent<HTMLInputElement>) => {
+    trackDimensionPanelInteraction(
+      'time_pull',
+      2,
+      Number((event.target as HTMLInputElement).value),
+      false,
+      { clientX: event.clientX, clientY: event.clientY },
+    );
   }, [trackDimensionPanelInteraction]);
 
   const handleLayoutPointerMoveCapture = useCallback((event: PointerEvent<HTMLDivElement>) => {
     if (draggingNodeId) return;
+    if (event.target instanceof Element && event.target.closest('.analysis-slider')) return;
     const now = Date.now();
     if (now - hoverSampleAtRef.current < HOVER_SAMPLE_INTERVAL_MS) return;
     const layoutPoint = getLayoutPointFromClient(event.clientX, event.clientY);
@@ -1632,7 +1716,10 @@ export default function ContractConstellation() {
         </div>
         <div className="pointer-events-none absolute bottom-4 right-4 z-10">
           {showAnalysisControls ? (
-            <div className="pointer-events-auto flex h-[96px] w-[470px] flex-col justify-center rounded-xl border border-slate-200 bg-white/90 px-4 py-2 text-[11px] text-slate-700 shadow-sm backdrop-blur-sm">
+            <div
+              ref={analysisControlsRef}
+              className="pointer-events-auto flex h-[96px] w-[470px] flex-col justify-center rounded-xl border border-slate-200 bg-white/90 px-4 py-2 text-[11px] text-slate-700 shadow-sm backdrop-blur-sm"
+            >
               <div className="mb-1.5 flex items-center justify-between">
                 <span className="font-semibold">Analysis Controls</span>
                 <div className="flex items-center gap-2">
@@ -1661,6 +1748,7 @@ export default function ContractConstellation() {
                     step={0.01}
                     value={semanticBiasStrength}
                     onChange={handleSemanticBiasChange}
+                    onPointerMove={handleSemanticBiasPointerMove}
                     onPointerUp={handleSemanticBiasCommit}
                     className="analysis-slider analysis-slider--semantic"
                   />
@@ -1677,6 +1765,7 @@ export default function ContractConstellation() {
                     step={0.01}
                     value={riskBiasStrength}
                     onChange={handleRiskBiasChange}
+                    onPointerMove={handleRiskBiasPointerMove}
                     onPointerUp={handleRiskBiasCommit}
                     className="analysis-slider analysis-slider--risk"
                   />
@@ -1693,6 +1782,7 @@ export default function ContractConstellation() {
                     step={0.01}
                     value={timeBiasStrength}
                     onChange={handleTimeBiasChange}
+                    onPointerMove={handleTimeBiasPointerMove}
                     onPointerUp={handleTimeBiasCommit}
                     className="analysis-slider analysis-slider--time"
                   />
