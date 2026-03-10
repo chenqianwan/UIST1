@@ -1,4 +1,5 @@
 import type { MonitoringEvent, MonitoringEventName } from './types';
+import { getRuntimeApiBase } from '../config/runtimeApiBase';
 
 const STORAGE_KEY = 'uist_monitor_events_v1';
 const CHANNEL_NAME = 'uist-monitor-channel';
@@ -6,7 +7,7 @@ const MAX_EVENTS = 5000;
 const FLUSH_INTERVAL_MS = 1000;
 const FLUSH_BATCH_SIZE = 50;
 const IMMEDIATE_FLUSH_THRESHOLD = 20;
-const API_BASE = (import.meta.env.VITE_SEMANTIC_API_BASE ?? 'http://127.0.0.1:8008').replace(/\/$/, '');
+const API_BASE = getRuntimeApiBase();
 const BATCH_ENDPOINT = `${API_BASE}/monitoring/events/batch`;
 
 let pendingQueue: MonitoringEvent[] = [];

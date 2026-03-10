@@ -1,7 +1,8 @@
 import { Fragment, useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import type { MonitoringEvent } from './types';
+import { getRuntimeApiBase } from '../config/runtimeApiBase';
 
-const API_BASE = (import.meta.env.VITE_SEMANTIC_API_BASE ?? 'http://127.0.0.1:8008').replace(/\/$/, '');
+const API_BASE = getRuntimeApiBase();
 const CANVAS_WIDTH = 760;
 const CANVAS_HEIGHT = 620;
 const SIDE_PANEL_WIDTH = 320;

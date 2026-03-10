@@ -37,6 +37,7 @@ import { getSemanticTargetXMap } from './semanticEmbedding';
 import { useGalaxyEngine } from './useGalaxyEngine';
 import { useMonitoring } from '../monitoring/useMonitoring';
 import { flushMonitoringEventsNow } from '../monitoring/collector';
+import { getRuntimeApiBase } from '../config/runtimeApiBase';
 
 const FALLBACK_X_BY_RISK = {
   none: 0.24,
@@ -69,7 +70,7 @@ const TRASH_ZONE_WIDTH = 192;
 const TRASH_ZONE_HEIGHT = 96;
 const TRASH_ZONE_LEFT = 16;
 const TRASH_ZONE_BOTTOM = 16;
-const DOWNSTREAM_API_BASE = import.meta.env.VITE_SEMANTIC_API_BASE ?? 'http://127.0.0.1:8008';
+const DOWNSTREAM_API_BASE = getRuntimeApiBase();
 const HOVER_SAMPLE_INTERVAL_MS = 320;
 const HOVER_HEAT_WEIGHT = 0.12;
 const SLIDER_SAMPLE_INTERVAL_MS = 220;

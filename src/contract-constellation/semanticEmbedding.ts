@@ -1,10 +1,11 @@
+import { getRuntimeApiBase } from '../config/runtimeApiBase';
 export interface SemanticNodeInput {
   id: string;
   label: string;
   content: string;
 }
 
-const SEMANTIC_API_BASE = import.meta.env.VITE_SEMANTIC_API_BASE ?? 'http://127.0.0.1:8008';
+const SEMANTIC_API_BASE = getRuntimeApiBase();
 const embeddingCache = new Map<string, number[]>();
 const LOCAL_DIM = 16;
 let backendModeLogged: 'python-service' | 'built-in-fallback' | null = null;
