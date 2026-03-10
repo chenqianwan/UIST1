@@ -561,6 +561,72 @@ def _extract_json_block(text: str) -> str:
     raise ValueError("No JSON object found in model response.")
 
 
+def _extract_balanced_json_object(text: str) -> Optional[str]:
+    stripped = text.strip()
+    start = stripped.find("{")
+    if start < 0:
+        return None
+
+    depth = 0
+    in_string = False
+    escaped = False
+    for idx in range(start, len(stripped)):
+        ch = stripped[idx]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+            continue
+        if ch == "{":
+            depth += 1
+            continue
+        if ch == "}":
+            depth -= 1
+            if depth == 0:
+                return stripped[start : idx + 1]
+            if depth < 0:
+                return None
+    return None
+
+
+def _repair_common_json_issues(text: str) -> str:
+    repaired = text.lstrip("\ufeff").strip()
+    # Remove trailing commas like {"a":1,} or [1,2,]
+    repaired = re.sub(r",\s*([}\]])", r"\1", repaired)
+    return repaired
+
+
+def _parse_model_json_with_recovery(content: str) -> dict[str, Any]:
+    strict_candidate = _extract_json_block(content)
+    try:
+        return json.loads(strict_candidate)
+    except json.JSONDecodeError:
+        pass
+
+    balanced_candidate = _extract_balanced_json_object(content)
+    if balanced_candidate:
+        try:
+            return json.loads(balanced_candidate)
+        except json.JSONDecodeError:
+            repaired_balanced = _repair_common_json_issues(balanced_candidate)
+            if repaired_balanced != balanced_candidate:
+                try:
+                    return json.loads(repaired_balanced)
+                except json.JSONDecodeError:
+                    pass
+
+    repaired_strict = _repair_common_json_issues(strict_candidate)
+    if repaired_strict != strict_candidate:
+        return json.loads(repaired_strict)
+    return json.loads(strict_candidate)
+
+
 def _xhub_json_completion(
     model: str,
     system_prompt: str,
@@ -1251,11 +1317,16 @@ def finalize_text(payload: FinalizeRequest):
         content = response["choices"][0]["message"]["content"]
     except (KeyError, IndexError, TypeError) as exc:
         raise RuntimeError(f"Unexpected finalize response shape: {json.dumps(response, ensure_ascii=False)}") from exc
-    parsed = json.loads(_extract_json_block(content))
-    final_text = parsed.get("final_text")
-    if not isinstance(final_text, str):
-        raise RuntimeError("Finalize output missing string field: final_text")
-    return FinalizeResponse(final_text=final_text)
+    try:
+        parsed = _parse_model_json_with_recovery(content)
+        final_text = parsed.get("final_text")
+        if not isinstance(final_text, str):
+            raise RuntimeError("Finalize output missing string field: final_text")
+        return FinalizeResponse(final_text=final_text)
+    except Exception as exc:
+        # Finalize is best-effort: keep export path available even when model JSON is slightly malformed.
+        print(f"[Finalize] fallback to draft_v1 due to parse error: {exc}")
+        return FinalizeResponse(final_text=payload.draft_v1)
 
 
 @app.post("/downstream/format", response_model=FormatResponse)
