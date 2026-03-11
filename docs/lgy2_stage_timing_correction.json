@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "correction_type": "derived_metrics_only",
+  "description": "Keep raw monitoring events unchanged. Provide corrected stage timing metrics for analysis.",
+  "source_file": ".runtime/monitoring/by_participant/lgy2_20260311_073933_sess_1773214773503_a2iwb.ndjson",
+  "participant_id": "lgy2",
+  "session_id": "sess_1773214773503_a2iwb",
+  "task_id": "task_1773214773503_h563c",
+  "requested_adjustment": {
+    "reason": "participant forgot to click generate and idled about 2 minutes",
+    "manual_deduct_ms": 120000,
+    "apply_to": [
+      "total_ms",
+      "other_action_ms"
+    ]
+  },
+  "evidence": {
+    "timer_start_event": {
+      "client_seq": 8,
+      "ts": 1773214779609,
+      "event_name": "canvas_interaction",
+      "component_id": "template_gate",
+      "payload.timer_action": "start"
+    },
+    "largest_idle_gap_candidate": {
+      "from_client_seq": 782,
+      "to_client_seq": 783,
+      "from_ts": 1773215131251,
+      "to_ts": 1773215193904,
+      "gap_ms": 62653
+    },
+    "export_start_event": {
+      "client_seq": 815,
+      "ts": 1773215236047,
+      "event_name": "canvas_interaction",
+      "component_id": "template_gate",
+      "payload.timer_action": "export_start"
+    },
+    "export_success_event": {
+      "client_seq": 822,
+      "ts": 1773215351959,
+      "event_name": "export_success",
+      "component_id": "side_panel_export",
+      "payload.task_duration_ms": 572350
+    }
+  },
+  "metrics_raw_ms": {
+    "total_ms": 572350,
+    "other_action_ms": 386472,
+    "dimension_control_ms": 37321,
+    "modifying_ms": 32645,
+    "exporting_ms": 115912
+  },
+  "metrics_corrected_ms": {
+    "total_ms": 452350,
+    "other_action_ms": 266472,
+    "dimension_control_ms": 37321,
+    "modifying_ms": 32645,
+    "exporting_ms": 115912
+  },
+  "metrics_corrected_human_readable": {
+    "total": "7m 32s",
+    "other_action": "4m 26s",
+    "dimension_control": "37.3s",
+    "modifying": "32.6s",
+    "exporting": "1m 55.9s"
+  }
+}
