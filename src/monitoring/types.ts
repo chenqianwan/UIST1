@@ -8,7 +8,8 @@ export type MonitoringEventName =
   | 'node_selected'
   | 'action_executed'
   | 'node_deleted'
-  | 'export_success';
+  | 'export_success'
+  | 'export_failed';
 
 export interface MonitoringEvent {
   id: string;

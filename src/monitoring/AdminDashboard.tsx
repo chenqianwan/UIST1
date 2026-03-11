@@ -146,7 +146,11 @@ function getHeatWeight(event: MonitoringEvent): number {
   if (source === 'canvas_click' || source === 'node_click') return 1;
   if (source === 'semantic_pull' || source === 'risk_pull' || source === 'time_pull') return 0.4;
   if (event.event_name === 'template_added' || event.event_name === 'node_selected') return 1;
-  if (event.event_name === 'action_executed' || event.event_name === 'export_success') return 1;
+  if (
+    event.event_name === 'action_executed'
+    || event.event_name === 'export_success'
+    || event.event_name === 'export_failed'
+  ) return 1;
   return 0.8;
 }
 
@@ -305,6 +309,7 @@ export default function AdminDashboard() {
     const nodeSelected = events.filter((event) => event.event_name === 'node_selected').length;
     const actionExecuted = events.filter((event) => event.event_name === 'action_executed').length;
     const exports = events.filter((event) => event.event_name === 'export_success').length;
+    const exportFailed = events.filter((event) => event.event_name === 'export_failed').length;
     const hiddenMs = events
       .filter((event) => event.event_name === 'page_hidden_duration')
       .reduce((sum, event) => sum + Number(event.payload?.duration_ms ?? 0), 0);
@@ -315,6 +320,7 @@ export default function AdminDashboard() {
       nodeSelected,
       actionExecuted,
       exports,
+      exportFailed,
       hiddenMs,
     };
   }, [events]);
@@ -495,8 +501,10 @@ export default function AdminDashboard() {
     const exportStart = tailEvents.find(
       (event) => event.component_id === 'template_gate' && event.payload?.timer_action === 'export_start',
     );
-    const exportSuccess = tailEvents.find((event) => event.event_name === 'export_success');
-    const endTs = exportSuccess?.ts ?? nowTs;
+    const exportEnd = tailEvents.find(
+      (event) => event.event_name === 'export_success' || event.event_name === 'export_failed',
+    );
+    const endTs = exportEnd?.ts ?? nowTs;
     const exportingStart = exportStart?.ts;
     const exportingMs = exportingStart ? Math.max(0, endTs - exportingStart) : 0;
     const nonExportEndTs = exportingStart ?? endTs;
@@ -556,7 +564,7 @@ export default function AdminDashboard() {
     const totalMs = taskTotalMs;
     return {
       startedAt: latestStart.ts,
-      ended: Boolean(exportSuccess),
+      ended: Boolean(exportEnd),
       totalMs,
       otherActionMs,
       dimensionActionMs,
@@ -588,6 +596,7 @@ export default function AdminDashboard() {
           <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm"><p className="text-xs text-slate-500">Node Selected</p><p className="text-xl font-semibold text-slate-800">{metrics.nodeSelected}</p></div>
           <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm"><p className="text-xs text-slate-500">Action Executed</p><p className="text-xl font-semibold text-slate-800">{metrics.actionExecuted}</p></div>
           <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm"><p className="text-xs text-slate-500">Export Success</p><p className="text-xl font-semibold text-slate-800">{metrics.exports}</p></div>
+          <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm"><p className="text-xs text-slate-500">Export Failed</p><p className="text-xl font-semibold text-slate-800">{metrics.exportFailed}</p></div>
           <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm md:col-span-2">
             <p className="text-xs text-slate-500">Background Time (proxy of external search/use)</p>
             <p className="text-xl font-semibold text-slate-800">{Math.round(metrics.hiddenMs / 1000)}s</p>

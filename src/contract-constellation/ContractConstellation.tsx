@@ -391,6 +391,7 @@ export default function ContractConstellation() {
   const trashRef = useRef<HTMLDivElement | null>(null);
   const analysisControlsRef = useRef<HTMLDivElement | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [collapsedNodeIds, setCollapsedNodeIds] = useState<Set<string>>(new Set());
   const [isDragOverCanvas, setIsDragOverCanvas] = useState(false);
   const [usedTemplateIds, setUsedTemplateIds] = useState<string[]>([]);
   const [graphPresetId, setGraphPresetId] = useState<GraphPresetId>('standard');
@@ -485,6 +486,90 @@ export default function ContractConstellation() {
     timeBiasStrength,
     timeTargetXById,
   );
+
+  const structuralChildrenBySource = useMemo(
+    () => getStructuralChildrenBySource(links),
+    [links],
+  );
+
+  useEffect(() => {
+    const nodeIds = new Set(nodes.map((node) => node.id));
+    setCollapsedNodeIds((prev) => {
+      let changed = false;
+      const next = new Set<string>();
+      prev.forEach((id) => {
+        if (id === 'root') {
+          changed = true;
+          return;
+        }
+        if (!nodeIds.has(id)) {
+          changed = true;
+          return;
+        }
+        const children = structuralChildrenBySource.get(id) ?? [];
+        if (children.length === 0) {
+          changed = true;
+          return;
+        }
+        next.add(id);
+      });
+      if (!changed && next.size === prev.size) return prev;
+      return next;
+    });
+  }, [nodes, structuralChildrenBySource]);
+
+  const hiddenNodeIds = useMemo(() => {
+    const hidden = new Set<string>();
+    collapsedNodeIds.forEach((nodeId) => {
+      const stack = [...(structuralChildrenBySource.get(nodeId) ?? [])];
+      while (stack.length > 0) {
+        const current = stack.pop();
+        if (!current || hidden.has(current)) continue;
+        hidden.add(current);
+        const children = structuralChildrenBySource.get(current);
+        if (children?.length) stack.push(...children);
+      }
+    });
+    return hidden;
+  }, [collapsedNodeIds, structuralChildrenBySource]);
+
+  useEffect(() => {
+    if (selectedNodeId && hiddenNodeIds.has(selectedNodeId)) {
+      setSelectedNodeId(null);
+    }
+  }, [hiddenNodeIds, selectedNodeId]);
+
+  const visibleNodes = useMemo(
+    () => nodes.filter((node) => !hiddenNodeIds.has(node.id)),
+    [hiddenNodeIds, nodes],
+  );
+  const visibleNodeIds = useMemo(
+    () => new Set(visibleNodes.map((node) => node.id)),
+    [visibleNodes],
+  );
+  const visibleLinks = useMemo(
+    () => links.filter((link) => visibleNodeIds.has(link.source) && visibleNodeIds.has(link.target)),
+    [links, visibleNodeIds],
+  );
+  const collapsibleNodeIds = useMemo(() => {
+    const ids = new Set<string>();
+    visibleNodes.forEach((node) => {
+      if (node.id === 'root') return;
+      if ((structuralChildrenBySource.get(node.id) ?? []).length > 0) ids.add(node.id);
+    });
+    return ids;
+  }, [visibleNodes, structuralChildrenBySource]);
+
+  const handleToggleNodeCollapse = useCallback((nodeId: string) => {
+    if (nodeId === 'root') return;
+    if ((structuralChildrenBySource.get(nodeId) ?? []).length === 0) return;
+    setCollapsedNodeIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(nodeId)) next.delete(nodeId);
+      else next.add(nodeId);
+      return next;
+    });
+  }, [structuralChildrenBySource]);
 
   const handleGraphPresetChange = useCallback((presetId: GraphPresetId) => {
     setGraphPresetId(presetId);
@@ -858,6 +943,12 @@ export default function ContractConstellation() {
     const x = ((event.clientX - rect.left) / rect.width) * width;
     const y = ((event.clientY - rect.top) / rect.height) * height;
     addNodeFromTemplate(template, x, y);
+    // Default to collapsed when a template is dropped into canvas.
+    setCollapsedNodeIds((prev) => {
+      const next = new Set(prev);
+      next.add(template.id);
+      return next;
+    });
     setUsedTemplateIds((prev) => [...prev, template.id]);
     track('template_added', {
       componentId: 'canvas',
@@ -1246,6 +1337,21 @@ export default function ContractConstellation() {
       }, 2200);
     } catch (error) {
       console.error('[Export] failed', error);
+      track('export_failed', {
+        componentId: 'side_panel_export',
+        payload: {
+          reason: error instanceof Error ? error.message : 'unknown_error',
+          task_duration_ms: taskStartAtRef.current ? Math.max(0, Date.now() - taskStartAtRef.current) : null,
+          task_duration_s: taskStartAtRef.current
+            ? Number(((Date.now() - taskStartAtRef.current) / 1000).toFixed(2))
+            : null,
+          x: width + SIDE_PANEL_WIDTH / 2,
+          y: height - 34,
+          layout_w: layoutWidth,
+          layout_h: layoutHeight,
+        },
+      });
+      void flushMonitoringEventsNow();
       setExportState('idle');
       window.alert('Export failed. Please check downstream backend and XHUB settings.');
     }
@@ -1802,8 +1908,8 @@ export default function ContractConstellation() {
         </div>
 
         <GraphCanvas
-          nodes={nodes}
-          links={links}
+          nodes={visibleNodes}
+          links={visibleLinks}
           aggregationStrength={aggregationStrength}
           selectedNodeId={selectedNodeId}
           draggingNodeId={draggingNodeId}
@@ -1812,9 +1918,12 @@ export default function ContractConstellation() {
           incomingNodeIds={incomingNodeIds}
           revealStage={revealStage}
           selectedNode={selectedNode}
+          collapsedNodeIds={collapsedNodeIds}
+          collapsibleNodeIds={collapsibleNodeIds}
           svgRef={svgRef}
           onSelectNode={handleSelectNode}
           onNodePointerDown={handleNodePointerDown}
+          onToggleNodeCollapse={handleToggleNodeCollapse}
           onDrop={handleDrop}
           onPointerMove={handleCanvasPointerMove}
           onPointerUp={handleCanvasPointerUp}

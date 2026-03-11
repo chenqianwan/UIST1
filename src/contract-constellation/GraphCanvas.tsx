@@ -24,12 +24,15 @@ interface GraphCanvasProps {
   incomingNodeIds: Set<string>;
   revealStage: 1 | 2;
   selectedNode: GraphNode | null;
+  collapsedNodeIds: Set<string>;
+  collapsibleNodeIds: Set<string>;
   svgRef: React.RefObject<SVGSVGElement | null>;
   onSelectNode: (
     nodeId: string | null,
     meta?: { clientX: number; clientY: number; source: 'canvas_click' | 'node_click' },
   ) => void;
   onNodePointerDown: (event: PointerEvent<SVGGElement>, node: GraphNode) => void;
+  onToggleNodeCollapse: (nodeId: string) => void;
   onDrop: (event: React.DragEvent<SVGSVGElement>) => void;
   onPointerMove: (event: PointerEvent<SVGSVGElement>) => void;
   onPointerUp: (event: PointerEvent<SVGSVGElement>) => void;
@@ -48,9 +51,12 @@ export function GraphCanvas({
   incomingNodeIds,
   revealStage,
   selectedNode,
+  collapsedNodeIds,
+  collapsibleNodeIds,
   svgRef,
   onSelectNode,
   onNodePointerDown,
+  onToggleNodeCollapse,
   onDrop,
   onPointerMove,
   onPointerUp,
@@ -296,6 +302,8 @@ export function GraphCanvas({
             : selected || (selectedNodeId && depth !== undefined) || isIncoming || (!selectedNodeId && isFirstLevelLeaf);
         const isDragging = node.id === draggingNodeId;
         const badge = actionBadge(node);
+        const canCollapse = collapsibleNodeIds.has(node.id);
+        const isCollapsed = collapsedNodeIds.has(node.id);
 
         return (
           <motion.g
@@ -387,6 +395,32 @@ export function GraphCanvas({
                   className="pointer-events-none select-none font-bold"
                 >
                   {badge.text}
+                </text>
+              </g>
+            )}
+            {canCollapse && (
+              <g
+                transform={`translate(${-(node.r * 0.78)}, ${-(node.r * 0.78)})`}
+                opacity={Math.max(0.12, Math.min(1, nodeTone))}
+                onPointerDown={(event) => {
+                  event.stopPropagation();
+                }}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onToggleNodeCollapse(node.id);
+                }}
+                className="cursor-pointer"
+              >
+                <circle r={6.4} fill="#ffffff" stroke="#94a3b8" strokeWidth={1.2} />
+                <text
+                  x={0}
+                  y={2.3}
+                  textAnchor="middle"
+                  fontSize={8}
+                  fill="#334155"
+                  className="pointer-events-none select-none font-bold"
+                >
+                  {isCollapsed ? '+' : '-'}
                 </text>
               </g>
             )}

@@ -1,4 +1,5 @@
-import { Box, DollarSign, Download, FileText, Link2, Loader2, PlusCircle, Shield, Sparkles, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Box, ChevronDown, ChevronRight, DollarSign, Download, FileText, Link2, Loader2, PlusCircle, Shield, Sparkles, Trash2 } from 'lucide-react';
 import type { TemplateItem } from './types';
 import type { GraphNode } from './types';
 import type { AiSuggestion } from './types';
@@ -61,6 +62,7 @@ export function SidePanel({
   bulkApplyDoneCount = null,
   onBulkApply,
 }: SidePanelProps) {
+  const [expandedTemplateIds, setExpandedTemplateIds] = useState<Set<string>>(new Set());
   const showActionAdvice = Boolean(selectedNode && selectedNode.id !== 'root' && selectedNode.riskLevel !== 'none');
   const actions = selectedNode?.actions ?? [];
   const completedCount = actions.filter((action) => action.status === 'completed').length;
@@ -107,6 +109,26 @@ export function SidePanel({
   const sortActions = (list: NodeActionItem[]) =>
     [...list].sort((a, b) => actionOrder.indexOf(a.type) - actionOrder.indexOf(b.type));
 
+  useEffect(() => {
+    const visibleIds = new Set(availableTemplates.map((item) => item.id));
+    setExpandedTemplateIds((prev) => {
+      const next = new Set<string>();
+      prev.forEach((id) => {
+        if (visibleIds.has(id)) next.add(id);
+      });
+      return next;
+    });
+  }, [availableTemplates]);
+
+  const toggleTemplateExpanded = (templateId: string) => {
+    setExpandedTemplateIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(templateId)) next.delete(templateId);
+      else next.add(templateId);
+      return next;
+    });
+  };
+
   return (
     <div className="relative flex w-80 flex-col overflow-hidden border-l border-slate-200 bg-white">
       <div
@@ -146,51 +168,69 @@ export function SidePanel({
       </div>
 
       <div className="relative z-[1] flex-1 space-y-3 overflow-y-auto p-4">
-        {availableTemplates.map((item) => (
-          <div
-            key={item.id}
-            draggable
-            onDragStart={(event) => onDragStart(event, item.id)}
-            className="cursor-grab rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md active:cursor-grabbing"
-          >
-            <div className="flex items-start gap-3">
-              <div
-                className="mt-0.5 flex h-7 w-7 items-center justify-center rounded-md"
-                style={{
-                  backgroundColor: `${getRiskColor(item.riskLevel)}22`,
-                  color: getRiskColor(item.riskLevel),
-                }}
-              >
-                {getTemplateIcon(item.type)}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-start justify-between gap-2">
-                  <div
-                    className="min-w-0 flex-1 text-sm font-semibold leading-snug text-slate-800"
-                    style={{
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    {item.label}
-                  </div>
-                  <span
-                    className="shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-semibold"
-                    style={{
-                      backgroundColor: `${getRiskColor(item.riskLevel)}1f`,
-                      color: getRiskColor(item.riskLevel),
-                    }}
-                  >
-                    {getRiskText(item.riskLevel)}
-                  </span>
+        {availableTemplates.map((item) => {
+          const isExpanded = expandedTemplateIds.has(item.id);
+          return (
+            <div
+              key={item.id}
+              draggable
+              onDragStart={(event) => onDragStart(event, item.id)}
+              className="cursor-grab rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md active:cursor-grabbing"
+            >
+              <div className="flex items-start gap-3">
+                <div
+                  className="mt-0.5 flex h-7 w-7 items-center justify-center rounded-md"
+                  style={{
+                    backgroundColor: `${getRiskColor(item.riskLevel)}22`,
+                    color: getRiskColor(item.riskLevel),
+                  }}
+                >
+                  {getTemplateIcon(item.type)}
                 </div>
-                <div className="mt-1 text-xs leading-snug text-slate-500">{item.description}</div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div
+                      className="min-w-0 flex-1 text-sm font-semibold leading-snug text-slate-800"
+                      style={{
+                        display: '-webkit-box',
+                        WebkitLineClamp: isExpanded ? 2 : 1,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {item.label}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span
+                        className="shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                        style={{
+                          backgroundColor: `${getRiskColor(item.riskLevel)}1f`,
+                          color: getRiskColor(item.riskLevel),
+                        }}
+                      >
+                        {getRiskText(item.riskLevel)}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label={isExpanded ? 'Collapse node card' : 'Expand node card'}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          toggleTemplateExpanded(item.id);
+                        }}
+                        className="rounded border border-slate-200 bg-slate-50 p-0.5 text-slate-600 transition hover:border-slate-300 hover:bg-slate-100"
+                      >
+                        {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                      </button>
+                    </div>
+                  </div>
+                  {isExpanded && (
+                    <div className="mt-1 text-xs leading-snug text-slate-500">{item.description}</div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         {availableTemplates.length === 0 && (
           <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-center text-xs text-slate-500">
             All nodes have been added. Click canvas nodes to continue editing.
