@@ -1,4 +1,88 @@
-2026-03-09T03:35:48Z INF Thank you for trying Cloudflare Tunnel. Doing so, without a Cloudflare account, is a quick way to experiment and try it out. However, be aware that these account-less Tunnels have no uptime guarantee, are subject to the Cloudflare Online Services Terms of Use (https://www.cloudflare.com/website-terms/), and Cloudflare reserves the right to investigate your use of Tunnels for violations of such terms. If you intend to use Tunnels in production you should use a pre-created named tunnel by following: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps
-2026-03-09T03:35:48Z INF Requesting new quick Tunnel on trycloudflare.com...
-2026-03-09T03:35:48Z ERR Error unmarshaling QuickTunnel response: error code: 1101 error="invalid character 'e' looking for beginning of value" status_code="500 Internal Server Error"
-failed to unmarshal quick Tunnel: invalid character 'e' looking for beginning of value
+2026-03-11T10:44:10Z INF Thank you for trying Cloudflare Tunnel. Doing so, without a Cloudflare account, is a quick way to experiment and try it out. However, be aware that these account-less Tunnels have no uptime guarantee, are subject to the Cloudflare Online Services Terms of Use (https://www.cloudflare.com/website-terms/), and Cloudflare reserves the right to investigate your use of Tunnels for violations of such terms. If you intend to use Tunnels in production you should use a pre-created named tunnel by following: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps
+2026-03-11T10:44:10Z INF Requesting new quick Tunnel on trycloudflare.com...
+2026-03-11T10:44:14Z INF +--------------------------------------------------------------------------------------------+
+2026-03-11T10:44:14Z INF |  Your quick Tunnel has been created! Visit it at (it may take some time to be reachable):  |
+2026-03-11T10:44:14Z INF |  https://diabetes-gif-rotation-now.trycloudflare.com                                       |
+2026-03-11T10:44:14Z INF +--------------------------------------------------------------------------------------------+
+2026-03-11T10:44:14Z INF Cannot determine default configuration path. No file [config.yml config.yaml] in [~/.cloudflared ~/.cloudflare-warp ~/cloudflare-warp /etc/cloudflared /usr/local/etc/cloudflared]
+2026-03-11T10:44:14Z INF Version 2026.2.0 (Checksum 659e90c91014a0017ec933e4a5c924e5ed1c77e3033bf768c47509c2120e598d)
+2026-03-11T10:44:14Z INF GOOS: darwin, GOVersion: go1.25.7, GoArch: arm64
+2026-03-11T10:44:14Z INF Settings: map[ha-connections:1 no-autoupdate:true protocol:quic url:http://localhost:8008]
+2026-03-11T10:44:14Z INF cloudflared will not automatically update if installed by a package manager.
+2026-03-11T10:44:14Z INF Generated Connector ID: b1ba3f6a-1058-4d66-8d8d-df174612afec
+2026-03-11T10:44:14Z INF Initial protocol quic
+2026-03-11T10:44:14Z INF ICMP proxy will use 10.89.189.22 as source for IPv4
+2026-03-11T10:44:14Z INF ICMP proxy will use fe80::c59:58d1:19c0:601a in zone en0 as source for IPv6
+2026-03-11T10:44:14Z INF Created ICMP proxy listening on 10.89.189.22:0
+2026-03-11T10:44:14Z INF ICMP proxy will use 10.89.189.22 as source for IPv4
+2026-03-11T10:44:14Z INF ICMP proxy will use fe80::c59:58d1:19c0:601a in zone en0 as source for IPv6
+2026-03-11T10:44:14Z INF Starting metrics server on 127.0.0.1:20241/metrics
+2026-03-11T10:44:14Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveP256] connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T10:44:15Z INF Registered tunnel connection connIndex=0 connection=4e851dec-70a2-4d43-a6a1-4bc28ca0a7ff event=0 ip=198.41.200.13 location=hkg08 protocol=quic
+2026-03-11T11:20:15Z ERR  error="Incoming request ended abruptly: context canceled" connIndex=0 event=1 ingressRule=0 originService=http://localhost:8008
+2026-03-11T11:20:15Z ERR Request failed error="Incoming request ended abruptly: context canceled" connIndex=0 dest=https://diabetes-gif-rotation-now.trycloudflare.com/downstream/finalize event=0 ip=198.41.200.13 type=http
+2026-03-11T11:27:38Z ERR  error="Incoming request ended abruptly: context canceled" connIndex=0 event=1 ingressRule=0 originService=http://localhost:8008
+2026-03-11T11:27:38Z ERR Request failed error="Incoming request ended abruptly: context canceled" connIndex=0 dest=https://diabetes-gif-rotation-now.trycloudflare.com/downstream/finalize event=0 ip=198.41.200.13 type=http
+2026-03-11T11:56:44Z ERR  error="Unable to reach the origin service. The service may be down or it may not be responding to traffic from cloudflared: dial tcp [::1]:8008: connect: connection refused" connIndex=0 event=1 ingressRule=0 originService=http://localhost:8008
+2026-03-11T11:56:44Z ERR Request failed error="Unable to reach the origin service. The service may be down or it may not be responding to traffic from cloudflared: dial tcp [::1]:8008: connect: connection refused" connIndex=0 dest=https://diabetes-gif-rotation-now.trycloudflare.com/monitoring/events?since_ts=1773229597902&limit=3000&participant_id=xr2 event=0 ip=198.41.200.13 type=http
+2026-03-11T11:56:45Z ERR  error="Unable to reach the origin service. The service may be down or it may not be responding to traffic from cloudflared: dial tcp [::1]:8008: connect: connection refused" connIndex=0 event=1 ingressRule=0 originService=http://localhost:8008
+2026-03-11T11:56:45Z ERR Request failed error="Unable to reach the origin service. The service may be down or it may not be responding to traffic from cloudflared: dial tcp [::1]:8008: connect: connection refused" connIndex=0 dest=https://diabetes-gif-rotation-now.trycloudflare.com/monitoring/events?since_ts=1773229597902&limit=3000&participant_id=xr2 event=0 ip=198.41.200.13 type=http
+2026-03-11T11:56:46Z ERR  error="Unable to reach the origin service. The service may be down or it may not be responding to traffic from cloudflared: dial tcp [::1]:8008: connect: connection refused" connIndex=0 event=1 ingressRule=0 originService=http://localhost:8008
+2026-03-11T11:56:46Z ERR Request failed error="Unable to reach the origin service. The service may be down or it may not be responding to traffic from cloudflared: dial tcp [::1]:8008: connect: connection refused" connIndex=0 dest=https://diabetes-gif-rotation-now.trycloudflare.com/monitoring/events?since_ts=1773229597902&limit=3000&participant_id=xr2 event=0 ip=198.41.200.13 type=http
+2026-03-11T11:56:47Z ERR  error="Unable to reach the origin service. The service may be down or it may not be responding to traffic from cloudflared: dial tcp [::1]:8008: connect: connection refused" connIndex=0 event=1 ingressRule=0 originService=http://localhost:8008
+2026-03-11T11:56:47Z ERR Request failed error="Unable to reach the origin service. The service may be down or it may not be responding to traffic from cloudflared: dial tcp [::1]:8008: connect: connection refused" connIndex=0 dest=https://diabetes-gif-rotation-now.trycloudflare.com/monitoring/events?since_ts=1773229597902&limit=3000&participant_id=xr2 event=0 ip=198.41.200.13 type=http
+2026-03-11T12:59:25Z ERR failed to run the datagram handler error="timeout: no recent network activity" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T12:59:25Z ERR failed to accept incoming stream requests error="failed to accept QUIC stream: timeout: no recent network activity" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T12:59:25Z ERR failed to serve tunnel connection error="datagram manager encountered a failure while serving" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T12:59:25Z ERR Serve tunnel error error="datagram manager encountered a failure while serving" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T12:59:25Z INF Retrying connection in up to 1s connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:11:25Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveP256] connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:11:25Z ERR failed to run the datagram handler error="context canceled" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:11:25Z ERR failed to serve tunnel connection error="control stream encountered a failure while serving" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:11:25Z ERR Serve tunnel error error="control stream encountered a failure while serving" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:11:25Z INF Retrying connection in up to 4s connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:11:28Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveP256] connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:11:28Z ERR failed to run the datagram handler error="context canceled" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:11:28Z ERR failed to serve tunnel connection error="control stream encountered a failure while serving" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:11:28Z ERR Serve tunnel error error="control stream encountered a failure while serving" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:11:28Z INF Retrying connection in up to 8s connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:11:35Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveP256] connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:11:35Z ERR failed to run the datagram handler error="context canceled" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:11:35Z ERR failed to serve tunnel connection error="control stream encountered a failure while serving" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:11:35Z ERR Serve tunnel error error="control stream encountered a failure while serving" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:11:35Z INF Retrying connection in up to 16s connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:26:42Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveP256] connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:26:42Z ERR failed to run the datagram handler error="context canceled" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:26:42Z ERR failed to serve tunnel connection error="control stream encountered a failure while serving" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:26:42Z ERR Serve tunnel error error="control stream encountered a failure while serving" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:26:42Z INF Retrying connection in up to 32s connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:26:44Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveP256] connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:26:44Z ERR failed to run the datagram handler error="context canceled" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:26:44Z ERR failed to serve tunnel connection error="control stream encountered a failure while serving" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:26:44Z ERR Serve tunnel error error="control stream encountered a failure while serving" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:26:44Z INF Retrying connection in up to 1m4s connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:27:02Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveP256] connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:27:02Z ERR failed to run the datagram handler error="context canceled" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:27:02Z ERR failed to serve tunnel connection error="control stream encountered a failure while serving" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:27:02Z ERR Serve tunnel error error="control stream encountered a failure while serving" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:27:02Z INF Retrying connection in up to 1m4s connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:27:20Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveP256] connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:27:20Z ERR failed to run the datagram handler error="context canceled" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:27:20Z ERR failed to serve tunnel connection error="control stream encountered a failure while serving" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:27:20Z ERR Serve tunnel error error="control stream encountered a failure while serving" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:27:20Z INF Retrying connection in up to 1m4s connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:27:41Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveP256] connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:27:41Z ERR failed to run the datagram handler error="context canceled" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:27:41Z ERR failed to serve tunnel connection error="control stream encountered a failure while serving" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:27:41Z ERR Serve tunnel error error="control stream encountered a failure while serving" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:27:41Z INF Retrying connection in up to 1m4s connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:28:05Z INF Tunnel connection curve preferences: [X25519MLKEM768 CurveP256] connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:28:05Z ERR failed to run the datagram handler error="context canceled" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:28:05Z ERR failed to serve tunnel connection error="control stream encountered a failure while serving" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:28:05Z ERR Serve tunnel error error="control stream encountered a failure while serving" connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:28:05Z INF Retrying connection in up to 1m4s connIndex=0 event=0 ip=198.41.200.13
+2026-03-11T13:28:18Z INF Initiating graceful shutdown due to signal terminated ...
+2026-03-11T13:28:18Z ERR Connection terminated connIndex=0
+2026-03-11T13:28:18Z ERR no more connections active and exiting
+2026-03-11T13:28:18Z INF Tunnel server stopped
+2026-03-11T13:28:18Z INF Metrics server stopped
