@@ -63,6 +63,8 @@ export function SidePanel({
   onBulkApply,
 }: SidePanelProps) {
   const [expandedTemplateIds, setExpandedTemplateIds] = useState<Set<string>>(new Set());
+  const [reviseDraftByActionId, setReviseDraftByActionId] = useState<Record<string, string>>({});
+  const [addClauseDraftByActionId, setAddClauseDraftByActionId] = useState<Record<string, string>>({});
   const showActionAdvice = Boolean(selectedNode && selectedNode.id !== 'root' && selectedNode.riskLevel !== 'none');
   const actions = selectedNode?.actions ?? [];
   const completedCount = actions.filter((action) => action.status === 'completed').length;
@@ -119,6 +121,27 @@ export function SidePanel({
       return next;
     });
   }, [availableTemplates]);
+
+  useEffect(() => {
+    if (!selectedNode || selectedNode.id === 'root') {
+      setReviseDraftByActionId({});
+      setAddClauseDraftByActionId({});
+      return;
+    }
+    const nextReviseDrafts: Record<string, string> = {};
+    const nextAddClauseDrafts: Record<string, string> = {};
+    (selectedNode.actions ?? []).forEach((action) => {
+      if (action.type === 'revise') {
+        nextReviseDrafts[action.id] = action.replacementText ?? aiSuggestion?.replacement ?? selectedNode.content;
+        return;
+      }
+      if (action.type === 'add_clause') {
+        nextAddClauseDrafts[action.id] = action.supplementDraft ?? '';
+      }
+    });
+    setReviseDraftByActionId(nextReviseDrafts);
+    setAddClauseDraftByActionId(nextAddClauseDrafts);
+  }, [selectedNode?.content, selectedNode?.id]);
 
   const toggleTemplateExpanded = (templateId: string) => {
     setExpandedTemplateIds((prev) => {
@@ -266,7 +289,9 @@ export function SidePanel({
                   {getRiskText(selectedNode.riskLevel)}
                 </span>
               </div>
-              <p className="text-xs leading-relaxed text-slate-600">{selectedNode.content}</p>
+              <div className="min-h-[120px] whitespace-pre-wrap rounded border border-slate-200 bg-white p-2 text-xs leading-relaxed text-slate-700">
+                {selectedNode.content}
+              </div>
               {showActionAdvice && actions.length > 0 && (
                 <div className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-[11px] text-slate-600">
                   Action progress: {completedCount} / {actions.length} completed
@@ -326,21 +351,41 @@ export function SidePanel({
                       <p className="mt-1 text-[11px] text-slate-500">Confidence: {Math.round(actionConfidence * 100)}%</p>
                     )}
                     {action.type === 'revise' && (
-                      <div className="mt-2 rounded border border-slate-200 bg-white p-2 text-xs leading-relaxed text-slate-700">
-                        {action.replacementText ?? aiSuggestion?.replacement ?? selectedNode.content}
-                      </div>
+                      <textarea
+                        value={reviseDraftByActionId[action.id] ?? (action.replacementText ?? aiSuggestion?.replacement ?? selectedNode.content)}
+                        onChange={(event) => {
+                          const nextValue = event.target.value;
+                          setReviseDraftByActionId((prev) => ({ ...prev, [action.id]: nextValue }));
+                        }}
+                        className="mt-2 min-h-[96px] w-full resize-y rounded border border-slate-200 bg-white p-2 text-xs leading-relaxed text-slate-700 focus:border-blue-300 focus:outline-none"
+                        placeholder="Edit revision before applying..."
+                      />
                     )}
-                    {action.type === 'add_clause' && action.supplementDraft && (
-                      <div className="mt-2 rounded border border-slate-200 bg-white p-2 text-xs leading-relaxed text-slate-700">
-                        {action.supplementDraft}
-                      </div>
+                    {action.type === 'add_clause' && (
+                      <textarea
+                        value={addClauseDraftByActionId[action.id] ?? (action.supplementDraft ?? '')}
+                        onChange={(event) => {
+                          const nextValue = event.target.value;
+                          setAddClauseDraftByActionId((prev) => ({ ...prev, [action.id]: nextValue }));
+                        }}
+                        className="mt-2 min-h-[96px] w-full resize-y rounded border border-slate-200 bg-white p-2 text-xs leading-relaxed text-slate-700 focus:border-blue-300 focus:outline-none"
+                        placeholder="Edit supplement clause before adding..."
+                      />
                     )}
                     <button
                       className={`mt-2 w-full rounded border px-2 py-1.5 text-xs font-semibold transition ${tone.button}`}
                       onClick={() => {
                         if (action.type === 'delete') onDeleteNode(selectedNode.id, action.id);
-                        if (action.type === 'revise') onReviseNode(selectedNode.id, action.id, action.replacementText ?? aiSuggestion?.replacement ?? selectedNode.content);
-                        if (action.type === 'add_clause') onAddSupplement(selectedNode.id, action.id, action.supplementDraft);
+                        if (action.type === 'revise') onReviseNode(
+                          selectedNode.id,
+                          action.id,
+                          reviseDraftByActionId[action.id] ?? (action.replacementText ?? aiSuggestion?.replacement ?? selectedNode.content),
+                        );
+                        if (action.type === 'add_clause') onAddSupplement(
+                          selectedNode.id,
+                          action.id,
+                          addClauseDraftByActionId[action.id] ?? action.supplementDraft,
+                        );
                       }}
                     >
                       {action.type === 'delete' ? 'Delete Clause' : action.type === 'revise' ? 'Apply Revision' : 'Add Supplement Clause'}

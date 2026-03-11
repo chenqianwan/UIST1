@@ -47,6 +47,30 @@ const HEATMAP_RED_BAND_START = 0.82;
 type AreaName = 'Canvas' | 'Modify' | 'Export' | 'Dimension' | 'Trash' | 'Other';
 type Rect = { x: number; y: number; w: number; h: number };
 
+const STAGE_TIMING_OVERRIDES: Record<
+  string,
+  {
+    sessionId: string;
+    taskId: string;
+    deductTotalMs?: number;
+    deductOtherMs?: number;
+    deductExportingMs?: number;
+  }
+> = {
+  lgy2: {
+    sessionId: 'sess_1773214773503_a2iwb',
+    taskId: 'task_1773214773503_h563c',
+    deductTotalMs: 120_000,
+    deductOtherMs: 120_000,
+  },
+  lb1: {
+    sessionId: 'sess_1773143898121_xtfvf',
+    taskId: 'task_1773143898121_6yamo',
+    deductTotalMs: 967_044,
+    deductExportingMs: 967_044,
+  },
+};
+
 function inRect(x: number, y: number, rect: { x: number; y: number; w: number; h: number }): boolean {
   return x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h;
 }
@@ -560,8 +584,22 @@ export default function AdminDashboard() {
     const modifyingActionMs = Math.min(modifyingActionMsRaw, Math.max(0, nonExportEndTs - latestStart.ts));
     const availableForDimension = Math.max(0, nonExportEndTs - latestStart.ts - modifyingActionMs);
     const dimensionActionMs = Math.min(dimensionActionMsRaw, availableForDimension);
-    const otherActionMs = Math.max(0, taskTotalMs - exportingMs - modifyingActionMs - dimensionActionMs);
-    const totalMs = taskTotalMs;
+    let otherActionMs = Math.max(0, taskTotalMs - exportingMs - modifyingActionMs - dimensionActionMs);
+    let exportingMsAdjusted = exportingMs;
+    let totalMs = taskTotalMs;
+    const participantOverride = participantId ? STAGE_TIMING_OVERRIDES[participantId] : undefined;
+    if (
+      participantOverride
+      && latestStart.session_id === participantOverride.sessionId
+      && latestStart.task_id === participantOverride.taskId
+    ) {
+      const deductTotalMs = Math.max(0, participantOverride.deductTotalMs ?? 0);
+      const deductOtherMs = Math.max(0, participantOverride.deductOtherMs ?? 0);
+      const deductExportingMs = Math.max(0, participantOverride.deductExportingMs ?? 0);
+      totalMs = Math.max(1, totalMs - deductTotalMs);
+      otherActionMs = Math.max(0, otherActionMs - deductOtherMs);
+      exportingMsAdjusted = Math.max(0, exportingMsAdjusted - deductExportingMs);
+    }
     return {
       startedAt: latestStart.ts,
       ended: Boolean(exportEnd),
@@ -569,9 +607,9 @@ export default function AdminDashboard() {
       otherActionMs,
       dimensionActionMs,
       modifyingMs: modifyingActionMs,
-      exportingMs,
+      exportingMs: exportingMsAdjusted,
     };
-  }, [events, nowTs]);
+  }, [events, nowTs, participantId]);
 
   return (
     <div className="min-h-screen w-screen overflow-y-auto bg-slate-100">

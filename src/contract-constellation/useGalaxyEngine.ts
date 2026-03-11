@@ -429,6 +429,14 @@ export function useGalaxyEngine(
     [],
   );
 
+  const updateNodeContent = useCallback((nodeId: string, content: string) => {
+    const nextNodes = nodesRef.current.map((node) =>
+      node.id === nodeId ? { ...node, content } : node,
+    );
+    nodesRef.current = nextNodes;
+    setNodes(nextNodes);
+  }, []);
+
   const updateNodePosition = useCallback((nodeId: string, x: number, y: number) => {
     const nextNodes = nodesRef.current.map((node) =>
       node.id === nodeId ? { ...node, x, y, vx: 0, vy: 0 } : node,
@@ -759,6 +767,7 @@ export function useGalaxyEngine(
     addNodeFromTemplate,
     markNodeAsMitigated,
     completeNodeAction,
+    updateNodeContent,
     updateNodePosition,
     removeNodeCascade,
     addSupplementClause,

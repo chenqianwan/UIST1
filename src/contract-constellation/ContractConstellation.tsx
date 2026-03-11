@@ -1101,6 +1101,13 @@ export default function ContractConstellation() {
       exportTimerRef.current = null;
     }
     setExportState('exporting');
+    let exportFailureStage:
+      | 'prepare'
+      | 'diff'
+      | 'compile'
+      | 'finalize'
+      | 'download'
+      | 'unknown' = 'prepare';
     track('canvas_interaction', {
       componentId: 'template_gate',
       payload: {
@@ -1185,6 +1192,7 @@ export default function ContractConstellation() {
           deletedAtVersion: 1,
         }));
 
+      exportFailureStage = 'diff';
       const diffResp = await fetch(`${DOWNSTREAM_API_BASE}/downstream/diff`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1207,6 +1215,7 @@ export default function ContractConstellation() {
         .filter((text) => text.length > 0)
         .join('\n\n');
 
+      exportFailureStage = 'compile';
       const compileResp = await fetch(`${DOWNSTREAM_API_BASE}/downstream/compile`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1240,6 +1249,7 @@ export default function ContractConstellation() {
         : [];
       const displayClauses = orderedClauses.length > 0 ? orderedClauses : clauses;
 
+      exportFailureStage = 'finalize';
       const finalizeResp = await fetch(`${DOWNSTREAM_API_BASE}/downstream/finalize`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1298,6 +1308,7 @@ export default function ContractConstellation() {
         </body>
         </html>
       `;
+      exportFailureStage = 'download';
       const blob = new Blob(['\ufeff', wordHtml], { type: 'application/msword;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -1341,6 +1352,9 @@ export default function ContractConstellation() {
         componentId: 'side_panel_export',
         payload: {
           reason: error instanceof Error ? error.message : 'unknown_error',
+          stage: exportFailureStage,
+          error_name: error instanceof Error ? error.name : 'UnknownError',
+          is_online: typeof navigator !== 'undefined' ? navigator.onLine : null,
           task_duration_ms: taskStartAtRef.current ? Math.max(0, Date.now() - taskStartAtRef.current) : null,
           task_duration_s: taskStartAtRef.current
             ? Number(((Date.now() - taskStartAtRef.current) / 1000).toFixed(2))
