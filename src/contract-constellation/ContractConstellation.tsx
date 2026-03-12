@@ -8,6 +8,7 @@ import {
   type DragEvent,
   type FormEvent,
   type PointerEvent,
+  type WheelEvent,
 } from 'react';
 import { Trash2 } from 'lucide-react';
 import canvasBg from '../../static/canvas_bg.png';
@@ -20,12 +21,16 @@ import testAbStageAData from '../../docs/test_ab.stage_a.json';
 import testAbStageBData from '../../docs/test_ab.stage_b.json';
 import testNewStageAData from '../../docs/test_new.stage_a.json';
 import testNewStageBData from '../../docs/test_new.stage_b.json';
+import testNewStageCData from '../../docs/test_new.stage_c.json';
 import text2AbStageAData from '../../docs/text2_ab.stage_a.json';
 import text2AbStageBData from '../../docs/text2_ab.stage_b.json';
+import text2AbStageCData from '../../docs/text2_ab.stage_c.json';
 import text2AbStageAChineseData from '../../docs/text2_ab.stage_a.chinese.json';
 import text2AbStageBChineseData from '../../docs/text2_ab.stage_b.chinese.json';
+import text2AbStageCChineseData from '../../docs/text2_ab.stage_c.chinese.json';
 import testNewStageAChineseData from '../../docs/test_new.stage_a.chinese.json';
 import testNewStageBChineseData from '../../docs/test_new.stage_b.chinese.json';
+import testNewStageCChineseData from '../../docs/test_new.stage_c.chinese.json';
 import { NODE_LIBRARY } from './constants';
 import { GraphCanvas, CANVAS_WIDTH, CANVAS_HEIGHT } from './GraphCanvas';
 import { SidePanel } from './SidePanel';
@@ -106,10 +111,17 @@ type StageBNode = {
   actions?: NodeActionItem[];
 };
 
+type StageCNode = {
+  id: string;
+  partyOwner?: 'A' | 'B' | 'both' | 'neutral';
+  confidence?: number;
+};
+
 type UploadedPreset = {
   id: string;
   label: string;
   templates: TemplateItem[];
+  stageCTargetXById?: Record<string, number>;
 };
 
 type UpstreamBuildTemplateResponse = {
@@ -117,6 +129,7 @@ type UpstreamBuildTemplateResponse = {
   template_label: string;
   stage_a_nodes: StageANode[];
   stage_b_nodes: StageBNode[];
+  stage_c_nodes?: StageCNode[];
 };
 
 function buildStageTemplates(
@@ -191,6 +204,48 @@ function toTemplateType(riskLevel: GraphNode['riskLevel']): TemplateItem['type']
   if (riskLevel === 'high' || riskLevel === 'medium') return 'risk';
   if (riskLevel === 'low') return 'obligation';
   return 'asset';
+}
+
+const PARTY_AXIS_LANE_BY_OWNER = {
+  A: 0.10,
+  B: 0.90,
+  both: 0.38,
+  neutral: 0.62,
+} as const;
+const PARTY_AXIS_CONFIDENCE_FLOOR = 0.5;
+const PARTY_AXIS_PHASE_OFFSET_BY_PHASE = {
+  pre_sign: -0.02,
+  effective: -0.012,
+  execution: 0,
+  acceptance: 0.012,
+  termination: 0.02,
+  post_termination: 0.028,
+} as const;
+
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value));
+}
+
+function applyPartyAxisPhaseSpread(baseLane: number, timePhase?: GraphNode['timePhase']): number {
+  if (!timePhase) return baseLane;
+  const offset = PARTY_AXIS_PHASE_OFFSET_BY_PHASE[timePhase];
+  return typeof offset === 'number' ? clamp01(baseLane + offset) : baseLane;
+}
+
+function buildStageCPrecomputedMap(
+  stageCItems: StageCNode[],
+  templatePrefix: string,
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  stageCItems.forEach((item) => {
+    if (!item?.id) return;
+    const owner = item.partyOwner ?? 'neutral';
+    const base = PARTY_AXIS_LANE_BY_OWNER[owner] ?? PARTY_AXIS_LANE_BY_OWNER.neutral;
+    const confidence = typeof item.confidence === 'number' ? clamp01(item.confidence) : 0.5;
+    const weighted = 0.5 + (base - 0.5) * Math.max(PARTY_AXIS_CONFIDENCE_FLOOR, confidence);
+    out[`${templatePrefix}::${item.id}`] = clamp01(weighted);
+  });
+  return out;
 }
 
 function escapeHtml(value: string): string {
@@ -414,6 +469,9 @@ export default function ContractConstellation() {
   const [semanticBiasStrength, setSemanticBiasStrength] = useState(0);
   const [riskBiasStrength, setRiskBiasStrength] = useState(0);
   const [timeBiasStrength, setTimeBiasStrength] = useState(0);
+  const [canvasZoomScale, setCanvasZoomScale] = useState(1);
+  const [canvasPanOffset, setCanvasPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isCanvasPanning, setIsCanvasPanning] = useState(false);
   const [showAnalysisControls, setShowAnalysisControls] = useState(true);
   const [semanticTargetXById, setSemanticTargetXById] = useState<Record<string, number>>({});
   const [timeTargetXById, setTimeTargetXById] = useState<Record<string, number>>({});
@@ -423,6 +481,8 @@ export default function ContractConstellation() {
   const sliderSampleAtRef = useRef<number>(0);
   const modifySampleAtRef = useRef<number>(0);
   const taskStartAtRef = useRef<number | null>(null);
+  const panStartClientRef = useRef<{ x: number; y: number } | null>(null);
+  const panStartOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const { track } = useMonitoring('main', true);
   const layoutWidth = width + SIDE_PANEL_WIDTH;
   const layoutHeight = height;
@@ -432,13 +492,18 @@ export default function ContractConstellation() {
   const getCanvasPointFromClient = useCallback((clientX: number, clientY: number) => {
     if (!svgRef.current) return null;
     const rect = svgRef.current.getBoundingClientRect();
-    const x = ((clientX - rect.left) / rect.width) * width;
-    const y = ((clientY - rect.top) / rect.height) * height;
+    const rawX = ((clientX - rect.left) / rect.width) * width;
+    const rawY = ((clientY - rect.top) / rect.height) * height;
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const safeZoom = Math.max(0.6, Math.min(2.0, canvasZoomScale || 1));
+    const x = centerX + ((rawX - canvasPanOffset.x) - centerX) / safeZoom;
+    const y = centerY + ((rawY - canvasPanOffset.y) - centerY) / safeZoom;
     return {
       x: Math.max(0, Math.min(width, x)),
       y: Math.max(0, Math.min(height, y)),
     };
-  }, [height, width]);
+  }, [canvasPanOffset.x, canvasPanOffset.y, canvasZoomScale, height, width]);
   const getLayoutPointFromClient = useCallback((clientX: number, clientY: number) => {
     if (!rootRef.current) return null;
     const rootRect = rootRef.current.getBoundingClientRect();
@@ -466,7 +531,6 @@ export default function ContractConstellation() {
       y: Math.max(0, Math.min(layoutHeight, y)),
     };
   }, [height, layoutHeight, layoutWidth, width]);
-
   const {
     nodes,
     links,
@@ -644,9 +708,10 @@ export default function ContractConstellation() {
         presetId,
         `Imported from ${presetId}`,
       );
+      const uploadedStageCMap = buildStageCPrecomputedMap(data.stage_c_nodes ?? [], presetId);
       setUploadedPresets((prev) => {
         const withoutSame = prev.filter((preset) => preset.id !== presetId);
-        return [...withoutSame, { id: presetId, label: presetLabel, templates }];
+        return [...withoutSame, { id: presetId, label: presetLabel, templates, stageCTargetXById: uploadedStageCMap }];
       });
       const startedAt = Date.now();
       taskStartAtRef.current = startedAt;
@@ -681,6 +746,11 @@ export default function ContractConstellation() {
     setSelectedNodeId(null);
     setModifiedNodeIds([]);
     setDeletedClauses([]);
+    setCanvasZoomScale(1);
+    setCanvasPanOffset({ x: 0, y: 0 });
+    setIsCanvasPanning(false);
+    panStartClientRef.current = null;
+    panStartOffsetRef.current = { x: 0, y: 0 };
   }, [graphPresetId, loadGraphPreset]);
 
   const simple1Templates = useMemo<TemplateItem[]>(() => {
@@ -711,6 +781,22 @@ export default function ContractConstellation() {
     const aNodes = (testNewStageAData as { nodes?: StageANode[] }).nodes ?? [];
     const bNodes = (testNewStageBData as { nodes?: StageBNode[] }).nodes ?? [];
     return buildStageTemplates(aNodes, bNodes, 'patent', 'Imported from patent');
+  }, []);
+  const testNewStageCMap = useMemo(() => {
+    const cItems = (testNewStageCData as { items?: StageCNode[] }).items ?? [];
+    return buildStageCPrecomputedMap(cItems, 'patent');
+  }, []);
+  const text2AbStageCMap = useMemo(() => {
+    const cItems = (text2AbStageCData as { items?: StageCNode[] }).items ?? [];
+    return buildStageCPrecomputedMap(cItems, 'housing');
+  }, []);
+  const testNewChineseStageCMap = useMemo(() => {
+    const cItems = (testNewStageCChineseData as { items?: StageCNode[] }).items ?? [];
+    return buildStageCPrecomputedMap(cItems, 'patent_chinese');
+  }, []);
+  const text2AbChineseStageCMap = useMemo(() => {
+    const cItems = (text2AbStageCChineseData as { items?: StageCNode[] }).items ?? [];
+    return buildStageCPrecomputedMap(cItems, 'housing_chinese');
   }, []);
 
   const testNewChineseTemplates = useMemo<TemplateItem[]>(() => {
@@ -746,6 +832,23 @@ export default function ContractConstellation() {
     if (uploaded) return uploaded.templates;
     return NODE_LIBRARY;
   }, [graphPresetId, simple1Templates, reneHouseTemplates, testAbTemplates, testNewTemplates, text2AbTemplates, testNewChineseTemplates, text2AbChineseTemplates, uploadedPresets]);
+
+  const activePrecomputedStageCMap = useMemo<Record<string, number>>(() => {
+    if (graphPresetId === 'patent') return testNewStageCMap;
+    if (graphPresetId === 'housing') return text2AbStageCMap;
+    if (graphPresetId === 'patent_chinese') return testNewChineseStageCMap;
+    if (graphPresetId === 'housing_chinese') return text2AbChineseStageCMap;
+    const uploaded = uploadedPresets.find((preset) => preset.id === graphPresetId);
+    if (uploaded?.stageCTargetXById) return uploaded.stageCTargetXById;
+    return {};
+  }, [
+    graphPresetId,
+    testNewStageCMap,
+    text2AbStageCMap,
+    testNewChineseStageCMap,
+    text2AbChineseStageCMap,
+    uploadedPresets,
+  ]);
 
   const availableTemplates = useMemo(
     () => activeTemplatePool.filter((item) => !usedTemplateIds.includes(item.id)),
@@ -805,6 +908,16 @@ export default function ContractConstellation() {
     [semanticNodes],
   );
   const semanticNodesForEmbedding = useMemo(() => semanticNodes, [semanticSignature]);
+  const precomputedSemanticTargetXById = useMemo(() => {
+    const map: Record<string, number> = {};
+    semanticNodesForEmbedding.forEach((node) => {
+      const x = activePrecomputedStageCMap[node.id];
+      if (typeof x === 'number') {
+        map[node.id] = applyPartyAxisPhaseSpread(x, node.timePhase);
+      }
+    });
+    return map;
+  }, [semanticNodesForEmbedding, activePrecomputedStageCMap]);
   const fallbackSemanticTargetXById = useMemo(() => {
     const map: Record<string, number> = {};
     semanticNodesForEmbedding.forEach((node) => {
@@ -902,12 +1015,22 @@ export default function ContractConstellation() {
       setSemanticTargetXById({});
       return;
     }
+    const hasCompletePrecomputed = semanticNodesForEmbedding.every(
+      (node) => typeof precomputedSemanticTargetXById[node.id] === 'number',
+    );
+    if (hasCompletePrecomputed) {
+      setSemanticTargetXById(precomputedSemanticTargetXById);
+      return;
+    }
     let active = true;
     void getSemanticTargetXMap(semanticNodesForEmbedding)
       .then((targetMap) => {
         if (!active) return;
         if (Object.keys(targetMap).length > 0) {
-          setSemanticTargetXById(targetMap);
+          setSemanticTargetXById({
+            ...targetMap,
+            ...precomputedSemanticTargetXById,
+          });
         } else {
           setSemanticTargetXById(fallbackSemanticTargetXById);
         }
@@ -915,12 +1038,15 @@ export default function ContractConstellation() {
       .catch((error) => {
         if (!active) return;
         console.warn('[Semantic] Built-in semantic grouping failed, fallback to risk lanes.', error);
-        setSemanticTargetXById(fallbackSemanticTargetXById);
+        setSemanticTargetXById({
+          ...fallbackSemanticTargetXById,
+          ...precomputedSemanticTargetXById,
+        });
       });
     return () => {
       active = false;
     };
-  }, [semanticNodesForEmbedding, fallbackSemanticTargetXById]);
+  }, [semanticNodesForEmbedding, fallbackSemanticTargetXById, precomputedSemanticTargetXById]);
 
   useEffect(() => {
     setTimeTargetXById(fallbackTimeTargetXById);
@@ -939,9 +1065,9 @@ export default function ContractConstellation() {
     if (nodes.some((node) => node.id === templateId)) return;
     const template = activeTemplatePool.find((item) => item.id === templateId);
     if (!template || !svgRef.current) return;
-    const rect = svgRef.current.getBoundingClientRect();
-    const x = ((event.clientX - rect.left) / rect.width) * width;
-    const y = ((event.clientY - rect.top) / rect.height) * height;
+    const point = getCanvasPointFromClient(event.clientX, event.clientY);
+    if (!point) return;
+    const { x, y } = point;
     addNodeFromTemplate(template, x, y);
     // Default to collapsed when a template is dropped into canvas.
     setCollapsedNodeIds((prev) => {
@@ -967,9 +1093,10 @@ export default function ContractConstellation() {
   const handleNodePointerDown = (event: PointerEvent<SVGGElement>, node: GraphNode) => {
     if (node.id === 'root' || !svgRef.current) return;
     event.stopPropagation();
-    const rect = svgRef.current.getBoundingClientRect();
-    const pointerX = ((event.clientX - rect.left) / rect.width) * width;
-    const pointerY = ((event.clientY - rect.top) / rect.height) * height;
+    const point = getCanvasPointFromClient(event.clientX, event.clientY);
+    if (!point) return;
+    const pointerX = point.x;
+    const pointerY = point.y;
     dragOffsetRef.current = { x: pointerX - node.x, y: pointerY - node.y };
     setDraggingNodeId(node.id);
     setDraggingNode(node.id);
@@ -1044,9 +1171,10 @@ export default function ContractConstellation() {
   const updateDraggingByClient = useCallback(
     (clientX: number, clientY: number) => {
       if (!draggingNodeId || !svgRef.current) return false;
-      const rect = svgRef.current.getBoundingClientRect();
-      const nextX = ((clientX - rect.left) / rect.width) * width - dragOffsetRef.current.x;
-      const nextY = ((clientY - rect.top) / rect.height) * height - dragOffsetRef.current.y;
+      const point = getCanvasPointFromClient(clientX, clientY);
+      if (!point) return false;
+      const nextX = point.x - dragOffsetRef.current.x;
+      const nextY = point.y - dragOffsetRef.current.y;
       updateNodePosition(
         draggingNodeId,
         Math.max(18, Math.min(width - 18, nextX)),
@@ -1064,11 +1192,42 @@ export default function ContractConstellation() {
       setIsOverTrash(overTrash);
       return overTrash;
     },
-    [draggingNodeId, height, updateNodePosition, width],
+    [draggingNodeId, getCanvasPointFromClient, height, updateNodePosition, width],
   );
+
+  const handleCanvasWheel = useCallback((event: WheelEvent<SVGSVGElement>) => {
+    event.preventDefault();
+    const delta = -event.deltaY;
+    setCanvasZoomScale((prev) => {
+      const next = prev + (delta > 0 ? 0.03 : -0.03);
+      return Math.max(0.6, Math.min(2.0, Number(next.toFixed(2))));
+    });
+  }, []);
+
+  const handleCanvasPointerDown = useCallback((event: PointerEvent<SVGSVGElement>) => {
+    if (draggingNodeId) return;
+    if (event.button !== 0) return;
+    // Pan only when pressing on empty canvas area.
+    if (event.target !== event.currentTarget) return;
+    event.preventDefault();
+    event.stopPropagation();
+    panStartClientRef.current = { x: event.clientX, y: event.clientY };
+    panStartOffsetRef.current = canvasPanOffset;
+    setIsCanvasPanning(true);
+  }, [canvasPanOffset, draggingNodeId]);
 
   const handleCanvasPointerMove = (event: PointerEvent<SVGSVGElement>) => {
     if (draggingNodeId) return;
+    if (isCanvasPanning && panStartClientRef.current && svgRef.current) {
+      const rect = svgRef.current.getBoundingClientRect();
+      const dx = ((event.clientX - panStartClientRef.current.x) / Math.max(1, rect.width)) * width;
+      const dy = ((event.clientY - panStartClientRef.current.y) / Math.max(1, rect.height)) * height;
+      setCanvasPanOffset({
+        x: Math.max(-width * 0.9, Math.min(width * 0.9, panStartOffsetRef.current.x + dx)),
+        y: Math.max(-height * 0.9, Math.min(height * 0.9, panStartOffsetRef.current.y + dy)),
+      });
+      return;
+    }
     updateDraggingByClient(event.clientX, event.clientY);
   };
 
@@ -1090,9 +1249,38 @@ export default function ContractConstellation() {
   }, [draggingNodeId, endNodeDrag, updateDraggingByClient]);
 
   const handleCanvasPointerUp = (event: PointerEvent<SVGSVGElement>) => {
+    if (isCanvasPanning) {
+      setIsCanvasPanning(false);
+      panStartClientRef.current = null;
+      return;
+    }
     const shouldDelete = updateDraggingByClient(event.clientX, event.clientY);
     endNodeDrag(Boolean(shouldDelete));
   };
+
+  useEffect(() => {
+    if (!isCanvasPanning) return;
+    const onWindowPointerMove = (event: globalThis.PointerEvent) => {
+      if (!panStartClientRef.current || !svgRef.current) return;
+      const rect = svgRef.current.getBoundingClientRect();
+      const dx = ((event.clientX - panStartClientRef.current.x) / Math.max(1, rect.width)) * width;
+      const dy = ((event.clientY - panStartClientRef.current.y) / Math.max(1, rect.height)) * height;
+      setCanvasPanOffset({
+        x: Math.max(-width * 0.9, Math.min(width * 0.9, panStartOffsetRef.current.x + dx)),
+        y: Math.max(-height * 0.9, Math.min(height * 0.9, panStartOffsetRef.current.y + dy)),
+      });
+    };
+    const onWindowPointerUp = () => {
+      setIsCanvasPanning(false);
+      panStartClientRef.current = null;
+    };
+    window.addEventListener('pointermove', onWindowPointerMove);
+    window.addEventListener('pointerup', onWindowPointerUp);
+    return () => {
+      window.removeEventListener('pointermove', onWindowPointerMove);
+      window.removeEventListener('pointerup', onWindowPointerUp);
+    };
+  }, [height, isCanvasPanning, width]);
 
   const handleExportContract = useCallback(async () => {
     if (exportState === 'exporting') return;
@@ -1584,7 +1772,7 @@ export default function ContractConstellation() {
 
   const trackDimensionPanelInteraction = useCallback(
     (
-      source: 'semantic_pull' | 'risk_pull' | 'time_pull',
+      source: 'party_axis_pull' | 'risk_pull' | 'time_pull',
       sliderIndex: number,
       value: number,
       force = false,
@@ -1633,7 +1821,7 @@ export default function ContractConstellation() {
   const handleSemanticBiasChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     const value = Number(event.target.value);
     setSemanticBiasStrength(value);
-    trackDimensionPanelInteraction('semantic_pull', 0, value);
+    trackDimensionPanelInteraction('party_axis_pull', 0, value);
   }, [trackDimensionPanelInteraction]);
 
   const handleRiskBiasChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
@@ -1650,7 +1838,7 @@ export default function ContractConstellation() {
 
   const handleSemanticBiasCommit = useCallback((event: PointerEvent<HTMLInputElement>) => {
     trackDimensionPanelInteraction(
-      'semantic_pull',
+      'party_axis_pull',
       0,
       Number((event.target as HTMLInputElement).value),
       true,
@@ -1680,7 +1868,7 @@ export default function ContractConstellation() {
 
   const handleSemanticBiasPointerMove = useCallback((event: PointerEvent<HTMLInputElement>) => {
     trackDimensionPanelInteraction(
-      'semantic_pull',
+      'party_axis_pull',
       0,
       Number((event.target as HTMLInputElement).value),
       false,
@@ -1845,7 +2033,7 @@ export default function ContractConstellation() {
                 <span className="font-semibold">Analysis Controls</span>
                 <div className="flex items-center gap-2">
                   <span className="text-slate-500">
-                    S {Math.round(semanticBiasStrength * 100)}% / R {Math.round(riskBiasStrength * 100)}% / T {Math.round(timeBiasStrength * 100)}%
+                    P {Math.round(semanticBiasStrength * 100)}% / R {Math.round(riskBiasStrength * 100)}% / T {Math.round(timeBiasStrength * 100)}%
                   </span>
                   <button
                     type="button"
@@ -1859,7 +2047,7 @@ export default function ContractConstellation() {
               <div className="grid grid-cols-3 gap-3">
                 <div className="rounded-md border border-slate-200 bg-slate-50/65 px-2 py-1">
                   <div className="mb-0.5 flex items-center justify-between text-[10px] text-slate-600">
-                    <span>Semantic Pull</span>
+                    <span>Party Axis Pull</span>
                     <span>{Math.round(semanticBiasStrength * 100)}%</span>
                   </div>
                   <input
@@ -1934,13 +2122,17 @@ export default function ContractConstellation() {
           selectedNode={selectedNode}
           collapsedNodeIds={collapsedNodeIds}
           collapsibleNodeIds={collapsibleNodeIds}
+          zoomScale={canvasZoomScale}
+          panOffset={canvasPanOffset}
           svgRef={svgRef}
           onSelectNode={handleSelectNode}
           onNodePointerDown={handleNodePointerDown}
           onToggleNodeCollapse={handleToggleNodeCollapse}
           onDrop={handleDrop}
+          onCanvasPointerDown={handleCanvasPointerDown}
           onPointerMove={handleCanvasPointerMove}
           onPointerUp={handleCanvasPointerUp}
+          onCanvasWheel={handleCanvasWheel}
           onDragOver={(event) => {
             event.preventDefault();
             if (!isDragOverCanvas) setIsDragOverCanvas(true);

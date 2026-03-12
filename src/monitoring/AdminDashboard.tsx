@@ -168,7 +168,7 @@ function getHeatWeight(event: MonitoringEvent): number {
   if (source === 'node_detail_hover') return 0.12;
   if (source === 'modify_hover') return 0.45;
   if (source === 'canvas_click' || source === 'node_click') return 1;
-  if (source === 'semantic_pull' || source === 'risk_pull' || source === 'time_pull') return 0.4;
+  if (source === 'party_axis_pull' || source === 'risk_pull' || source === 'time_pull') return 0.4;
   if (event.event_name === 'template_added' || event.event_name === 'node_selected') return 1;
   if (
     event.event_name === 'action_executed'
@@ -546,7 +546,7 @@ export default function AdminDashboard() {
       if (event.event_name !== 'canvas_interaction') return false;
       if (event.payload?.space_id === 'dimension') return true;
       const source = event.payload?.source;
-      if (source === 'semantic_pull' || source === 'risk_pull' || source === 'time_pull') return true;
+      if (source === 'party_axis_pull' || source === 'risk_pull' || source === 'time_pull') return true;
       if (source === 'hover_sample') {
         const point = mapEventToLayoutPoint(event);
         if (point) return inRect(point.x, point.y, DIMENSION_PANEL);

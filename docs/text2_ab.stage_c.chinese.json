@@ -1,0 +1,219 @@
+{
+  "items": [
+    {
+      "id": "preamble",
+      "partyOwner": "neutral",
+      "confidence": 0.95
+    },
+    {
+      "id": "cl_1",
+      "partyOwner": "A",
+      "confidence": 0.85
+    },
+    {
+      "id": "cl_1_p2",
+      "partyOwner": "B",
+      "confidence": 0.75
+    },
+    {
+      "id": "cl_2",
+      "partyOwner": "neutral",
+      "confidence": 0.9
+    },
+    {
+      "id": "cl_2_timeline",
+      "partyOwner": "both",
+      "confidence": 0.8
+    },
+    {
+      "id": "cl_3",
+      "partyOwner": "neutral",
+      "confidence": 0.95
+    },
+    {
+      "id": "cl_3_1",
+      "partyOwner": "neutral",
+      "confidence": 0.9
+    },
+    {
+      "id": "cl_3_2",
+      "partyOwner": "B",
+      "confidence": 0.95
+    },
+    {
+      "id": "cl_3_3",
+      "partyOwner": "B",
+      "confidence": 0.95
+    },
+    {
+      "id": "cl_4",
+      "partyOwner": "neutral",
+      "confidence": 0.9
+    },
+    {
+      "id": "cl_4_1",
+      "partyOwner": "B",
+      "confidence": 0.95
+    },
+    {
+      "id": "cl_4_2",
+      "partyOwner": "B",
+      "confidence": 0.85
+    },
+    {
+      "id": "cl_4_3",
+      "partyOwner": "A",
+      "confidence": 0.9
+    },
+    {
+      "id": "cl_5",
+      "partyOwner": "neutral",
+      "confidence": 0.95
+    },
+    {
+      "id": "cl_5_1",
+      "partyOwner": "A",
+      "confidence": 0.95
+    },
+    {
+      "id": "cl_5_2",
+      "partyOwner": "B",
+      "confidence": 0.95
+    },
+    {
+      "id": "cl_5_3",
+      "partyOwner": "B",
+      "confidence": 0.9
+    },
+    {
+      "id": "cl_6",
+      "partyOwner": "neutral",
+      "confidence": 0.9
+    },
+    {
+      "id": "cl_6_1",
+      "partyOwner": "A",
+      "confidence": 0.95
+    },
+    {
+      "id": "cl_6_2",
+      "partyOwner": "both",
+      "confidence": 0.9
+    },
+    {
+      "id": "cl_7",
+      "partyOwner": "both",
+      "confidence": 0.8
+    },
+    {
+      "id": "cl_8",
+      "partyOwner": "neutral",
+      "confidence": 0.9
+    },
+    {
+      "id": "cl_8_1",
+      "partyOwner": "B",
+      "confidence": 0.95
+    },
+    {
+      "id": "cl_8_2",
+      "partyOwner": "both",
+      "confidence": 0.75
+    },
+    {
+      "id": "cl_8_3",
+      "partyOwner": "B",
+      "confidence": 0.85
+    },
+    {
+      "id": "cl_9",
+      "partyOwner": "neutral",
+      "confidence": 0.9
+    },
+    {
+      "id": "cl_9_1",
+      "partyOwner": "B",
+      "confidence": 0.95
+    },
+    {
+      "id": "cl_9_2",
+      "partyOwner": "B",
+      "confidence": 0.9
+    },
+    {
+      "id": "cl_9_3",
+      "partyOwner": "both",
+      "confidence": 0.9
+    },
+    {
+      "id": "cl_10",
+      "partyOwner": "neutral",
+      "confidence": 0.95
+    },
+    {
+      "id": "cl_10_1",
+      "partyOwner": "both",
+      "confidence": 0.95
+    },
+    {
+      "id": "cl_10_2",
+      "partyOwner": "A",
+      "confidence": 0.9
+    },
+    {
+      "id": "cl_10_3",
+      "partyOwner": "B",
+      "confidence": 0.9
+    },
+    {
+      "id": "cl_11",
+      "partyOwner": "neutral",
+      "confidence": 0.95
+    },
+    {
+      "id": "cl_11_1",
+      "partyOwner": "A",
+      "confidence": 0.95
+    },
+    {
+      "id": "cl_11_2",
+      "partyOwner": "B",
+      "confidence": 0.95
+    },
+    {
+      "id": "cl_12",
+      "partyOwner": "B",
+      "confidence": 0.95
+    },
+    {
+      "id": "cl_13",
+      "partyOwner": "both",
+      "confidence": 0.9
+    },
+    {
+      "id": "cl_14",
+      "partyOwner": "neutral",
+      "confidence": 0.9
+    },
+    {
+      "id": "cl_14_1",
+      "partyOwner": "neutral",
+      "confidence": 0.95
+    },
+    {
+      "id": "cl_14_2",
+      "partyOwner": "both",
+      "confidence": 0.9
+    },
+    {
+      "id": "cl_14_3",
+      "partyOwner": "neutral",
+      "confidence": 0.95
+    },
+    {
+      "id": "cl_signature",
+      "partyOwner": "neutral",
+      "confidence": 0.95
+    }
+  ]
+}

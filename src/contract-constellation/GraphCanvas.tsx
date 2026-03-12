@@ -12,6 +12,27 @@ import {
 
 const CANVAS_WIDTH = 760;
 const CANVAS_HEIGHT = 620;
+const MAX_NODE_LABEL_CHARS = 22;
+const LABEL_STAGGER_STEP = 10;
+
+function hashString(value: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+  }
+  return Math.abs(hash >>> 0);
+}
+
+function getLabelVerticalOffset(nodeId: string): number {
+  return (hashString(nodeId) % 3) * LABEL_STAGGER_STEP;
+}
+
+function getDisplayLabel(label: string, selected: boolean): string {
+  if (selected) return label;
+  if (label.length <= MAX_NODE_LABEL_CHARS) return label;
+  return `${label.slice(0, MAX_NODE_LABEL_CHARS)}...`;
+}
 
 interface GraphCanvasProps {
   nodes: GraphNode[];
@@ -26,6 +47,8 @@ interface GraphCanvasProps {
   selectedNode: GraphNode | null;
   collapsedNodeIds: Set<string>;
   collapsibleNodeIds: Set<string>;
+  zoomScale: number;
+  panOffset: { x: number; y: number };
   svgRef: React.RefObject<SVGSVGElement | null>;
   onSelectNode: (
     nodeId: string | null,
@@ -34,8 +57,10 @@ interface GraphCanvasProps {
   onNodePointerDown: (event: PointerEvent<SVGGElement>, node: GraphNode) => void;
   onToggleNodeCollapse: (nodeId: string) => void;
   onDrop: (event: React.DragEvent<SVGSVGElement>) => void;
+  onCanvasPointerDown: (event: PointerEvent<SVGSVGElement>) => void;
   onPointerMove: (event: PointerEvent<SVGSVGElement>) => void;
   onPointerUp: (event: PointerEvent<SVGSVGElement>) => void;
+  onCanvasWheel: (event: React.WheelEvent<SVGSVGElement>) => void;
   onDragOver: (event: React.DragEvent<SVGSVGElement>) => void;
   onDragLeave: () => void;
 }
@@ -53,13 +78,17 @@ export function GraphCanvas({
   selectedNode,
   collapsedNodeIds,
   collapsibleNodeIds,
+  zoomScale,
+  panOffset,
   svgRef,
   onSelectNode,
   onNodePointerDown,
   onToggleNodeCollapse,
   onDrop,
+  onCanvasPointerDown,
   onPointerMove,
   onPointerUp,
+  onCanvasWheel,
   onDragOver,
   onDragLeave,
 }: GraphCanvasProps) {
@@ -72,6 +101,79 @@ export function GraphCanvas({
   }, [nodes]);
   const clampedAggregation = Math.max(0, Math.min(1, aggregationStrength));
   const aggregationFade = 1 - 0.72 * clampedAggregation;
+  const labelLayerItems = useMemo(() => {
+    return nodes
+      .map((node) => {
+        const selected = node.id === selectedNodeId;
+        const isRoot = node.id === 'root';
+        const isLeaf = node.type === 'sub';
+        const parentNode = node.parentId ? nodeById.get(node.parentId) : null;
+        const isFirstLevelLeaf = isLeaf && parentNode?.type === 'main';
+        const depth = focusDepthMap?.get(node.id);
+        const isIncoming = incomingNodeIds.has(node.id);
+        const isFocused = !selectedNodeId || depth !== undefined || isIncoming;
+        const distToSelected = selectedNode
+          ? Math.hypot(node.x - selectedNode.x, node.y - selectedNode.y)
+          : 0;
+        const lensFactor = !selectedNode ? 1 : distToSelected > 340 ? 0.5 : distToSelected > 260 ? 0.72 : 1;
+        const depthOpacity = !selectedNodeId
+          ? 1
+          : selected
+            ? 1
+            : isIncoming
+              ? 0.72
+              : depth === undefined
+                ? 0.22
+                : revealStage === 1 && depth > 1
+                  ? 0.24
+                  : depth === 1
+                    ? 0.9
+                    : depth === 2
+                      ? 0.66
+                      : 0.42;
+        const nodeTone = !selectedNodeId
+          ? 1
+          : selected
+            ? 1
+            : isFocused
+              ? Math.max(0.56, depthOpacity * lensFactor)
+              : 0.26;
+        const shouldShowLabelBase =
+          !isLeaf
+            ? true
+            : selected || (selectedNodeId && depth !== undefined) || isIncoming || (!selectedNodeId && isFirstLevelLeaf);
+        const hideSubLabelByDenoise = clampedAggregation > 0.25 && isLeaf && !selected;
+        const shouldShowLabel = shouldShowLabelBase && !hideSubLabelByDenoise;
+        if (!shouldShowLabel) return null;
+        return {
+          id: node.id,
+          text: getDisplayLabel(node.label, selected),
+          x: node.x,
+          y: node.y + node.r + 16 + getLabelVerticalOffset(node.id),
+          fontSize: isLeaf ? 10 : 11,
+          fill: isRoot ? '#374151' : '#1f2937',
+          fillOpacity: Math.min(1, nodeTone + 0.08),
+        };
+      })
+      .filter((item): item is {
+        id: string;
+        text: string;
+        x: number;
+        y: number;
+        fontSize: number;
+        fill: string;
+        fillOpacity: number;
+      } => Boolean(item));
+  }, [
+    clampedAggregation,
+    focusDepthMap,
+    incomingNodeIds,
+    nodeById,
+    nodes,
+    revealStage,
+    selectedNode,
+    selectedNodeId,
+  ]);
   const actionBadge = (node: GraphNode) => {
     const pending = (node.actions ?? []).filter((action) => action.status !== 'completed');
     if (pending.length === 0) return null;
@@ -89,11 +191,13 @@ export function GraphCanvas({
       width="100%"
       height="100%"
       viewBox={`0 0 ${width} ${height}`}
+      onPointerDown={onCanvasPointerDown}
       onClick={(event) =>
         onSelectNode(null, { clientX: event.clientX, clientY: event.clientY, source: 'canvas_click' })
       }
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
+      onWheel={onCanvasWheel}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
@@ -146,6 +250,7 @@ export function GraphCanvas({
         </radialGradient>
       </defs>
 
+      <g transform={`translate(${panOffset.x} ${panOffset.y}) translate(${width / 2} ${height / 2}) scale(${zoomScale}) translate(${-width / 2} ${-height / 2})`}>
       {links.map((link) => {
         const source = nodeById.get(link.source);
         const target = nodeById.get(link.target);
@@ -263,9 +368,6 @@ export function GraphCanvas({
       {nodes.map((node) => {
         const selected = node.id === selectedNodeId;
         const isRoot = node.id === 'root';
-        const isLeaf = node.type === 'sub';
-        const parentNode = node.parentId ? nodeById.get(node.parentId) : null;
-        const isFirstLevelLeaf = isLeaf && parentNode?.type === 'main';
 
         const depth = focusDepthMap?.get(node.id);
         const isIncoming = incomingNodeIds.has(node.id);
@@ -296,10 +398,6 @@ export function GraphCanvas({
             : isFocused
               ? Math.max(0.56, depthOpacity * lensFactor)
               : 0.26;
-        const shouldShowLabel =
-          !isLeaf
-            ? true
-            : selected || (selectedNodeId && depth !== undefined) || isIncoming || (!selectedNodeId && isFirstLevelLeaf);
         const isDragging = node.id === draggingNodeId;
         const badge = actionBadge(node);
         const canCollapse = collapsibleNodeIds.has(node.id);
@@ -424,22 +522,30 @@ export function GraphCanvas({
                 </text>
               </g>
             )}
-            {shouldShowLabel && (
-              <text
-                x={0}
-                y={node.r + 16}
-                textAnchor="middle"
-                fontSize={isLeaf ? 10 : 11}
-                fill={isRoot ? '#374151' : '#1f2937'}
-                fillOpacity={Math.min(1, nodeTone + 0.08)}
-                className="pointer-events-none select-none font-semibold"
-              >
-                {node.label}
-              </text>
-            )}
           </motion.g>
         );
       })}
+      <g className="pointer-events-none">
+        {labelLayerItems.map((item) => (
+          <text
+            key={`${item.id}-label`}
+            x={item.x}
+            y={item.y}
+            textAnchor="middle"
+            fontSize={item.fontSize}
+            fill={item.fill}
+            fillOpacity={item.fillOpacity}
+            stroke="#f8fafc"
+            strokeOpacity={Math.min(1, item.fillOpacity * 0.92)}
+            strokeWidth={2}
+            paintOrder="stroke"
+            className="pointer-events-none select-none font-semibold"
+          >
+            {item.text}
+          </text>
+        ))}
+      </g>
+      </g>
     </svg>
   );
 }

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from copy import deepcopy
 from datetime import datetime, timezone
 import json
@@ -7,6 +8,7 @@ import os
 from pathlib import Path
 import re
 from threading import Lock
+import time
 from typing import Any, Dict, List, Literal, Optional, Tuple
 from urllib import error, request
 
@@ -189,8 +191,31 @@ class UpstreamBuildTemplateResponse(BaseModel):
     template_label: str
     stage_a_nodes: List[Dict[str, Any]]
     stage_b_nodes: List[Dict[str, Any]]
+    stage_c_nodes: List[Dict[str, Any]]
     merged_nodes: List[Dict[str, Any]]
+    stage_timing: Dict[str, int]
     artifact_paths: Dict[str, str]
+
+
+class PartyAxisNodeInput(BaseModel):
+    id: str
+    label: str
+    content: str
+
+
+class PartyAxisRequest(BaseModel):
+    nodes: List[PartyAxisNodeInput]
+    original_contract_text: Optional[str] = None
+
+
+class PartyAxisItem(BaseModel):
+    id: str
+    partyOwner: Literal["A", "B", "both", "neutral"]
+    confidence: float
+
+
+class PartyAxisResponse(BaseModel):
+    items: List[PartyAxisItem]
 
 
 app = FastAPI(title="Semantic Embedding Service", version="0.1.0")
@@ -221,6 +246,7 @@ XHUB_FINALIZE_MODEL = os.getenv("XHUB_FINALIZE_MODEL", "claude-sonnet-4-5-202509
 XHUB_FORMAT_MODEL = os.getenv("XHUB_FORMAT_MODEL", "claude-sonnet-4-5-20250929-thinking")
 XHUB_STAGEA_MODEL = os.getenv("XHUB_STAGEA_MODEL", "claude-sonnet-4-6")
 XHUB_STAGEB_MODEL = os.getenv("XHUB_STAGEB_MODEL", "claude-sonnet-4-6")
+XHUB_STAGEC_MODEL = os.getenv("XHUB_STAGEC_MODEL", "claude-sonnet-4-5-20250929")
 _ROOT_DIR = Path(__file__).resolve().parents[1]
 _MONITORING_DIR = _ROOT_DIR / ".runtime" / "monitoring"
 _MONITORING_BY_PARTICIPANT_DIR = _MONITORING_DIR / "by_participant"
@@ -369,6 +395,50 @@ Output strict JSON only:
           "supplementDraft": "string"
         }
       ]
+    }
+  ]
+}
+""".strip()
+
+STAGE_C_SYSTEM_PROMPT = """
+You are a legal responsibility-attribution engine (Stage C).
+
+Objective:
+Given nodes_stage_a and original_contract_text, classify each node by responsibility ownership:
+- A
+- B
+- both
+- neutral
+
+Output constraints:
+1) COMPLETE COVERAGE:
+   - Output one and only one record per input node id.
+2) IMMUTABLE IDS:
+   - id must come from input nodes_stage_a only.
+3) EVIDENCE-BASED:
+   - Use explicit wording from each clause; do not fabricate obligations.
+4) CALIBRATED CONFIDENCE:
+   - confidence must be in [0,1].
+   - explicit owner signals => higher confidence.
+   - ambiguous owner signals => lower confidence.
+5) LANGUAGE ROBUSTNESS:
+   - Handle both Chinese and English party references.
+6) NO EXPLANATION FIELD:
+   - Do not output reasoning/explanation text fields.
+
+Decision rubric:
+- A: obligations/risks mainly imposed on Party A / 甲方 / licensor / landlord.
+- B: obligations/risks mainly imposed on Party B / 乙方 / licensee / tenant.
+- both: bilateral mutual obligations or shared duties.
+- neutral: definitions/background/recitals/general process with no clear duty owner.
+
+Output strict JSON only:
+{
+  "items": [
+    {
+      "id": "string",
+      "partyOwner": "A|B|both|neutral",
+      "confidence": 0.0
     }
   ]
 }
@@ -527,6 +597,46 @@ def embed(payload: EmbedRequest):
         show_progress_bar=False,
     )
     return EmbedResponse(embeddings=vectors.tolist())
+
+
+@app.post("/semantic/party-axis", response_model=PartyAxisResponse)
+def semantic_party_axis(payload: PartyAxisRequest):
+    if not payload.nodes:
+        return PartyAxisResponse(items=[])
+
+    stage_a_like_nodes: List[Dict[str, Any]] = [
+        {"id": node.id, "label": node.label, "content": node.content}
+        for node in payload.nodes
+    ]
+    contract_text = (payload.original_contract_text or "").strip()
+    if not contract_text:
+        contract_text = "\n\n".join(
+            f"{node.label}\n{node.content}".strip()
+            for node in payload.nodes
+        )
+
+    try:
+        raw_items = _run_stage_c_single(
+            stage_a_like_nodes,
+            contract_text=contract_text,
+            max_tokens=5000,
+            temperature=0.0,
+        )
+        normalized_items = _normalize_stage_c_nodes(stage_a_like_nodes, raw_items)
+    except Exception as exc:
+        print(f"[StageC] semantic_party_axis fallback: {exc}")
+        normalized_items = _normalize_stage_c_nodes(stage_a_like_nodes, [])
+
+    return PartyAxisResponse(
+        items=[
+            PartyAxisItem(
+                id=str(item["id"]),
+                partyOwner=item["partyOwner"],
+                confidence=float(item["confidence"]),
+            )
+            for item in normalized_items
+        ]
+    )
 
 
 def _post_json(url: str, payload: dict[str, Any], api_key: str, timeout: int = 600) -> dict[str, Any]:
@@ -708,6 +818,82 @@ def _run_stage_b_single(
     return raw_stage_b_nodes
 
 
+def _infer_party_owner_from_text(label: str, content: str) -> Dict[str, Any]:
+    text = f"{label}\n{content}".strip()
+    lower = text.lower()
+    a_hits = 0
+    b_hits = 0
+    both_hits = 0
+
+    a_patterns = [
+        r"\bparty\s*a\b",
+        r"\bfirst\s+party\b",
+        r"\blicensor\b",
+        r"\blandlord\b",
+        r"\bsupplier\b",
+        r"\bprovider\b",
+        r"甲方",
+    ]
+    b_patterns = [
+        r"\bparty\s*b\b",
+        r"\bsecond\s+party\b",
+        r"\blicensee\b",
+        r"\btenant\b",
+        r"\bcustomer\b",
+        r"\bclient\b",
+        r"乙方",
+    ]
+    both_patterns = [
+        r"\bboth parties\b",
+        r"\bthe parties\b",
+        r"\bmutual(?:ly)?\b",
+        r"双方",
+        r"各方",
+    ]
+
+    for pattern in a_patterns:
+        if re.search(pattern, lower):
+            a_hits += 1
+    for pattern in b_patterns:
+        if re.search(pattern, lower):
+            b_hits += 1
+    for pattern in both_patterns:
+        if re.search(pattern, lower):
+            both_hits += 1
+
+    if both_hits > 0 and (a_hits > 0 or b_hits > 0):
+        return {"partyOwner": "both", "confidence": 0.86}
+    if a_hits > 0 and b_hits > 0:
+        return {"partyOwner": "both", "confidence": 0.81}
+    if a_hits > 0:
+        return {"partyOwner": "A", "confidence": 0.78}
+    if b_hits > 0:
+        return {"partyOwner": "B", "confidence": 0.78}
+    return {"partyOwner": "neutral", "confidence": 0.45}
+
+
+def _run_stage_c_single(
+    stage_a_nodes: List[Dict[str, Any]],
+    contract_text: str,
+    max_tokens: int = 7000,
+    temperature: float = 0.0,
+) -> List[Dict[str, Any]]:
+    stage_c_resp = _xhub_json_completion(
+        model=XHUB_STAGEC_MODEL,
+        system_prompt=STAGE_C_SYSTEM_PROMPT,
+        user_content=(
+            "Run Stage C party responsibility attribution. Output strict JSON only.\n\n"
+            f"{json.dumps({'nodes_stage_a': stage_a_nodes, 'original_contract_text': contract_text}, ensure_ascii=False)}"
+        ),
+        max_tokens=max_tokens,
+        temperature=temperature,
+    )
+    raw_items = stage_c_resp.get("items")
+    if not isinstance(raw_items, list):
+        raise RuntimeError("Stage C output must include a top-level items array.")
+    return raw_items
+
+
 def _split_format_paragraphs(final_text: str) -> List[str]:
     text = (final_text or "").replace("\r\n", "\n").strip()
     if not text:
@@ -861,12 +1047,53 @@ def _normalize_stage_b_nodes(stage_a_nodes: List[Dict[str, Any]], stage_b_nodes:
     return out
 
 
-def _merge_stage_nodes(stage_a_nodes: List[Dict[str, Any]], stage_b_nodes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def _normalize_stage_c_nodes(stage_a_nodes: List[Dict[str, Any]], stage_c_items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    out_by_id: Dict[str, Dict[str, Any]] = {}
+    for item in stage_c_items:
+        node_id = item.get("id")
+        if not isinstance(node_id, str) or not node_id:
+            continue
+        party_owner = item.get("partyOwner")
+        confidence = item.get("confidence")
+        out_by_id[node_id] = {
+            "id": node_id,
+            "partyOwner": party_owner if party_owner in {"A", "B", "both", "neutral"} else "neutral",
+            "confidence": max(0.0, min(1.0, float(confidence))) if isinstance(confidence, (int, float)) else 0.45,
+        }
+    out: List[Dict[str, Any]] = []
+    for node in stage_a_nodes:
+        node_id = node.get("id")
+        if not isinstance(node_id, str) or not node_id:
+            continue
+        default_guess = _infer_party_owner_from_text(
+            str(node.get("label", "")),
+            str(node.get("content", "")),
+        )
+        out.append(
+            out_by_id.get(
+                node_id,
+                {
+                    "id": node_id,
+                    "partyOwner": default_guess["partyOwner"],
+                    "confidence": default_guess["confidence"],
+                },
+            )
+        )
+    return out
+
+
+def _merge_stage_nodes(
+    stage_a_nodes: List[Dict[str, Any]],
+    stage_b_nodes: List[Dict[str, Any]],
+    stage_c_nodes: Optional[List[Dict[str, Any]]] = None,
+) -> List[Dict[str, Any]]:
     b_by_id = {n.get("id"): n for n in stage_b_nodes if isinstance(n.get("id"), str)}
+    c_by_id = {n.get("id"): n for n in (stage_c_nodes or []) if isinstance(n.get("id"), str)}
     merged: List[Dict[str, Any]] = []
     for a in stage_a_nodes:
         node_id = a.get("id")
         b = b_by_id.get(node_id, {})
+        c = c_by_id.get(node_id, {})
         merged.append(
             {
                 "id": node_id,
@@ -878,6 +1105,8 @@ def _merge_stage_nodes(stage_a_nodes: List[Dict[str, Any]], stage_b_nodes: List[
                 "references": b.get("references", []),
                 "riskLevel": b.get("riskLevel", "none"),
                 "actions": b.get("actions", []),
+                "partyOwner": c.get("partyOwner", "neutral"),
+                "partyOwnerConfidence": c.get("confidence", 0.45),
             }
         )
     return merged
@@ -951,20 +1180,61 @@ def build_upstream_template(payload: UpstreamBuildTemplateRequest):
         raise RuntimeError("contract_text is empty.")
 
     template_id, template_label = _sanitize_template_name(payload.template_name)
+    stage_a_started_at = int(time.time() * 1000)
     stage_a_nodes = _run_stage_a_single(contract_text, max_tokens=9000, temperature=0.1)
-    raw_stage_b_nodes = _run_stage_b_single(stage_a_nodes, contract_text, max_tokens=10000, temperature=0.0)
-    stage_b_nodes = _normalize_stage_b_nodes(stage_a_nodes, raw_stage_b_nodes)
-    merged_nodes = _merge_stage_nodes(stage_a_nodes, stage_b_nodes)
+    stage_a_completed_at = int(time.time() * 1000)
 
-    artifact_paths = {"stage_a": "", "stage_b": "", "merged": ""}
+    stage_b_started_at = int(time.time() * 1000)
+    stage_c_started_at = stage_b_started_at
+    raw_stage_b_nodes: List[Dict[str, Any]] = []
+    raw_stage_c_nodes: List[Dict[str, Any]] = []
+    stage_b_completed_at = stage_b_started_at
+    stage_c_completed_at = stage_c_started_at
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        future_stage_b = pool.submit(_run_stage_b_single, stage_a_nodes, contract_text, 10000, 0.0)
+        future_stage_c = pool.submit(_run_stage_c_single, stage_a_nodes, contract_text, 7000, 0.0)
+        for future in as_completed([future_stage_b, future_stage_c]):
+            finished_at = int(time.time() * 1000)
+            if future is future_stage_b:
+                raw_stage_b_nodes = future.result()
+                stage_b_completed_at = finished_at
+            else:
+                try:
+                    raw_stage_c_nodes = future.result()
+                except Exception as exc:
+                    print(f"[StageC] build-template fallback: {exc}")
+                    raw_stage_c_nodes = []
+                stage_c_completed_at = finished_at
+
+    stage_b_nodes = _normalize_stage_b_nodes(stage_a_nodes, raw_stage_b_nodes)
+    stage_c_nodes = _normalize_stage_c_nodes(stage_a_nodes, raw_stage_c_nodes)
+    stage_d_started_at = max(stage_b_completed_at, stage_c_completed_at)
+    merged_nodes = _merge_stage_nodes(stage_a_nodes, stage_b_nodes, stage_c_nodes)
+    stage_d_completed_at = int(time.time() * 1000)
+    stage_timing = {
+        "stage_a_started_at": stage_a_started_at,
+        "stage_a_completed_at": stage_a_completed_at,
+        "stage_b_started_at": stage_b_started_at,
+        "stage_b_completed_at": stage_b_completed_at,
+        "stage_c_started_at": stage_c_started_at,
+        "stage_c_completed_at": stage_c_completed_at,
+        # Stage D can only start after both Stage B and Stage C have completed.
+        "stage_d_started_at": stage_d_started_at,
+        "stage_d_completed_at": stage_d_completed_at,
+    }
+
+    artifact_paths = {"stage_a": "", "stage_b": "", "stage_c": "", "merged": ""}
     if payload.save_artifacts:
         docs_dir = Path(__file__).resolve().parents[1] / "docs"
         docs_dir.mkdir(parents=True, exist_ok=True)
         stage_a_path = docs_dir / f"{template_id}.stage_a.json"
         stage_b_path = docs_dir / f"{template_id}.stage_b.json"
+        stage_c_path = docs_dir / f"{template_id}.stage_c.json"
         merged_path = docs_dir / f"{template_id}.stage_ab_merged.json"
         stage_a_path.write_text(json.dumps({"nodes": stage_a_nodes}, ensure_ascii=False, indent=2), encoding="utf-8")
         stage_b_path.write_text(json.dumps({"nodes": stage_b_nodes}, ensure_ascii=False, indent=2), encoding="utf-8")
+        stage_c_path.write_text(json.dumps({"items": stage_c_nodes}, ensure_ascii=False, indent=2), encoding="utf-8")
         merged_path.write_text(
             json.dumps(
                 {
@@ -972,6 +1242,8 @@ def build_upstream_template(payload: UpstreamBuildTemplateRequest):
                         "templateId": template_id,
                         "stageA": str(stage_a_path.relative_to(Path(__file__).resolve().parents[1])),
                         "stageB": str(stage_b_path.relative_to(Path(__file__).resolve().parents[1])),
+                        "stageC": str(stage_c_path.relative_to(Path(__file__).resolve().parents[1])),
+                        "stageTiming": stage_timing,
                         "mergedAt": datetime.now(timezone.utc).isoformat(),
                     },
                     "nodes": merged_nodes,
@@ -984,6 +1256,7 @@ def build_upstream_template(payload: UpstreamBuildTemplateRequest):
         artifact_paths = {
             "stage_a": str(stage_a_path),
             "stage_b": str(stage_b_path),
+            "stage_c": str(stage_c_path),
             "merged": str(merged_path),
         }
 
@@ -992,7 +1265,9 @@ def build_upstream_template(payload: UpstreamBuildTemplateRequest):
         template_label=template_label,
         stage_a_nodes=stage_a_nodes,
         stage_b_nodes=stage_b_nodes,
+        stage_c_nodes=stage_c_nodes,
         merged_nodes=merged_nodes,
+        stage_timing=stage_timing,
         artifact_paths=artifact_paths,
     )
 

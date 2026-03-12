@@ -77,6 +77,36 @@ function inferTimePhaseFromText(seedText: string): GraphNode['timePhase'] {
   return 'execution';
 }
 
+function getLabelCollisionExtra(label: string): number {
+  return Math.min(22, label.length * 0.35);
+}
+
+const MAX_NODE_LABEL_CHARS = 22;
+const LABEL_STAGGER_STEP = 10;
+
+function hashString(value: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+  }
+  return Math.abs(hash >>> 0);
+}
+
+function getLabelVerticalOffset(nodeId: string): number {
+  return (hashString(nodeId) % 3) * LABEL_STAGGER_STEP;
+}
+
+function getDisplayLabelLength(label: string): number {
+  if (label.length <= MAX_NODE_LABEL_CHARS) return label.length;
+  return MAX_NODE_LABEL_CHARS + 3;
+}
+
+function getLabelHalfWidth(label: string): number {
+  // Approximate text width for semibold 11px labels.
+  return Math.max(18, Math.min(112, getDisplayLabelLength(label) * 3.25));
+}
+
 function buildReferenceLinks(nodes: GraphNode[]): GraphLink[] {
   const resolveTargetId = (referenceKey: string): string | null => {
     const byNodeId = nodes.find((node) => node.id === referenceKey);
@@ -611,7 +641,9 @@ export function useGalaxyEngine(
           forces[i].fy += fy;
           forces[j].fx -= fx;
           forces[j].fy -= fy;
-          const minDist = a.r + b.r + 18;
+          const extraA = getLabelCollisionExtra(a.label);
+          const extraB = getLabelCollisionExtra(b.label);
+          const minDist = a.r + b.r + 18 + extraA + extraB;
           if (d < minDist) {
             const overlap = minDist - d;
             const push = Math.min(2.6, overlap * 0.18);
@@ -621,6 +653,47 @@ export function useGalaxyEngine(
             forces[i].fy += cfy;
             forces[j].fx -= cfx;
             forces[j].fy -= cfy;
+          }
+
+          // Scheme B: treat label boxes as soft colliders and add extra repulsion
+          // when label AABB overlaps. Keep Y-priority to preserve lane readability.
+          const aLabelX = a.x;
+          const aLabelY = a.y + a.r + 16 + getLabelVerticalOffset(a.id);
+          const bLabelX = b.x;
+          const bLabelY = b.y + b.r + 16 + getLabelVerticalOffset(b.id);
+          const halfWsum = getLabelHalfWidth(a.label) + getLabelHalfWidth(b.label) + 4;
+          const halfHsum = 7.5 + 7.5 + 2.5;
+          const labelDx = aLabelX - bLabelX;
+          const labelDy = aLabelY - bLabelY;
+          const overlapX = halfWsum - Math.abs(labelDx);
+          const overlapY = halfHsum - Math.abs(labelDy);
+          // Smooth/low-jitter variant:
+          // - Use soft direction (no hard sign flip near 0)
+          // - Add relative-velocity damping when nodes already separate
+          // - Ignore tiny overlap to avoid micro-oscillation
+          if (overlapX > 2 && overlapY > 1) {
+            const nx = labelDx / (Math.abs(labelDx) + 12);
+            const ny = labelDy / (Math.abs(labelDy) + 10);
+            const overlapRatioX = Math.min(1, overlapX / Math.max(1, halfWsum));
+            const overlapRatioY = Math.min(1, overlapY / Math.max(1, halfHsum));
+            const overlapRatio = overlapRatioX * overlapRatioY;
+
+            const relVx = a.vx - b.vx;
+            const relVy = a.vy - b.vy;
+            const separatingX = relVx * nx > 0;
+            const separatingY = relVy * ny > 0;
+            const dampX = separatingX ? Math.min(0.6, Math.abs(relVx * nx) * 0.38) : 0;
+            const dampY = separatingY ? Math.min(0.7, Math.abs(relVy * ny) * 0.35) : 0;
+
+            const basePushY = Math.min(0.95, overlapRatio * 0.85 + overlapRatioY * 0.22);
+            const basePushX = Math.min(0.18, overlapRatio * 0.16);
+            const pushY = basePushY * (1 - dampY);
+            const pushX = basePushX * (1 - dampX);
+
+            forces[i].fy += ny * pushY;
+            forces[j].fy -= ny * pushY;
+            forces[i].fx += nx * pushX;
+            forces[j].fx -= nx * pushX;
           }
         }
       }
@@ -666,7 +739,7 @@ export function useGalaxyEngine(
       });
 
       if (semanticBiasStrength > 0) {
-        const softForce = 0.12;
+        const softForce = 0.5;
         localNodes.forEach((node, i) => {
           if (node.id === 'root' || draggingNodeIdRef.current === node.id) return;
           const targetNorm = semanticTargetXById[node.id];
@@ -678,17 +751,17 @@ export function useGalaxyEngine(
 
       if (riskBiasStrength > 0) {
         const softRiskForce = 0.1;
-        const riskLaneX: Record<GraphNode['riskLevel'], number> = {
-          none: 0.24,
-          low: 0.42,
-          medium: 0.62,
-          high: 0.8,
+        const riskLaneY: Record<GraphNode['riskLevel'], number> = {
+          none: 0.22,
+          low: 0.4,
+          medium: 0.6,
+          high: 0.78,
         };
         localNodes.forEach((node, i) => {
           if (node.id === 'root' || draggingNodeIdRef.current === node.id) return;
-          const targetNorm = riskLaneX[node.riskLevel];
-          const targetX = width * targetNorm;
-          forces[i].fx += (targetX - node.x) * riskBiasStrength * softRiskForce;
+          const targetNorm = riskLaneY[node.riskLevel];
+          const targetY = height * targetNorm;
+          forces[i].fy += (targetY - node.y) * riskBiasStrength * softRiskForce;
         });
       }
 
