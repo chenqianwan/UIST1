@@ -78,10 +78,10 @@ function inferTimePhaseFromText(seedText: string): GraphNode['timePhase'] {
 }
 
 function getLabelCollisionExtra(label: string): number {
-  return Math.min(22, label.length * 0.35);
+  return Math.min(30, label.length * 0.35);
 }
 
-const MAX_NODE_LABEL_CHARS = 22;
+const MAX_NODE_LABEL_CHARS = 30;
 const LABEL_STAGGER_STEP = 10;
 
 function hashString(value: string): number {
@@ -744,24 +744,24 @@ export function useGalaxyEngine(
           if (node.id === 'root' || draggingNodeIdRef.current === node.id) return;
           const targetNorm = semanticTargetXById[node.id];
           if (typeof targetNorm !== 'number') return;
-          const targetX = width * targetNorm;
-          forces[i].fx += (targetX - node.x) * semanticBiasStrength * softForce;
+          const targetY = height * targetNorm;
+          forces[i].fy += (targetY - node.y) * semanticBiasStrength * softForce;
         });
       }
 
       if (riskBiasStrength > 0) {
         const softRiskForce = 0.1;
-        const riskLaneY: Record<GraphNode['riskLevel'], number> = {
-          none: 0.22,
-          low: 0.4,
-          medium: 0.6,
-          high: 0.78,
+        const riskLaneX: Record<GraphNode['riskLevel'], number> = {
+          none: 0.24,
+          low: 0.42,
+          medium: 0.62,
+          high: 0.8,
         };
         localNodes.forEach((node, i) => {
           if (node.id === 'root' || draggingNodeIdRef.current === node.id) return;
-          const targetNorm = riskLaneY[node.riskLevel];
-          const targetY = height * targetNorm;
-          forces[i].fy += (targetY - node.y) * riskBiasStrength * softRiskForce;
+          const targetNorm = riskLaneX[node.riskLevel];
+          const targetX = width * targetNorm;
+          forces[i].fx += (targetX - node.x) * riskBiasStrength * softRiskForce;
         });
       }
 

@@ -42,18 +42,9 @@ function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
-function hashToken(token: string): number {
-  let hash = 2166136261;
-  for (let i = 0; i < token.length; i += 1) {
-    hash ^= token.charCodeAt(i);
-    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
-  }
-  return Math.abs(hash >>> 0);
-}
-
 function laneWithSmallJitter(nodeId: string, baseLane: number): number {
-  const jitter = ((hashToken(nodeId) % 21) - 10) / 1000; // [-0.01, +0.01]
-  return clamp01(baseLane + jitter);
+  void nodeId;
+  return clamp01(baseLane);
 }
 
 function applyPhaseSpread(baseLane: number, timePhase?: SemanticNodeInput['timePhase']): number {

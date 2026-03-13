@@ -3,22 +3,14 @@
     {
       "id": "preamble",
       "references": [
-        "cl_1",
-        "cl_2",
-        "cl_14_1",
-        "cl_signature"
+        "cl_2"
       ],
       "riskLevel": "none",
       "actions": []
     },
     {
       "id": "cl_1",
-      "references": [
-        "cl_1_p2",
-        "cl_6_1",
-        "cl_8_1",
-        "cl_8_3"
-      ],
+      "references": [],
       "riskLevel": "low",
       "actions": [
         {
@@ -32,10 +24,7 @@
     {
       "id": "cl_1_p2",
       "references": [
-        "cl_1",
-        "cl_8_1",
-        "cl_6_1",
-        "cl_6_2"
+        "cl_8_1"
       ],
       "riskLevel": "none",
       "actions": []
@@ -43,10 +32,6 @@
     {
       "id": "cl_2",
       "references": [
-        "cl_2_timeline",
-        "cl_6_1",
-        "cl_10_2",
-        "cl_10_3",
         "cl_11_1"
       ],
       "riskLevel": "none",
@@ -55,7 +40,6 @@
     {
       "id": "cl_2_timeline",
       "references": [
-        "cl_2",
         "cl_3_2",
         "cl_4_1",
         "cl_5_3",
@@ -73,34 +57,20 @@
     },
     {
       "id": "cl_3",
-      "references": [
-        "cl_3_1",
-        "cl_3_2",
-        "cl_3_3"
-      ],
+      "references": [],
       "riskLevel": "none",
       "actions": []
     },
     {
       "id": "cl_3_1",
-      "references": [
-        "cl_3_2",
-        "cl_3_3",
-        "cl_4_1",
-        "cl_11_1",
-        "cl_11_2"
-      ],
+      "references": [],
       "riskLevel": "none",
       "actions": []
     },
     {
       "id": "cl_3_2",
       "references": [
-        "cl_3_1",
-        "cl_3_3",
-        "cl_6_1",
-        "cl_11_1",
-        "cl_11_2"
+        "cl_6_1"
       ],
       "riskLevel": "low",
       "actions": [
@@ -115,8 +85,6 @@
     {
       "id": "cl_3_3",
       "references": [
-        "cl_3_1",
-        "cl_3_2",
         "cl_5_3",
         "cl_11_2"
       ],
@@ -125,20 +93,13 @@
     },
     {
       "id": "cl_4",
-      "references": [
-        "cl_4_1",
-        "cl_4_2",
-        "cl_4_3"
-      ],
+      "references": [],
       "riskLevel": "none",
       "actions": []
     },
     {
       "id": "cl_4_1",
       "references": [
-        "cl_4_2",
-        "cl_4_3",
-        "cl_3_1",
         "cl_2_timeline"
       ],
       "riskLevel": "none",
@@ -147,8 +108,6 @@
     {
       "id": "cl_4_2",
       "references": [
-        "cl_4_1",
-        "cl_4_3",
         "cl_5_2",
         "cl_5_3",
         "cl_8_1"
@@ -159,11 +118,7 @@
     {
       "id": "cl_4_3",
       "references": [
-        "cl_4_1",
-        "cl_4_2",
-        "cl_9_3",
-        "cl_11_1",
-        "cl_11_2"
+        "cl_9_3"
       ],
       "riskLevel": "medium",
       "actions": [
@@ -183,31 +138,21 @@
     },
     {
       "id": "cl_5",
-      "references": [
-        "cl_5_1",
-        "cl_5_2",
-        "cl_5_3"
-      ],
+      "references": [],
       "riskLevel": "none",
       "actions": []
     },
     {
       "id": "cl_5_1",
-      "references": [
-        "cl_5_2",
-        "cl_10_3"
-      ],
+      "references": [],
       "riskLevel": "none",
       "actions": []
     },
     {
       "id": "cl_5_2",
       "references": [
-        "cl_5_1",
         "cl_5_3",
-        "cl_4_2",
-        "cl_11_2",
-        "cl_14_3"
+        "cl_11_2"
       ],
       "riskLevel": "medium",
       "actions": [
@@ -229,9 +174,7 @@
       "id": "cl_5_3",
       "references": [
         "cl_5_2",
-        "cl_4_2",
-        "cl_11_2",
-        "cl_3_3"
+        "cl_11_2"
       ],
       "riskLevel": "medium",
       "actions": [
@@ -245,10 +188,7 @@
     },
     {
       "id": "cl_6",
-      "references": [
-        "cl_6_1",
-        "cl_6_2"
-      ],
+      "references": [],
       "riskLevel": "none",
       "actions": []
     },
@@ -257,8 +197,6 @@
       "references": [
         "cl_2",
         "cl_2_timeline",
-        "cl_3_2",
-        "cl_6_2",
         "cl_10_3"
       ],
       "riskLevel": "low",
@@ -274,11 +212,9 @@
     {
       "id": "cl_6_2",
       "references": [
-        "cl_6_1",
         "cl_4_3",
         "cl_7",
-        "cl_9_3",
-        "cl_14_3"
+        "cl_9_3"
       ],
       "riskLevel": "medium",
       "actions": [
@@ -299,10 +235,8 @@
     {
       "id": "cl_7",
       "references": [
-        "cl_6_2",
         "cl_4_3",
         "cl_9_3",
-        "cl_10_2",
         "cl_11_2"
       ],
       "riskLevel": "low",
@@ -317,19 +251,13 @@
     },
     {
       "id": "cl_8",
-      "references": [
-        "cl_8_1",
-        "cl_8_2",
-        "cl_8_3"
-      ],
+      "references": [],
       "riskLevel": "none",
       "actions": []
     },
     {
       "id": "cl_8_1",
       "references": [
-        "cl_1_p2",
-        "cl_10_2",
         "cl_11_2"
       ],
       "riskLevel": "none",
@@ -339,10 +267,7 @@
       "id": "cl_8_2",
       "references": [
         "cl_2",
-        "cl_2_timeline",
-        "cl_8_3",
-        "cl_11_1",
-        "cl_11_2"
+        "cl_2_timeline"
       ],
       "riskLevel": "medium",
       "actions": [
@@ -356,10 +281,7 @@
     },
     {
       "id": "cl_8_3",
-      "references": [
-        "cl_8_2",
-        "cl_1"
-      ],
+      "references": [],
       "riskLevel": "medium",
       "actions": [
         {
@@ -372,21 +294,15 @@
     },
     {
       "id": "cl_9",
-      "references": [
-        "cl_9_1",
-        "cl_9_2",
-        "cl_9_3"
-      ],
+      "references": [],
       "riskLevel": "none",
       "actions": []
     },
     {
       "id": "cl_9_1",
       "references": [
-        "cl_2",
         "cl_9_2",
         "cl_9_3",
-        "cl_4_3",
         "cl_11_2"
       ],
       "riskLevel": "low",
@@ -402,10 +318,7 @@
     {
       "id": "cl_9_2",
       "references": [
-        "cl_9_1",
-        "cl_9_3",
-        "cl_4_3",
-        "cl_11_2"
+        "cl_9_1"
       ],
       "riskLevel": "high",
       "actions": [
@@ -420,8 +333,6 @@
     {
       "id": "cl_9_3",
       "references": [
-        "cl_9_1",
-        "cl_9_2",
         "cl_4_3",
         "cl_6_2",
         "cl_12"
@@ -438,30 +349,19 @@
     },
     {
       "id": "cl_10",
-      "references": [
-        "cl_10_1",
-        "cl_10_2",
-        "cl_10_3"
-      ],
+      "references": [],
       "riskLevel": "none",
       "actions": []
     },
     {
       "id": "cl_10_1",
-      "references": [
-        "cl_10_2",
-        "cl_10_3",
-        "cl_4_3",
-        "cl_11_1",
-        "cl_11_2"
-      ],
+      "references": [],
       "riskLevel": "none",
       "actions": []
     },
     {
       "id": "cl_10_2",
       "references": [
-        "cl_5_3",
         "cl_6_2",
         "cl_7",
         "cl_8_1",
@@ -483,8 +383,7 @@
         "cl_6_1",
         "cl_7",
         "cl_5_1",
-        "cl_11_1",
-        "cl_12"
+        "cl_11_1"
       ],
       "riskLevel": "low",
       "actions": [
@@ -498,10 +397,7 @@
     },
     {
       "id": "cl_11",
-      "references": [
-        "cl_11_1",
-        "cl_11_2"
-      ],
+      "references": [],
       "riskLevel": "none",
       "actions": []
     },
@@ -509,8 +405,6 @@
       "id": "cl_11_1",
       "references": [
         "cl_10_3",
-        "cl_4_3",
-        "cl_3_1",
         "cl_6_1",
         "cl_8_2"
       ],
@@ -527,11 +421,7 @@
     {
       "id": "cl_11_2",
       "references": [
-        "cl_10_2",
-        "cl_4_3",
-        "cl_3_1",
-        "cl_5_2",
-        "cl_5_3"
+        "cl_10_2"
       ],
       "riskLevel": "medium",
       "actions": [
@@ -545,13 +435,7 @@
     },
     {
       "id": "cl_12",
-      "references": [
-        "cl_5_3",
-        "cl_6_2",
-        "cl_8_2",
-        "cl_9_3",
-        "cl_10_2"
-      ],
+      "references": [],
       "riskLevel": "high",
       "actions": [
         {
@@ -564,40 +448,25 @@
     },
     {
       "id": "cl_13",
-      "references": [
-        "cl_14_1",
-        "cl_10_1"
-      ],
+      "references": [],
       "riskLevel": "none",
       "actions": []
     },
     {
       "id": "cl_14",
-      "references": [
-        "cl_14_1",
-        "cl_14_2",
-        "cl_14_3"
-      ],
+      "references": [],
       "riskLevel": "none",
       "actions": []
     },
     {
       "id": "cl_14_1",
-      "references": [
-        "cl_14_2",
-        "cl_13",
-        "cl_signature"
-      ],
+      "references": [],
       "riskLevel": "none",
       "actions": []
     },
     {
       "id": "cl_14_2",
-      "references": [
-        "cl_14_1",
-        "cl_1",
-        "cl_2"
-      ],
+      "references": [],
       "riskLevel": "low",
       "actions": [
         {
@@ -610,12 +479,7 @@
     },
     {
       "id": "cl_14_3",
-      "references": [
-        "cl_6_1",
-        "cl_6_2",
-        "cl_5_2",
-        "cl_9_3"
-      ],
+      "references": [],
       "riskLevel": "low",
       "actions": [
         {
@@ -628,10 +492,7 @@
     },
     {
       "id": "cl_signature",
-      "references": [
-        "cl_14_1",
-        "preamble"
-      ],
+      "references": [],
       "riskLevel": "none",
       "actions": []
     }

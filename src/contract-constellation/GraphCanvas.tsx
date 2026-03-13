@@ -12,7 +12,7 @@ import {
 
 const CANVAS_WIDTH = 760;
 const CANVAS_HEIGHT = 620;
-const MAX_NODE_LABEL_CHARS = 22;
+const MAX_NODE_LABEL_CHARS = 30;
 const LABEL_STAGGER_STEP = 10;
 
 function hashString(value: string): number {
@@ -30,8 +30,11 @@ function getLabelVerticalOffset(nodeId: string): number {
 
 function getDisplayLabel(label: string, selected: boolean): string {
   if (selected) return label;
+  const compact = label.trim();
+  const numericPrefix = compact.match(/^([0-9]+(?:\.[0-9]+)*)\b/);
+  if (numericPrefix) return numericPrefix[1];
   if (label.length <= MAX_NODE_LABEL_CHARS) return label;
-  return `${label.slice(0, MAX_NODE_LABEL_CHARS)}...`;
+  return label.slice(0, MAX_NODE_LABEL_CHARS);
 }
 
 interface GraphCanvasProps {
@@ -142,8 +145,7 @@ export function GraphCanvas({
           !isLeaf
             ? true
             : selected || (selectedNodeId && depth !== undefined) || isIncoming || (!selectedNodeId && isFirstLevelLeaf);
-        const hideSubLabelByDenoise = clampedAggregation > 0.25 && isLeaf && !selected;
-        const shouldShowLabel = shouldShowLabelBase && !hideSubLabelByDenoise;
+        const shouldShowLabel = shouldShowLabelBase;
         if (!shouldShowLabel) return null;
         return {
           id: node.id,

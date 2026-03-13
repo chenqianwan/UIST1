@@ -1069,12 +1069,6 @@ export default function ContractConstellation() {
     if (!point) return;
     const { x, y } = point;
     addNodeFromTemplate(template, x, y);
-    // Default to collapsed when a template is dropped into canvas.
-    setCollapsedNodeIds((prev) => {
-      const next = new Set(prev);
-      next.add(template.id);
-      return next;
-    });
     setUsedTemplateIds((prev) => [...prev, template.id]);
     track('template_added', {
       componentId: 'canvas',

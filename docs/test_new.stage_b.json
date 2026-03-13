@@ -2,11 +2,7 @@
   "nodes": [
     {
       "id": "preamble",
-      "references": [
-        "clause_1_1",
-        "clause_2_1",
-        "clause_2_2"
-      ],
+      "references": [],
       "riskLevel": "low",
       "actions": [
         {
@@ -19,32 +15,19 @@
     },
     {
       "id": "clause_1",
-      "references": [
-        "clause_1_1",
-        "clause_1_2",
-        "clause_1_3",
-        "clause_1_4"
-      ],
+      "references": [],
       "riskLevel": "none",
       "actions": []
     },
     {
       "id": "clause_1_1",
-      "references": [
-        "preamble",
-        "clause_2_2"
-      ],
+      "references": [],
       "riskLevel": "none",
       "actions": []
     },
     {
       "id": "clause_1_2",
-      "references": [
-        "clause_2_1",
-        "clause_3_1",
-        "clause_3_2",
-        "clause_3_3"
-      ],
+      "references": [],
       "riskLevel": "medium",
       "actions": [
         {
@@ -57,55 +40,31 @@
     },
     {
       "id": "clause_1_3",
-      "references": [
-        "clause_3_1",
-        "clause_3_2",
-        "clause_3_3",
-        "clause_4_1"
-      ],
+      "references": [],
       "riskLevel": "none",
       "actions": []
     },
     {
       "id": "clause_1_4",
-      "references": [
-        "clause_3_1",
-        "clause_3_2",
-        "clause_3_3",
-        "clause_5_1",
-        "clause_5_2"
-      ],
+      "references": [],
       "riskLevel": "none",
       "actions": []
     },
     {
       "id": "clause_2",
-      "references": [
-        "clause_2_1",
-        "clause_2_2"
-      ],
+      "references": [],
       "riskLevel": "none",
       "actions": []
     },
     {
       "id": "clause_2_1",
-      "references": [
-        "clause_1_2",
-        "clause_3_1",
-        "clause_3_2",
-        "clause_3_3",
-        "clause_5_1"
-      ],
+      "references": [],
       "riskLevel": "none",
       "actions": []
     },
     {
       "id": "clause_2_2",
-      "references": [
-        "clause_1_1",
-        "clause_2_1",
-        "clause_8"
-      ],
+      "references": [],
       "riskLevel": "high",
       "actions": [
         {
@@ -118,23 +77,16 @@
     },
     {
       "id": "clause_3",
-      "references": [
-        "clause_3_1",
-        "clause_3_2",
-        "clause_3_3",
-        "clause_3_4"
-      ],
+      "references": [],
       "riskLevel": "none",
       "actions": []
     },
     {
       "id": "clause_3_1",
       "references": [
-        "clause_1_2",
         "clause_3_2",
         "clause_3_3",
-        "clause_3_4",
-        "clause_4_1"
+        "clause_3_4"
       ],
       "riskLevel": "high",
       "actions": [
@@ -155,10 +107,6 @@
     {
       "id": "clause_3_2",
       "references": [
-        "clause_1_2",
-        "clause_3_1",
-        "clause_3_3",
-        "clause_3_4",
         "clause_4_1"
       ],
       "riskLevel": "high",
@@ -173,13 +121,7 @@
     },
     {
       "id": "clause_3_3",
-      "references": [
-        "clause_3_1",
-        "clause_3_2",
-        "clause_3_4",
-        "clause_4_1",
-        "clause_5_2"
-      ],
+      "references": [],
       "riskLevel": "high",
       "actions": [
         {
@@ -193,10 +135,6 @@
     {
       "id": "clause_3_4",
       "references": [
-        "clause_3_1",
-        "clause_3_2",
-        "clause_3_3",
-        "clause_4_2",
         "clause_8"
       ],
       "riskLevel": "high",
@@ -211,23 +149,13 @@
     },
     {
       "id": "clause_4",
-      "references": [
-        "clause_4_1",
-        "clause_4_2",
-        "clause_4_3"
-      ],
+      "references": [],
       "riskLevel": "none",
       "actions": []
     },
     {
       "id": "clause_4_1",
-      "references": [
-        "clause_3_1",
-        "clause_3_2",
-        "clause_3_3",
-        "clause_3_4",
-        "clause_4_2"
-      ],
+      "references": [],
       "riskLevel": "high",
       "actions": [
         {
@@ -243,9 +171,7 @@
       "references": [
         "clause_3_1",
         "clause_3_2",
-        "clause_3_4",
-        "clause_4_1",
-        "clause_4_3"
+        "clause_3_4"
       ],
       "riskLevel": "high",
       "actions": [
@@ -259,13 +185,7 @@
     },
     {
       "id": "clause_4_3",
-      "references": [
-        "clause_4_1",
-        "clause_4_2",
-        "clause_3_1",
-        "clause_3_2",
-        "clause_3_3"
-      ],
+      "references": [],
       "riskLevel": "medium",
       "actions": [
         {
@@ -278,23 +198,13 @@
     },
     {
       "id": "clause_5",
-      "references": [
-        "clause_5_1",
-        "clause_5_2",
-        "clause_5_3",
-        "clause_5_4"
-      ],
+      "references": [],
       "riskLevel": "none",
       "actions": []
     },
     {
       "id": "clause_5_1",
-      "references": [
-        "clause_3_1",
-        "clause_3_2",
-        "clause_5_2",
-        "clause_5_4"
-      ],
+      "references": [],
       "riskLevel": "low",
       "actions": [
         {
@@ -307,11 +217,7 @@
     },
     {
       "id": "clause_5_2",
-      "references": [
-        "clause_3_3",
-        "clause_5_3",
-        "clause_5_4"
-      ],
+      "references": [],
       "riskLevel": "high",
       "actions": [
         {
@@ -325,7 +231,6 @@
     {
       "id": "clause_5_3",
       "references": [
-        "clause_3_3",
         "clause_5_2"
       ],
       "riskLevel": "low",
@@ -340,12 +245,7 @@
     },
     {
       "id": "clause_5_4",
-      "references": [
-        "clause_3_1",
-        "clause_5_1",
-        "clause_5_2",
-        "clause_7_1"
-      ],
+      "references": [],
       "riskLevel": "medium",
       "actions": [
         {
@@ -358,22 +258,13 @@
     },
     {
       "id": "clause_6",
-      "references": [
-        "clause_6_1",
-        "clause_6_2"
-      ],
+      "references": [],
       "riskLevel": "none",
       "actions": []
     },
     {
       "id": "clause_6_1",
-      "references": [
-        "clause_3_1",
-        "clause_3_2",
-        "clause_3_3",
-        "clause_6_2",
-        "clause_7_1"
-      ],
+      "references": [],
       "riskLevel": "low",
       "actions": [
         {
@@ -386,13 +277,7 @@
     },
     {
       "id": "clause_6_2",
-      "references": [
-        "clause_5_1",
-        "clause_5_2",
-        "clause_6_1",
-        "clause_7_1",
-        "clause_7_2"
-      ],
+      "references": [],
       "riskLevel": "medium",
       "actions": [
         {
@@ -405,24 +290,13 @@
     },
     {
       "id": "clause_7",
-      "references": [
-        "clause_7_1",
-        "clause_7_2",
-        "clause_7_3",
-        "clause_7_4"
-      ],
+      "references": [],
       "riskLevel": "none",
       "actions": []
     },
     {
       "id": "clause_7_1",
-      "references": [
-        "clause_3_1",
-        "clause_3_2",
-        "clause_3_3",
-        "clause_3_4",
-        "clause_7_2"
-      ],
+      "references": [],
       "riskLevel": "medium",
       "actions": [
         {
@@ -435,11 +309,7 @@
     },
     {
       "id": "clause_7_2",
-      "references": [
-        "clause_7_1",
-        "clause_7_3",
-        "clause_8"
-      ],
+      "references": [],
       "riskLevel": "low",
       "actions": [
         {
@@ -455,8 +325,7 @@
       "references": [
         "clause_7_1",
         "clause_7_2",
-        "clause_7_4",
-        "clause_8"
+        "clause_7_4"
       ],
       "riskLevel": "high",
       "actions": [
@@ -489,13 +358,7 @@
     },
     {
       "id": "clause_8",
-      "references": [
-        "clause_2_2",
-        "clause_3_4",
-        "clause_7_1",
-        "clause_7_2",
-        "clause_7_3"
-      ],
+      "references": [],
       "riskLevel": "high",
       "actions": [
         {
@@ -508,9 +371,7 @@
     },
     {
       "id": "signatures",
-      "references": [
-        "preamble"
-      ],
+      "references": [],
       "riskLevel": "none",
       "actions": []
     }
