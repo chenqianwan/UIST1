@@ -4,6 +4,7 @@ import type { GraphLink, GraphNode } from './types';
 import {
   getEdgePath,
   getRiskColor,
+  getRiskText,
   getRiskNodeStrokeColor,
   getRiskNodeGradientId,
   getRiskNodeInnerStroke,
@@ -13,19 +14,33 @@ import {
 const CANVAS_WIDTH = 760;
 const CANVAS_HEIGHT = 620;
 const MAX_NODE_LABEL_CHARS = 30;
-const LABEL_STAGGER_STEP = 10;
+const PHASE_LABEL_BY_KEY: Record<GraphNode['timePhase'], string> = {
+  pre_sign: 'Pre-sign Phase',
+  effective: 'Effective Phase',
+  execution: 'Execution Phase',
+  acceptance: 'Acceptance Phase',
+  termination: 'Termination Phase',
+  post_termination: 'Post-termination Phase',
+};
+const TIME_FALLBACK_X_BY_PHASE: Record<GraphNode['timePhase'], number> = {
+  pre_sign: 0.12,
+  effective: 0.27,
+  execution: 0.46,
+  acceptance: 0.62,
+  termination: 0.8,
+  post_termination: 0.92,
+};
 
-function hashString(value: string): number {
-  let hash = 2166136261;
-  for (let i = 0; i < value.length; i += 1) {
-    hash ^= value.charCodeAt(i);
-    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
-  }
-  return Math.abs(hash >>> 0);
+function getTagWidth(label: string): number {
+  return label.length * 6.2 + 16;
 }
 
-function getLabelVerticalOffset(nodeId: string): number {
-  return (hashString(nodeId) % 3) * LABEL_STAGGER_STEP;
+function getPartyOrientationLabel(norm?: number): string {
+  if (typeof norm !== 'number') return 'Party Orientation';
+  if (norm <= 0.38) return 'Party A-oriented';
+  if (norm >= 0.68) return 'Party B-oriented';
+  if (norm >= 0.48 && norm <= 0.58) return 'Mutual / Shared';
+  return 'Party-leaning';
 }
 
 function getDisplayLabel(label: string, selected: boolean): string {
@@ -41,6 +56,11 @@ interface GraphCanvasProps {
   nodes: GraphNode[];
   links: GraphLink[];
   aggregationStrength: number;
+  semanticBiasStrength: number;
+  riskBiasStrength: number;
+  timeBiasStrength: number;
+  semanticTargetNormById: Record<string, number>;
+  timeTargetNormById: Record<string, number>;
   selectedNodeId: string | null;
   draggingNodeId: string | null;
   focusDepthMap: Map<string, number> | null;
@@ -72,6 +92,11 @@ export function GraphCanvas({
   nodes,
   links,
   aggregationStrength,
+  semanticBiasStrength,
+  riskBiasStrength,
+  timeBiasStrength,
+  semanticTargetNormById,
+  timeTargetNormById,
   selectedNodeId,
   draggingNodeId,
   focusDepthMap,
@@ -104,6 +129,36 @@ export function GraphCanvas({
   }, [nodes]);
   const clampedAggregation = Math.max(0, Math.min(1, aggregationStrength));
   const aggregationFade = 1 - 0.72 * clampedAggregation;
+  const placementCue = useMemo(() => {
+    if (!selectedNode || selectedNode.id === 'root') return null;
+    const riskLaneX: Record<GraphNode['riskLevel'], number> = {
+      none: 0.24,
+      low: 0.42,
+      medium: 0.62,
+      high: 0.8,
+    };
+    const riskNorm = riskLaneX[selectedNode.riskLevel];
+    const timeNorm = timeTargetNormById[selectedNode.id] ?? TIME_FALLBACK_X_BY_PHASE[selectedNode.timePhase];
+    const partyNorm = semanticTargetNormById[selectedNode.id];
+    const timeLabel = PHASE_LABEL_BY_KEY[selectedNode.timePhase];
+    return {
+      node: selectedNode,
+      riskX: width * riskNorm,
+      riskLabel: getRiskText(selectedNode.riskLevel),
+      timeX: width * timeNorm,
+      timeLabel,
+      partyY: typeof partyNorm === 'number' ? height * partyNorm : null,
+      partyLabel: getPartyOrientationLabel(partyNorm),
+    };
+  }, [height, selectedNode, semanticTargetNormById, timeTargetNormById, width]);
+  const cueStrength = useMemo(
+    () => ({
+      risk: Math.max(0, Math.min(1, riskBiasStrength)),
+      time: Math.max(0, Math.min(1, timeBiasStrength)),
+      party: Math.max(0, Math.min(1, semanticBiasStrength)),
+    }),
+    [riskBiasStrength, semanticBiasStrength, timeBiasStrength],
+  );
   const labelLayerItems = useMemo(() => {
     return nodes
       .map((node) => {
@@ -151,7 +206,7 @@ export function GraphCanvas({
           id: node.id,
           text: getDisplayLabel(node.label, selected),
           x: node.x,
-          y: node.y + node.r + 16 + getLabelVerticalOffset(node.id),
+          y: node.y + node.r + 16,
           fontSize: isLeaf ? 10 : 11,
           fill: isRoot ? '#374151' : '#1f2937',
           fillOpacity: Math.min(1, nodeTone + 0.08),
@@ -253,6 +308,136 @@ export function GraphCanvas({
       </defs>
 
       <g transform={`translate(${panOffset.x} ${panOffset.y}) translate(${width / 2} ${height / 2}) scale(${zoomScale}) translate(${-width / 2} ${-height / 2})`}>
+      {placementCue && (
+        <g className="pointer-events-none">
+          {cueStrength.risk > 0.01 && (
+            <>
+              <rect
+                x={placementCue.riskX - 18}
+                y={16}
+                width={36}
+                height={height - 32}
+                rx={12}
+                fill="#ef4444"
+                fillOpacity={0.03 + cueStrength.risk * 0.1}
+              />
+              <line
+                x1={placementCue.riskX}
+                y1={16}
+                x2={placementCue.riskX}
+                y2={height - 16}
+                stroke="#ef4444"
+                strokeWidth={1.2}
+                strokeOpacity={0.2 + cueStrength.risk * 0.3}
+                strokeDasharray="4 8"
+              />
+            </>
+          )}
+          {cueStrength.party > 0.01 && placementCue.partyY != null && (
+            <>
+              <rect
+                x={18}
+                y={placementCue.partyY - 14}
+                width={width - 36}
+                height={28}
+                rx={12}
+                fill="#3b82f6"
+                fillOpacity={0.03 + cueStrength.party * 0.08}
+              />
+              <line
+                x1={18}
+                y1={placementCue.partyY}
+                x2={width - 18}
+                y2={placementCue.partyY}
+                stroke="#3b82f6"
+                strokeWidth={1.1}
+                strokeOpacity={0.16 + cueStrength.party * 0.24}
+                strokeDasharray="3 7"
+              />
+            </>
+          )}
+          {cueStrength.time > 0.01 && (
+            <>
+              <line
+                x1={70}
+                y1={24}
+                x2={width - 70}
+                y2={24}
+                stroke="#7c3aed"
+                strokeWidth={1.1}
+                strokeOpacity={0.2 + cueStrength.time * 0.25}
+              />
+              <circle
+                cx={placementCue.timeX}
+                cy={24}
+                r={4.1}
+                fill="#7c3aed"
+                fillOpacity={0.32 + cueStrength.time * 0.5}
+                stroke="#ffffff"
+                strokeWidth={1}
+              />
+            </>
+          )}
+          <line
+            x1={placementCue.node.x}
+            y1={placementCue.node.y}
+            x2={placementCue.timeX}
+            y2={24}
+            stroke="#7c3aed"
+            strokeWidth={1}
+            strokeOpacity={0.2 + cueStrength.time * 0.3}
+            strokeDasharray="3 6"
+          />
+          {placementCue.partyY != null && (
+            <line
+              x1={placementCue.node.x}
+              y1={placementCue.node.y}
+              x2={placementCue.node.x}
+              y2={placementCue.partyY}
+              stroke="#3b82f6"
+              strokeWidth={1}
+              strokeOpacity={0.2 + cueStrength.party * 0.28}
+              strokeDasharray="3 6"
+            />
+          )}
+          <line
+            x1={placementCue.node.x}
+            y1={placementCue.node.y}
+            x2={placementCue.riskX}
+            y2={placementCue.node.y}
+            stroke="#ef4444"
+            strokeWidth={1}
+            strokeOpacity={0.2 + cueStrength.risk * 0.28}
+            strokeDasharray="3 6"
+          />
+          {(() => {
+            const stackX = Math.min(width - 170, placementCue.node.x + placementCue.node.r + 14);
+            const stackY = Math.max(40, placementCue.node.y - placementCue.node.r - 34);
+            const riskChip = placementCue.riskLabel;
+            const timeChip = placementCue.timeLabel;
+            const partyChip = placementCue.partyLabel;
+            const riskWidth = getTagWidth(riskChip);
+            const timeWidth = getTagWidth(timeChip);
+            const partyWidth = getTagWidth(partyChip);
+            return (
+              <g transform={`translate(${stackX}, ${stackY})`}>
+                <rect x={0} y={0} width={riskWidth} height={18} rx={9} fill="#fee2e2" fillOpacity={0.88} />
+                <text x={8} y={12.5} fontSize={10} fill="#991b1b" className="select-none font-semibold">
+                  {riskChip}
+                </text>
+                <rect x={0} y={21} width={timeWidth} height={18} rx={9} fill="#ede9fe" fillOpacity={0.9} />
+                <text x={8} y={33.5} fontSize={10} fill="#5b21b6" className="select-none font-semibold">
+                  {timeChip}
+                </text>
+                <rect x={0} y={42} width={partyWidth} height={18} rx={9} fill="#dbeafe" fillOpacity={0.9} />
+                <text x={8} y={54.5} fontSize={10} fill="#1d4ed8" className="select-none font-semibold">
+                  {partyChip}
+                </text>
+              </g>
+            );
+          })()}
+        </g>
+      )}
       {links.map((link) => {
         const source = nodeById.get(link.source);
         const target = nodeById.get(link.target);

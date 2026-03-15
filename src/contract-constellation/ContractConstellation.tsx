@@ -31,6 +31,8 @@ import text2AbStageCChineseData from '../../docs/text2_ab.stage_c.chinese.json';
 import testNewStageAChineseData from '../../docs/test_new.stage_a.chinese.json';
 import testNewStageBChineseData from '../../docs/test_new.stage_b.chinese.json';
 import testNewStageCChineseData from '../../docs/test_new.stage_c.chinese.json';
+import enterpriseSaasMsaStageAData from '../../docs/enterprise_saas_msa.stage_a.json';
+import enterpriseSaasMsaStageBData from '../../docs/enterprise_saas_msa.stage_b.json';
 import { NODE_LIBRARY } from './constants';
 import { GraphCanvas, CANVAS_WIDTH, CANVAS_HEIGHT } from './GraphCanvas';
 import { SidePanel } from './SidePanel';
@@ -39,7 +41,7 @@ import type { NodeActionItem } from './types';
 import type { TemplateItem } from './types';
 import { getRiskColor, getAiSuggestion } from './utils';
 import { getSemanticTargetXMap } from './semanticEmbedding';
-import { useGalaxyEngine } from './useGalaxyEngine';
+import { useGalaxyEngine, type LayoutMode } from './useGalaxyEngine';
 import { useMonitoring } from '../monitoring/useMonitoring';
 import { flushMonitoringEventsNow } from '../monitoring/collector';
 import { getRuntimeApiBase } from '../config/runtimeApiBase';
@@ -91,6 +93,7 @@ const BASE_GRAPH_PRESET_OPTIONS: Array<{ id: GraphPresetId; label: string }> = [
   { id: 'test_ab', label: 'test_ab (Stage A + B)' },
   { id: 'patent', label: 'patent (Stage A + B)' },
   { id: 'housing', label: 'housing (Stage A + B)' },
+  { id: 'enterprise_saas_msa', label: 'enterprise_saas_msa (Stage A + B)' },
   { id: 'patent_chinese', label: '专利 (中文 Stage A + B)' },
   { id: 'housing_chinese', label: '房屋租赁 (中文 Stage A + B)' },
 ];
@@ -449,7 +452,7 @@ export default function ContractConstellation() {
   const [collapsedNodeIds, setCollapsedNodeIds] = useState<Set<string>>(new Set());
   const [isDragOverCanvas, setIsDragOverCanvas] = useState(false);
   const [usedTemplateIds, setUsedTemplateIds] = useState<string[]>([]);
-  const [graphPresetId, setGraphPresetId] = useState<GraphPresetId>('standard');
+  const [graphPresetId, setGraphPresetId] = useState<GraphPresetId>('enterprise_saas_msa');
   const [uploadedPresets, setUploadedPresets] = useState<UploadedPreset[]>([]);
   const [showUploadPrompt, setShowUploadPrompt] = useState(true);
   const [uploadingTemplate, setUploadingTemplate] = useState(false);
@@ -473,6 +476,7 @@ export default function ContractConstellation() {
   const [canvasPanOffset, setCanvasPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isCanvasPanning, setIsCanvasPanning] = useState(false);
   const [showAnalysisControls, setShowAnalysisControls] = useState(true);
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>('root_centered');
   const [semanticTargetXById, setSemanticTargetXById] = useState<Record<string, number>>({});
   const [timeTargetXById, setTimeTargetXById] = useState<Record<string, number>>({});
   const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -549,6 +553,7 @@ export default function ContractConstellation() {
     riskBiasStrength,
     timeBiasStrength,
     timeTargetXById,
+    layoutMode,
   );
 
   const structuralChildrenBySource = useMemo(
@@ -615,6 +620,24 @@ export default function ContractConstellation() {
     () => links.filter((link) => visibleNodeIds.has(link.source) && visibleNodeIds.has(link.target)),
     [links, visibleNodeIds],
   );
+  const hideRootOnCanvas = layoutMode === 'multi_galaxy';
+  const canvasNodes = useMemo(
+    () => (hideRootOnCanvas ? visibleNodes.filter((node) => node.id !== 'root') : visibleNodes),
+    [hideRootOnCanvas, visibleNodes],
+  );
+  const canvasNodeIds = useMemo(
+    () => new Set(canvasNodes.map((node) => node.id)),
+    [canvasNodes],
+  );
+  const canvasLinks = useMemo(
+    () => {
+      if (!hideRootOnCanvas) return visibleLinks;
+      return visibleLinks.filter(
+        (link) => canvasNodeIds.has(link.source) && canvasNodeIds.has(link.target),
+      );
+    },
+    [hideRootOnCanvas, visibleLinks, canvasNodeIds],
+  );
   const collapsibleNodeIds = useMemo(() => {
     const ids = new Set<string>();
     visibleNodes.forEach((node) => {
@@ -642,7 +665,7 @@ export default function ContractConstellation() {
   const handleUseDefaultTemplate = useCallback(() => {
     const startedAt = Date.now();
     taskStartAtRef.current = startedAt;
-    setGraphPresetId('standard');
+    setGraphPresetId('enterprise_saas_msa');
     setShowUploadPrompt(false);
     setUploadError(null);
     track('canvas_interaction', {
@@ -811,6 +834,17 @@ export default function ContractConstellation() {
     return buildStageTemplates(aNodes, bNodes, 'housing_chinese', 'Imported from housing_chinese');
   }, []);
 
+  const enterpriseSaasMsaTemplates = useMemo<TemplateItem[]>(() => {
+    const aNodes = (enterpriseSaasMsaStageAData as { nodes?: StageANode[] }).nodes ?? [];
+    const bNodes = (enterpriseSaasMsaStageBData as { nodes?: StageBNode[] }).nodes ?? [];
+    return buildStageTemplates(
+      aNodes,
+      bNodes,
+      'enterprise_saas_msa',
+      'Imported from enterprise_saas_msa',
+    );
+  }, []);
+
 
   const graphPresetOptions = useMemo(
     () => [
@@ -826,12 +860,13 @@ export default function ContractConstellation() {
     if (graphPresetId === 'test_ab') return testAbTemplates;
     if (graphPresetId === 'patent') return testNewTemplates;
     if (graphPresetId === 'housing') return text2AbTemplates;
+    if (graphPresetId === 'enterprise_saas_msa') return enterpriseSaasMsaTemplates;
     if (graphPresetId === 'patent_chinese') return testNewChineseTemplates;
     if (graphPresetId === 'housing_chinese') return text2AbChineseTemplates;
     const uploaded = uploadedPresets.find((preset) => preset.id === graphPresetId);
     if (uploaded) return uploaded.templates;
     return NODE_LIBRARY;
-  }, [graphPresetId, simple1Templates, reneHouseTemplates, testAbTemplates, testNewTemplates, text2AbTemplates, testNewChineseTemplates, text2AbChineseTemplates, uploadedPresets]);
+  }, [graphPresetId, simple1Templates, reneHouseTemplates, testAbTemplates, testNewTemplates, text2AbTemplates, enterpriseSaasMsaTemplates, testNewChineseTemplates, text2AbChineseTemplates, uploadedPresets]);
 
   const activePrecomputedStageCMap = useMemo<Record<string, number>>(() => {
     if (graphPresetId === 'patent') return testNewStageCMap;
@@ -859,6 +894,11 @@ export default function ContractConstellation() {
     () => nodes.find((node) => node.id === selectedNodeId) ?? null,
     [nodes, selectedNodeId],
   );
+  useEffect(() => {
+    if (hideRootOnCanvas && selectedNodeId === 'root') {
+      setSelectedNodeId(null);
+    }
+  }, [hideRootOnCanvas, selectedNodeId]);
 
   const bulkApplySummary = useMemo(() => {
     if (!selectedNodeId || !selectedNode || selectedNode.id === 'root') return null;
@@ -2023,12 +2063,33 @@ export default function ContractConstellation() {
               ref={analysisControlsRef}
               className="pointer-events-auto flex h-[96px] w-[470px] flex-col justify-center rounded-xl border border-slate-200 bg-white/90 px-4 py-2 text-[11px] text-slate-700 shadow-sm backdrop-blur-sm"
             >
-              <div className="mb-1.5 flex items-center justify-between">
-                <span className="font-semibold">Analysis Controls</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-500">
-                    P {Math.round(semanticBiasStrength * 100)}% / R {Math.round(riskBiasStrength * 100)}% / T {Math.round(timeBiasStrength * 100)}%
-                  </span>
+              <div className="mb-1.5 flex items-center justify-between gap-2">
+                <span className="shrink-0 font-semibold">Analysis Controls</span>
+                <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
+                  <div className="inline-flex rounded border border-slate-300 bg-white p-0.5 text-[10px]">
+                    <button
+                      type="button"
+                      onClick={() => setLayoutMode('root_centered')}
+                      className={`rounded px-2 py-0.5 font-semibold whitespace-nowrap transition ${
+                        layoutMode === 'root_centered'
+                          ? 'bg-slate-700 text-white'
+                          : 'text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      Root-Centered
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLayoutMode('multi_galaxy')}
+                      className={`rounded px-2 py-0.5 font-semibold whitespace-nowrap transition ${
+                        layoutMode === 'multi_galaxy'
+                          ? 'bg-slate-700 text-white'
+                          : 'text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      Multi-Galaxy
+                    </button>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setShowAnalysisControls(false)}
@@ -2104,9 +2165,14 @@ export default function ContractConstellation() {
         </div>
 
         <GraphCanvas
-          nodes={visibleNodes}
-          links={visibleLinks}
+          nodes={canvasNodes}
+          links={canvasLinks}
           aggregationStrength={aggregationStrength}
+          semanticBiasStrength={semanticBiasStrength}
+          riskBiasStrength={riskBiasStrength}
+          timeBiasStrength={timeBiasStrength}
+          semanticTargetNormById={semanticTargetXById}
+          timeTargetNormById={timeTargetXById}
           selectedNodeId={selectedNodeId}
           draggingNodeId={draggingNodeId}
           focusDepthMap={focusDepthMap}
