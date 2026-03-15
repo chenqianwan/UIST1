@@ -80,37 +80,122 @@
 - 一句话系统描述建议：
   - “A visual-text co-editing system that represents contracts as clause graphs, surfaces grounded risk-aware suggestions, supports scoped human actions, and compiles these actions into auditable contract revisions.”
 
-### 2.4 Contributions
+### 2.4 Design Requirements
+
+- 这一部分用于吸收原本 `Motivation and Design Goals` 的核心内容，不再单独保留一整章。
+- 建议在 introduction 末尾用一小段过渡说明：上述挑战表明，面向高风险合同审查的交互系统需要同时支持结构理解、建议 grounding、人工控制与可追溯执行。
+- 可直接压缩为 3 到 5 个 requirement：
+  - `R1` 外化结构：把线性合同转成可浏览、可选择、可比较的条款结构视图。
+  - `R2` Ground suggestions：建议必须附着于具体条款、风险、理由或证据，而不是悬浮的全局回答。
+  - `R3` Keep humans in control：高风险动作要由用户显式确认，且支持局部与批量两种粒度。
+  - `R4` Preserve traceability：每次界面操作都能映射到文本修订和审计记录。
+  - `R5` Support complex tasks：在复杂合同里帮助用户更快定位重点，并降低无效操作和切换成本。
+
+### 2.5 Contributions
 
 - 贡献 1：提出一个面向高风险专业文本审查的 `visual-text co-editing` 交互框架。
 - 贡献 2：实现一组关键交互机制，包括条款图表示、建议驱动操作、递归子树编辑、多维重布局、以及视觉操作到文本修订的可追溯映射。
 - 贡献 3：通过用户研究表明该系统相较 baseline 在效率、质量、认知负担或信任校准上带来收益，并揭示哪些交互机制最关键。
 
-### 2.5 Figure Placement
+### 2.6 Figure Placement
 
 - `Figure 1` 放 introduction 末尾，给出系统总览图。
 
-## 3. Motivation and Design Goals
+## 3. Related Work
 
-这一节建议写成“设计目标”而不是“需求分析”，除非你们后面真的有成型的 formative study。
+这一节建议保留为单独章节，不要和 `Motivation and Design Goals` 混写。
 
-### 3.1 Why Contract Review Is Hard
+### 3.1 Why a Separate Related Work Section
 
-- 长文本、深层级、交叉引用、风险点分散。
-- 审查过程既需要全局结构理解，也需要局部措辞判断。
-- 用户需要对 AI 建议保持校验，而不能盲信。
+- `Motivation and Design Goals` 讲的是“我们为什么这样设计”。
+- `Related Work` 讲的是“别人做过什么，我们和他们的关系是什么”。
+- 对 UIST 审稿人来说，单独成节会更清楚地显示你们的研究定位。
 
-### 3.2 Design Goals
+### 3.2 Document and Legal Text Visualization
 
-- `DG1` 外化结构：把线性合同转成可浏览、可选择、可比较的条款结构视图。
-- `DG2` Ground suggestions：建议必须附着于具体条款、风险、理由或证据，而不是悬浮的全局回答。
-- `DG3` Keep humans in control：高风险动作要由用户显式确认，且支持局部与批量两种粒度。
-- `DG4` Preserve traceability：每次界面操作都能映射到文本修订和审计记录。
-- `DG5` Support complex tasks：在复杂合同里帮助用户更快定位重点，并降低无效操作和切换成本。
+- 这一小节可综述：
+  - 法律文本或结构化文档的可视化
+  - 条款层级展示
+  - 文档关系图或依赖图
+- 要强调的差异：
+  - 现有工作很多帮助用户“理解文档结构”
+  - 但未必支持 AI 建议驱动的可执行编辑
+  - 更少有工作把可视分析直接接到最终文本修订
 
-### 3.3 Transition to System
+#### 法律同学可主导写的点
 
-- 用一小段承上启下：下面介绍系统如何把这些目标落到界面、算法流水线与审计机制中。
+- 法律文档的复杂性
+- 法律文本可视化工作的背景与问题场景
+- 为什么合同不同于一般文档
+
+#### CS 可补的点
+
+- 这些系统大多停留在 analysis / navigation
+- 你们的区别是把 visualization 变成了 action space
+
+### 3.3 AI-Assisted Writing and Mixed-Initiative Editing
+
+- 这一小节可综述：
+  - 写作辅助系统
+  - revision suggestion interfaces
+  - mixed-initiative editing
+  - human-in-the-loop AI writing
+- 要强调的差异：
+  - 现有工具多面向局部文本改写
+  - 较少处理长文、层级结构和跨段依赖
+  - 作用域通常停留在 sentence/paragraph，而不是 subtree / structured region
+
+#### 这一节可以直接服务你们的定位
+
+- 你们不是另一个通用 writing assistant
+- 你们处理的是结构化、可追溯、带作用域约束的高风险编辑任务
+
+### 3.4 Explainability, Confidence, and Grounded AI Interfaces
+
+- 这一小节可综述：
+  - explainable AI interfaces
+  - confidence / uncertainty display
+  - grounded suggestions
+- 要强调的差异：
+  - 现有工作关注用户是否理解 AI 输出
+  - 你们进一步把解释、理由和作用对象绑定到具体条款与具体动作
+  - 对高风险文本场景，grounding 不只是解释性增强，而是交互可信度的前提
+
+### 3.5 Traceable Editing, Revision Histories, and Visual-Text Systems
+
+- 这一小节可综述：
+  - revision tracking
+  - document versioning
+  - traceable AI editing
+  - visual-text co-editing
+- 要强调的差异：
+  - 很多系统有 revision history，但不一定有 AI action model
+  - 很多 AI 系统能生成文本，但不能把用户动作编译成可审计的 diff
+  - 你们的重点是 `event -> diff -> final text` 的受约束链路
+
+### 3.6 Section-Level Positioning Paragraph
+
+- 建议用一段总结收尾：
+  - 现有工作分别在可视化、写作辅助、可解释界面、修订追踪等方面提供了基础
+  - 但缺少一个把结构外化、建议交互、作用域控制和文本审计闭环整合起来的系统
+  - `Contract Constellation` 试图补上这一空白
+
+### 3.7 Writing Strategy
+
+- 每个 subsection 不需要堆太多论文，2 到 4 篇代表工作即可。
+- 每个小节最后都加 1 到 2 句“与我们不同的是”。
+- 不要把 `Related Work` 写成法律 NLP survey；要始终回到 UIST/HCI 的界面、交互、协作和可控性。
+
+### 3.8 Who Writes What
+
+- 法律同学主写：
+  - `3.2` 中法律文本与合同相关部分
+  - 可能涉及法律科技或法律文档的代表工作
+- 你主写：
+  - `3.3`、`3.4`、`3.5`
+  - 尤其是 mixed-initiative、explainable interface、traceable editing 这三块
+- 最后一起统一：
+  - 每一节末尾的“我们的差异”
 
 ## 4. System Overview
 
@@ -204,7 +289,7 @@
 
 - “Our system treats contract review as a structured co-editing task rather than a sequence of isolated text prompts.”
 - “Instead of directly rewriting contracts end-to-end, the system externalizes intermediate structure, exposes action scopes to users, and compiles accepted actions into auditable text revisions.”
-- “This design shifts AI assistance from unconstrained generation toward inspectable and reversible interaction.”
+- “This design shifts AI assistance from unconstrained generation toward inspectable and reversible intraction.”
 
 ### 4.4 Implementation Notes
 
