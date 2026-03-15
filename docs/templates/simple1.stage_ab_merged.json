@@ -1,8 +1,8 @@
 {
   "meta": {
     "templateId": "simple1",
-    "stageA": "docs/simple1.stage_a.json",
-    "stageB": "docs/simple1.stage_b.json",
+    "stageA": "docs/templates/simple1.stage_a.json",
+    "stageB": "docs/templates/simple1.stage_b.json",
     "mergedAt": "2026-03-08T11:33:23.598157+00:00"
   },
   "nodes": [

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { GraphLink, GraphNode, TemplateItem } from './types';
 import { getRiskColor, seededRandom } from './utils';
-import stageAData from '../../docs/simple1.stage_a.json';
-import stageBData from '../../docs/simple1.stage_b.json';
+import stageAData from '../../docs/templates/simple1.stage_a.json';
+import stageBData from '../../docs/templates/simple1.stage_b.json';
+
+export type LayoutMode = 'root_centered' | 'multi_galaxy';
 
 type StageANode = {
   id: string;
@@ -82,20 +84,6 @@ function getLabelCollisionExtra(label: string): number {
 }
 
 const MAX_NODE_LABEL_CHARS = 30;
-const LABEL_STAGGER_STEP = 10;
-
-function hashString(value: string): number {
-  let hash = 2166136261;
-  for (let i = 0; i < value.length; i += 1) {
-    hash ^= value.charCodeAt(i);
-    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
-  }
-  return Math.abs(hash >>> 0);
-}
-
-function getLabelVerticalOffset(nodeId: string): number {
-  return (hashString(nodeId) % 3) * LABEL_STAGGER_STEP;
-}
 
 function getDisplayLabelLength(label: string): number {
   if (label.length <= MAX_NODE_LABEL_CHARS) return label.length;
@@ -210,6 +198,7 @@ export function useGalaxyEngine(
   riskBiasStrength = 0,
   timeBiasStrength = 0,
   timeTargetXById: Record<string, number> = {},
+  layoutMode: LayoutMode = 'root_centered',
 ) {
   const rootNode = useMemo<GraphNode>(
     () => ({
@@ -601,18 +590,19 @@ export function useGalaxyEngine(
 
       const repulsion = 8600;
       const damping = 0.82;
-      // Keep Y neutral while allowing extra horizontal spread.
-      const centerPullX = 0.0016;
-      const centerPullY = 0.0031;
+      const isMultiGalaxy = layoutMode === 'multi_galaxy';
+      // In multi-galaxy mode, global center pull is weak and local cluster pull dominates.
+      const centerPullX = isMultiGalaxy ? 0.00022 : 0.0016;
+      const centerPullY = isMultiGalaxy ? 0.00042 : 0.0031;
       const xForceGain = 1.34;
       const yForceGain = 1;
-      const rootSpring = 0.02;
+      const rootSpring = isMultiGalaxy ? 0.004 : 0.02;
       const referenceSpring = 0.06;
-      const childSpring = 0.12;
-      const detailSpring = 0.14;
+      const childSpring = isMultiGalaxy ? 0.14 : 0.12;
+      const detailSpring = isMultiGalaxy ? 0.16 : 0.14;
       // Slightly compact layout for better readability in medium/large graphs.
       const spreadFactor = localNodes.length <= 12 ? 1.48 : localNodes.length <= 22 ? 1.3 : 1.14;
-      const rootLen = 172 * spreadFactor;
+      const rootLen = (isMultiGalaxy ? 260 : 172) * spreadFactor;
       const referenceLen = 146 * spreadFactor;
       const childLen = 66 * spreadFactor;
       const detailLen = 42 * spreadFactor;
@@ -621,6 +611,44 @@ export function useGalaxyEngine(
       const maxSpeed = 4.4;
 
       const forces = localNodes.map(() => ({ fx: 0, fy: 0 }));
+      const nodeById = new Map(localNodes.map((node) => [node.id, node]));
+      const clusterKeyByNodeId = new Map<string, string>();
+      const clusterCenterByKey = new Map<string, { x: number; y: number }>();
+
+      if (isMultiGalaxy) {
+        const resolveClusterKey = (node: GraphNode): string => {
+          if (node.id === 'root') return 'root';
+          let current: GraphNode | undefined = node;
+          const guard = new Set<string>();
+          while (current?.parentId && current.parentId !== 'root') {
+            if (guard.has(current.id)) break;
+            guard.add(current.id);
+            current = nodeById.get(current.parentId);
+          }
+          if (current && current.id !== 'root') return current.id;
+          return node.id;
+        };
+
+        const clusterHeads = localNodes.filter((node) => {
+          if (node.id === 'root') return false;
+          return !node.parentId || node.parentId === 'root';
+        });
+        const count = Math.max(1, clusterHeads.length);
+        const radiusX = Math.max(120, width * 0.34);
+        const radiusY = Math.max(96, height * 0.28);
+
+        clusterHeads.forEach((head, index) => {
+          const angle = (index / count) * Math.PI * 2 - Math.PI / 2;
+          clusterCenterByKey.set(head.id, {
+            x: width / 2 + Math.cos(angle) * radiusX,
+            y: height / 2 + Math.sin(angle) * radiusY,
+          });
+        });
+
+        localNodes.forEach((node) => {
+          clusterKeyByNodeId.set(node.id, resolveClusterKey(node));
+        });
+      }
 
       for (let i = 0; i < localNodes.length; i += 1) {
         for (let j = i + 1; j < localNodes.length; j += 1) {
@@ -634,7 +662,10 @@ export function useGalaxyEngine(
           const d2 = dx * dx + dy * dy || 1;
           const d = Math.sqrt(d2);
           if (d > 560) continue;
-          const f = Math.min(repulsion / d2, maxPairForce);
+          const clusterFactor = isMultiGalaxy
+            ? (clusterKeyByNodeId.get(a.id) === clusterKeyByNodeId.get(b.id) ? 0.74 : 1.28)
+            : 1;
+          const f = Math.min((repulsion * clusterFactor) / d2, maxPairForce);
           const fx = (dx / d) * f;
           const fy = (dy / d) * f;
           forces[i].fx += fx;
@@ -658,9 +689,9 @@ export function useGalaxyEngine(
           // Scheme B: treat label boxes as soft colliders and add extra repulsion
           // when label AABB overlaps. Keep Y-priority to preserve lane readability.
           const aLabelX = a.x;
-          const aLabelY = a.y + a.r + 16 + getLabelVerticalOffset(a.id);
+          const aLabelY = a.y + a.r + 16;
           const bLabelX = b.x;
-          const bLabelY = b.y + b.r + 16 + getLabelVerticalOffset(b.id);
+          const bLabelY = b.y + b.r + 16;
           const halfWsum = getLabelHalfWidth(a.label) + getLabelHalfWidth(b.label) + 4;
           const halfHsum = 7.5 + 7.5 + 2.5;
           const labelDx = aLabelX - bLabelX;
@@ -776,6 +807,19 @@ export function useGalaxyEngine(
         });
       }
 
+      if (isMultiGalaxy) {
+        localNodes.forEach((node, i) => {
+          if (node.id === 'root' || draggingNodeIdRef.current === node.id) return;
+          const clusterKey = clusterKeyByNodeId.get(node.id);
+          if (!clusterKey) return;
+          const anchor = clusterCenterByKey.get(clusterKey);
+          if (!anchor) return;
+          const clusterPull = node.parentId === 'root' ? 0.011 : 0.018;
+          forces[i].fx += (anchor.x - node.x) * clusterPull;
+          forces[i].fy += (anchor.y - node.y) * clusterPull * 1.08;
+        });
+      }
+
       localNodes.forEach((node, i) => {
         if (node.id === 'root') {
           node.x = width / 2;
@@ -832,7 +876,7 @@ export function useGalaxyEngine(
 
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [height, width, semanticBiasStrength, semanticTargetXById, riskBiasStrength, timeBiasStrength, timeTargetXById]);
+  }, [height, width, semanticBiasStrength, semanticTargetXById, riskBiasStrength, timeBiasStrength, timeTargetXById, layoutMode]);
 
   return {
     nodes,

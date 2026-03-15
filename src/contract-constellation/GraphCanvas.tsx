@@ -13,7 +13,6 @@ import {
 
 const CANVAS_WIDTH = 760;
 const CANVAS_HEIGHT = 620;
-const MAX_NODE_LABEL_CHARS = 30;
 const PHASE_LABEL_BY_KEY: Record<GraphNode['timePhase'], string> = {
   pre_sign: 'Pre-sign Phase',
   effective: 'Effective Phase',
@@ -43,13 +42,80 @@ function getPartyOrientationLabel(norm?: number): string {
   return 'Party-leaning';
 }
 
+function rectsOverlap(
+  a: { x: number; y: number; w: number; h: number },
+  b: { x: number; y: number; w: number; h: number },
+) {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+function getPlacementChipStackPosition(args: {
+  width: number;
+  height: number;
+  node: GraphNode;
+  stackWidth: number;
+  stackHeight: number;
+  selectedLabelText: string;
+  avoidRects: Array<{ x: number; y: number; w: number; h: number }>;
+}) {
+  const { width, height, node, stackWidth, stackHeight, selectedLabelText, avoidRects } = args;
+  const margin = 16;
+  const gap = 14;
+  const farGap = 28;
+  const preferredXRight = node.x + node.r + gap;
+  const preferredXLeft = node.x - node.r - gap - stackWidth;
+  const preferredYTop = node.y - node.r - 34;
+  const preferredYBottom = node.y + node.r + 20;
+  const preferredXRightFar = node.x + node.r + farGap;
+  const preferredXLeftFar = node.x - node.r - farGap - stackWidth;
+  const preferredYTopFar = node.y - node.r - 48;
+  const preferredYBottomFar = node.y + node.r + 34;
+  const labelWidth = Math.min(220, Math.max(42, selectedLabelText.length * 7.4));
+  const labelRect = {
+    x: node.x - labelWidth / 2,
+    y: node.y + node.r + 6,
+    w: labelWidth,
+    h: 22,
+  };
+
+  const candidates = [
+    { x: preferredXRight, y: preferredYTop },
+    { x: preferredXLeft, y: preferredYTop },
+    { x: preferredXRight, y: preferredYBottom },
+    { x: preferredXLeft, y: preferredYBottom },
+    { x: preferredXRightFar, y: preferredYTopFar },
+    { x: preferredXLeftFar, y: preferredYTopFar },
+    { x: preferredXRightFar, y: preferredYBottomFar },
+    { x: preferredXLeftFar, y: preferredYBottomFar },
+    { x: node.x - stackWidth / 2, y: preferredYTopFar },
+    { x: node.x - stackWidth / 2, y: preferredYBottomFar },
+  ].map((candidate) => {
+    const clamped = {
+      x: Math.max(margin, Math.min(width - margin - stackWidth, candidate.x)),
+      y: Math.max(margin, Math.min(height - margin - stackHeight, candidate.y)),
+    };
+    const stackRect = { x: clamped.x, y: clamped.y, w: stackWidth, h: stackHeight };
+    const overlapsLabel = rectsOverlap(stackRect, labelRect);
+    const overlapCount = avoidRects.reduce((sum, rect) => sum + (rectsOverlap(stackRect, rect) ? 1 : 0), 0);
+    const dx = clamped.x - candidate.x;
+    const dy = clamped.y - candidate.y;
+    const distancePenalty = Math.abs(dx) + Math.abs(dy);
+    const labelPenalty = overlapsLabel ? 1000 : 0;
+    const avoidPenalty = overlapCount * 900;
+    const totalPenalty = labelPenalty + avoidPenalty + distancePenalty;
+    return { ...clamped, totalPenalty };
+  });
+
+  candidates.sort((a, b) => a.totalPenalty - b.totalPenalty);
+  return candidates[0];
+}
+
 function getDisplayLabel(label: string, selected: boolean): string {
   if (selected) return label;
   const compact = label.trim();
-  const numericPrefix = compact.match(/^([0-9]+(?:\.[0-9]+)*)\b/);
-  if (numericPrefix) return numericPrefix[1];
-  if (label.length <= MAX_NODE_LABEL_CHARS) return label;
-  return label.slice(0, MAX_NODE_LABEL_CHARS);
+  const words = compact.split(/\s+/).filter(Boolean);
+  if (words.length <= 4) return compact;
+  return words.slice(0, 4).join(' ');
 }
 
 interface GraphCanvasProps {
@@ -181,7 +247,7 @@ export function GraphCanvas({
             : isIncoming
               ? 0.72
               : depth === undefined
-                ? 0.22
+                ? 0.16
                 : revealStage === 1 && depth > 1
                   ? 0.24
                   : depth === 1
@@ -195,7 +261,7 @@ export function GraphCanvas({
             ? 1
             : isFocused
               ? Math.max(0.56, depthOpacity * lensFactor)
-              : 0.26;
+              : 0.18;
         const shouldShowLabelBase =
           !isLeaf
             ? true
@@ -231,6 +297,44 @@ export function GraphCanvas({
     selectedNode,
     selectedNodeId,
   ]);
+  const placementChipLayout = useMemo(() => {
+    if (!placementCue) return null;
+    const selectedLabelText = getDisplayLabel(placementCue.node.label, true);
+    const riskWidth = getTagWidth(placementCue.riskLabel);
+    const timeWidth = getTagWidth(placementCue.timeLabel);
+    const partyWidth = getTagWidth(placementCue.partyLabel);
+    const stackWidth = Math.max(riskWidth, timeWidth, partyWidth);
+    const stackHeight = 60;
+    const avoidRects = labelLayerItems
+      .filter((item) => item.id !== placementCue.node.id)
+      .filter((item) => Math.hypot(item.x - placementCue.node.x, item.y - placementCue.node.y) < 240)
+      .map((item) => {
+        const w = Math.min(230, Math.max(42, item.text.length * 6.8));
+        const h = Math.max(16, item.fontSize + 8);
+        return {
+          x: item.x - w / 2,
+          y: item.y - item.fontSize - 2,
+          w,
+          h,
+        };
+      });
+    const position = getPlacementChipStackPosition({
+      width,
+      height,
+      node: placementCue.node,
+      stackWidth,
+      stackHeight,
+      selectedLabelText,
+      avoidRects,
+    });
+    return {
+      x: position.x,
+      y: position.y,
+      riskWidth,
+      timeWidth,
+      partyWidth,
+    };
+  }, [height, labelLayerItems, placementCue, width]);
   const actionBadge = (node: GraphNode) => {
     const pending = (node.actions ?? []).filter((action) => action.status !== 'completed');
     if (pending.length === 0) return null;
@@ -410,32 +514,22 @@ export function GraphCanvas({
             strokeOpacity={0.2 + cueStrength.risk * 0.28}
             strokeDasharray="3 6"
           />
-          {(() => {
-            const stackX = Math.min(width - 170, placementCue.node.x + placementCue.node.r + 14);
-            const stackY = Math.max(40, placementCue.node.y - placementCue.node.r - 34);
-            const riskChip = placementCue.riskLabel;
-            const timeChip = placementCue.timeLabel;
-            const partyChip = placementCue.partyLabel;
-            const riskWidth = getTagWidth(riskChip);
-            const timeWidth = getTagWidth(timeChip);
-            const partyWidth = getTagWidth(partyChip);
-            return (
-              <g transform={`translate(${stackX}, ${stackY})`}>
-                <rect x={0} y={0} width={riskWidth} height={18} rx={9} fill="#fee2e2" fillOpacity={0.88} />
-                <text x={8} y={12.5} fontSize={10} fill="#991b1b" className="select-none font-semibold">
-                  {riskChip}
-                </text>
-                <rect x={0} y={21} width={timeWidth} height={18} rx={9} fill="#ede9fe" fillOpacity={0.9} />
-                <text x={8} y={33.5} fontSize={10} fill="#5b21b6" className="select-none font-semibold">
-                  {timeChip}
-                </text>
-                <rect x={0} y={42} width={partyWidth} height={18} rx={9} fill="#dbeafe" fillOpacity={0.9} />
-                <text x={8} y={54.5} fontSize={10} fill="#1d4ed8" className="select-none font-semibold">
-                  {partyChip}
-                </text>
-              </g>
-            );
-          })()}
+          {placementChipLayout && (
+            <g transform={`translate(${placementChipLayout.x}, ${placementChipLayout.y})`}>
+              <rect x={0} y={0} width={placementChipLayout.riskWidth} height={18} rx={9} fill="#fee2e2" fillOpacity={0.88} />
+              <text x={8} y={12.5} fontSize={10} fill="#991b1b" className="select-none font-semibold">
+                {placementCue.riskLabel}
+              </text>
+              <rect x={0} y={21} width={placementChipLayout.timeWidth} height={18} rx={9} fill="#ede9fe" fillOpacity={0.9} />
+              <text x={8} y={33.5} fontSize={10} fill="#5b21b6" className="select-none font-semibold">
+                {placementCue.timeLabel}
+              </text>
+              <rect x={0} y={42} width={placementChipLayout.partyWidth} height={18} rx={9} fill="#dbeafe" fillOpacity={0.9} />
+              <text x={8} y={54.5} fontSize={10} fill="#1d4ed8" className="select-none font-semibold">
+                {placementCue.partyLabel}
+              </text>
+            </g>
+          )}
         </g>
       )}
       {links.map((link) => {
@@ -476,7 +570,7 @@ export function GraphCanvas({
         const lensFactor = !selectedNode ? 1 : distToSelected > 320 ? 0.65 : distToSelected > 250 ? 0.82 : 1;
         const baseOpacity =
           !shouldRevealEdge
-            ? 0.08
+            ? 0.05
             : reference
               ? 0.34
             : isIncomingToSelected
@@ -486,7 +580,7 @@ export function GraphCanvas({
                 : child
                   ? 0.56
                   : 0.44;
-        const minEdgeOpacity = isIncomingToSelected || isOutgoingFromSelected ? 0.22 : 0.08;
+        const minEdgeOpacity = isIncomingToSelected || isOutgoingFromSelected ? 0.22 : 0.05;
         const edgeOpacity = Math.max(minEdgeOpacity, baseOpacity * lensFactor * aggregationFade);
         const pulseLowOpacity = Math.max(0.12, 0.45 * aggregationFade);
         const pulseHighOpacity = Math.max(0.25, 0.9 * aggregationFade);
@@ -570,7 +664,7 @@ export function GraphCanvas({
             : isIncoming
               ? 0.72
               : depth === undefined
-                ? 0.22
+                ? 0.16
                 : revealStage === 1 && depth > 1
                   ? 0.24
                   : depth === 1
@@ -584,7 +678,7 @@ export function GraphCanvas({
             ? 1
             : isFocused
               ? Math.max(0.56, depthOpacity * lensFactor)
-              : 0.26;
+              : 0.18;
         const isDragging = node.id === draggingNodeId;
         const badge = actionBadge(node);
         const canCollapse = collapsibleNodeIds.has(node.id);

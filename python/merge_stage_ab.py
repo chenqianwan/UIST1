@@ -2,8 +2,8 @@
 """Merge Stage A and Stage B outputs into one intermediate artifact.
 
 Usage:
-  python python/merge_stage_ab.py docs/simple1.stage_a.json docs/simple1.stage_b.json
-  python python/merge_stage_ab.py docs/simple1.stage_a.json docs/simple1.stage_b.json --output docs/simple1.stage_ab_merged.json
+  python python/merge_stage_ab.py docs/templates/simple1.stage_a.json docs/templates/simple1.stage_b.json
+  python python/merge_stage_ab.py docs/templates/simple1.stage_a.json docs/templates/simple1.stage_b.json --output docs/templates/simple1.stage_ab_merged.json
 """
 
 from __future__ import annotations
@@ -21,8 +21,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("docs/simple1.stage_ab_merged.json"),
-        help="Output merged JSON path (default: docs/simple1.stage_ab_merged.json).",
+        default=Path("docs/templates/simple1.stage_ab_merged.json"),
+        help="Output merged JSON path (default: docs/templates/simple1.stage_ab_merged.json).",
     )
     return parser.parse_args()
 

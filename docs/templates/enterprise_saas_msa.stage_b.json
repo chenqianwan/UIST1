@@ -1,0 +1,342 @@
+{
+  "nodes": [
+    {
+      "id": "root",
+      "references": ["s1", "s2"],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "act-root-1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "This Agreement governs all Subscription Services and all executed Order Forms. Additional procurement terms are rejected unless expressly accepted in writing by Provider."
+        },
+        {
+          "id": "act-root-2",
+          "type": "add_clause",
+          "status": "pending",
+          "supplementDraft": "In the event of conflict between this Agreement and any Order Form, the Order Form prevails only for commercial variables expressly identified in that Order Form.",
+          "targetNodeId": "root"
+        }
+      ]
+    },
+    {
+      "id": "s1",
+      "references": ["s1.1", "s2.3"],
+      "riskLevel": "low",
+      "actions": []
+    },
+    {
+      "id": "s1.1",
+      "references": ["s2.1"],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "s1.1.1",
+      "references": ["s2.2.1"],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "s1.2",
+      "references": ["s3.1"],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "act-s1.2-1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "Order Forms prevail over procurement documents. Any purchase-order terms conflicting with this Agreement are void unless Provider expressly accepts them in writing."
+        }
+      ]
+    },
+    {
+      "id": "s1.2.1",
+      "references": ["s2.2"],
+      "riskLevel": "low",
+      "actions": []
+    },
+    {
+      "id": "s1.3",
+      "references": ["s2.3", "s4.4"],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "act-s1.3-1",
+          "type": "add_clause",
+          "status": "pending",
+          "supplementDraft": "Provider shall include in each invoice a line-item summary of recurring subscription, variable usage, and one-off professional service charges.",
+          "targetNodeId": "s1.3"
+        }
+      ]
+    },
+    {
+      "id": "s1.3.1",
+      "references": ["s4.4"],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "s2",
+      "references": ["s2.1", "s4.3"],
+      "riskLevel": "medium",
+      "actions": []
+    },
+    {
+      "id": "s2.1",
+      "references": ["s4.3"],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "act-s2.1-1",
+          "type": "add_clause",
+          "status": "pending",
+          "supplementDraft": "SLA metrics and service-credit calculations shall be measured using Provider monitoring systems, subject to Customer's right to request supporting evidence.",
+          "targetNodeId": "s2.1"
+        },
+        {
+          "id": "act-s2.1-2",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "Provider will provide monthly SLA performance reports and identify excluded downtime categories used in uptime calculations."
+        }
+      ]
+    },
+    {
+      "id": "s2.1.1",
+      "references": ["s4.4"],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "act-s2.1.1-1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "Service credits are Customer's sole monetary remedy for isolated SLA shortfalls, but repeated failures across three consecutive months constitute material breach under Section 4.4."
+        }
+      ]
+    },
+    {
+      "id": "s2.2",
+      "references": ["s3.3"],
+      "riskLevel": "low",
+      "actions": []
+    },
+    {
+      "id": "s2.2.1",
+      "references": ["s3.2.1"],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "act-s2.2.1-1",
+          "type": "add_clause",
+          "status": "pending",
+          "supplementDraft": "For Severity 1 incidents, Provider shall provide status updates no less frequently than every sixty (60) minutes until service restoration.",
+          "targetNodeId": "s2.2.1"
+        }
+      ]
+    },
+    {
+      "id": "s2.3",
+      "references": ["s1.3", "s4.4"],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "act-s2.3-1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "Provider may suspend only affected tenants, accounts, or credentials where feasible, and shall provide prior notice unless immediate action is required for security or legal compliance."
+        },
+        {
+          "id": "act-s2.3-2",
+          "type": "add_clause",
+          "status": "pending",
+          "supplementDraft": "Provider shall maintain an internal suspension log with timestamp, trigger, scope, and restoration steps and share a summary upon Customer request.",
+          "targetNodeId": "s2.3"
+        }
+      ]
+    },
+    {
+      "id": "s2.3.1",
+      "references": ["s4.4.1"],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "act-s2.3.1-1",
+          "type": "add_clause",
+          "status": "pending",
+          "supplementDraft": "During suspension for non-payment, Provider shall permit limited read-only data export unless prohibited by law or security considerations.",
+          "targetNodeId": "s2.3.1"
+        }
+      ]
+    },
+    {
+      "id": "s3",
+      "references": ["s3.3", "s4.3"],
+      "riskLevel": "medium",
+      "actions": []
+    },
+    {
+      "id": "s3.1",
+      "references": ["s4.4.1"],
+      "riskLevel": "low",
+      "actions": []
+    },
+    {
+      "id": "s3.1.1",
+      "references": ["s4.3.1"],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "act-s3.1.1-1",
+          "type": "add_clause",
+          "status": "pending",
+          "supplementDraft": "Where transfer impact assessments are legally required, Provider shall provide commercially reasonable assistance and relevant transfer documentation.",
+          "targetNodeId": "s3.1.1"
+        }
+      ]
+    },
+    {
+      "id": "s3.2",
+      "references": ["s2.2.1"],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "s3.2.1",
+      "references": ["s3.3"],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "act-s3.2.1-1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "Customer may request one annual security review package, including certifications, penetration-test summary findings, and remediation status, subject to confidentiality safeguards."
+        }
+      ]
+    },
+    {
+      "id": "s3.3",
+      "references": ["s4.3"],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "act-s3.3-1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "Provider shall notify Customer within seventy-two (72) hours of confirmed Security Incident impacting Customer Data, including scope, known impact, and immediate containment actions."
+        },
+        {
+          "id": "act-s3.3-2",
+          "type": "add_clause",
+          "status": "pending",
+          "supplementDraft": "Provider shall provide a written root-cause analysis within ten (10) business days after containment, unless otherwise agreed for complex incidents.",
+          "targetNodeId": "s3.3"
+        }
+      ]
+    },
+    {
+      "id": "s3.3.1",
+      "references": ["s4.4.1"],
+      "riskLevel": "medium",
+      "actions": []
+    },
+    {
+      "id": "s4",
+      "references": ["s4.3", "s4.4"],
+      "riskLevel": "low",
+      "actions": []
+    },
+    {
+      "id": "s4.1",
+      "references": ["s3.1"],
+      "riskLevel": "none",
+      "actions": []
+    },
+    {
+      "id": "s4.1.1",
+      "references": ["s4.3"],
+      "riskLevel": "low",
+      "actions": [
+        {
+          "id": "act-s4.1.1-1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "Customer owns customer-specific outputs generated from Customer prompts and data. Provider retains rights in underlying models, tools, and generalized improvements that do not disclose Customer Confidential Information."
+        }
+      ]
+    },
+    {
+      "id": "s4.2",
+      "references": ["s4.2.1", "s4.3"],
+      "riskLevel": "low",
+      "actions": []
+    },
+    {
+      "id": "s4.2.1",
+      "references": ["s4.4"],
+      "riskLevel": "medium",
+      "actions": [
+        {
+          "id": "act-s4.2.1-1",
+          "type": "add_clause",
+          "status": "pending",
+          "supplementDraft": "If Provider elects termination as an IP remedy, Provider shall provide reasonable transition assistance for up to sixty (60) days at standard professional-services rates.",
+          "targetNodeId": "s4.2.1"
+        }
+      ]
+    },
+    {
+      "id": "s4.3",
+      "references": ["s4.4.1"],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "act-s4.3-1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "Except for excluded liabilities, each party's aggregate liability shall not exceed one hundred and twenty percent (120%) of fees paid in the twelve (12) months preceding the event giving rise to the claim."
+        },
+        {
+          "id": "act-s4.3-2",
+          "type": "add_clause",
+          "status": "pending",
+          "supplementDraft": "For Security Incident claims involving unauthorized disclosure of Customer Data, Provider's liability cap shall be one hundred and fifty percent (150%) of fees paid in the prior twelve (12) months.",
+          "targetNodeId": "s4.3"
+        }
+      ]
+    },
+    {
+      "id": "s4.3.1",
+      "references": ["s3.3"],
+      "riskLevel": "medium",
+      "actions": []
+    },
+    {
+      "id": "s4.4",
+      "references": ["s1.3", "s2.1.1"],
+      "riskLevel": "medium",
+      "actions": []
+    },
+    {
+      "id": "s4.4.1",
+      "references": ["s3.3.1"],
+      "riskLevel": "high",
+      "actions": [
+        {
+          "id": "act-s4.4.1-1",
+          "type": "revise",
+          "status": "pending",
+          "replacementText": "Customer may export Customer Data for sixty (60) days following termination. Provider shall delete Customer Data from active systems within ninety (90) days unless retention is required by law."
+        },
+        {
+          "id": "act-s4.4.1-2",
+          "type": "add_clause",
+          "status": "pending",
+          "supplementDraft": "Provider shall certify completion of deletion in writing upon Customer request, identifying retained datasets and legal basis for retention where applicable.",
+          "targetNodeId": "s4.4.1"
+        }
+      ]
+    }
+  ]
+}

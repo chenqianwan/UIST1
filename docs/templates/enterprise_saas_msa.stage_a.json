@@ -1,0 +1,252 @@
+{
+  "nodes": [
+    {
+      "id": "root",
+      "label": "Enterprise SaaS Agreement",
+      "content": "ENTERPRISE SAAS MASTER SUBSCRIPTION AGREEMENT between Nimbus Analytics Pte. Ltd. and Harbor Retail Group Ltd., effective 15 March 2026.",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "pre_sign"
+    },
+    {
+      "id": "s1",
+      "label": "1. Commercial Terms",
+      "content": "1. Commercial Terms",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "effective"
+    },
+    {
+      "id": "s1.1",
+      "label": "1.1 Access Scope",
+      "content": "Provider grants Customer a non-exclusive right during the Subscription Term to access the production and staging environments identified in each Order Form for internal business operations.",
+      "type": "sub",
+      "parentId": "s1",
+      "timePhase": "effective"
+    },
+    {
+      "id": "s1.1.1",
+      "label": "1.1.1 User Controls",
+      "content": "Customer shall ensure Authorized Users use individual credentials, multi-factor authentication where available, and role-based access rights consistent with least privilege.",
+      "type": "sub",
+      "parentId": "s1.1",
+      "timePhase": "execution"
+    },
+    {
+      "id": "s1.2",
+      "label": "1.2 Order Priority",
+      "content": "Order Forms define metrics, subscription quantities, and pricing. Conflicting purchase order terms are rejected unless expressly accepted in writing by Provider.",
+      "type": "sub",
+      "parentId": "s1",
+      "timePhase": "effective"
+    },
+    {
+      "id": "s1.2.1",
+      "label": "1.2.1 Change Controls",
+      "content": "Scope expansion, additional modules, and seat increases require a signed change order or replacement Order Form and are billed pro rata unless otherwise stated.",
+      "type": "sub",
+      "parentId": "s1.2",
+      "timePhase": "execution"
+    },
+    {
+      "id": "s1.3",
+      "label": "1.3 Invoicing Terms",
+      "content": "Invoices are issued per Order Form schedule and payable within thirty (30) days. Taxes are exclusive unless expressly included.",
+      "type": "sub",
+      "parentId": "s1",
+      "timePhase": "execution"
+    },
+    {
+      "id": "s1.3.1",
+      "label": "1.3.1 Fee Disputes",
+      "content": "Customer must raise good-faith invoice disputes within ten (10) business days and pay undisputed amounts on time; parties shall escalate disputed amounts under commercial governance.",
+      "type": "sub",
+      "parentId": "s1.3",
+      "timePhase": "execution"
+    },
+    {
+      "id": "s2",
+      "label": "2. Service Operations",
+      "content": "2. Service Operations",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "execution"
+    },
+    {
+      "id": "s2.1",
+      "label": "2.1 SLA Measurement",
+      "content": "Provider targets 99.9% monthly uptime excluding scheduled maintenance, emergency maintenance, force majeure, and third-party carrier outages outside Provider control.",
+      "type": "sub",
+      "parentId": "s2",
+      "timePhase": "execution"
+    },
+    {
+      "id": "s2.1.1",
+      "label": "2.1.1 Credit Remedies",
+      "content": "If monthly uptime falls below target, Customer may claim service credits according to the SLA schedule. Credits are Customer's sole monetary remedy for SLA breach.",
+      "type": "sub",
+      "parentId": "s2.1",
+      "timePhase": "acceptance"
+    },
+    {
+      "id": "s2.2",
+      "label": "2.2 Incident Support",
+      "content": "Provider shall provide support channels and response targets by severity level, including 24/7 support for Severity 1 production outages.",
+      "type": "sub",
+      "parentId": "s2",
+      "timePhase": "execution"
+    },
+    {
+      "id": "s2.2.1",
+      "label": "2.2.1 Incident Governance",
+      "content": "For major incidents, parties shall appoint incident managers, maintain a shared timeline, and perform post-incident review with corrective actions.",
+      "type": "sub",
+      "parentId": "s2.2",
+      "timePhase": "acceptance"
+    },
+    {
+      "id": "s2.3",
+      "label": "2.3 Suspension Controls",
+      "content": "Provider may suspend affected accounts for verified security abuse, legal violations, or sustained non-payment after notice where practicable.",
+      "type": "sub",
+      "parentId": "s2",
+      "timePhase": "execution"
+    },
+    {
+      "id": "s2.3.1",
+      "label": "2.3.1 Limited Suspension",
+      "content": "Provider will use commercially reasonable efforts to limit suspension to impacted users, tenants, or API keys and preserve read-only export paths where safe.",
+      "type": "sub",
+      "parentId": "s2.3",
+      "timePhase": "execution"
+    },
+    {
+      "id": "s3",
+      "label": "3. Data Security",
+      "content": "3. Data Security",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "execution"
+    },
+    {
+      "id": "s3.1",
+      "label": "3.1 Data Processing",
+      "content": "Provider processes Customer Data only to deliver and support services and in accordance with the Data Processing Addendum and applicable data protection law.",
+      "type": "sub",
+      "parentId": "s3",
+      "timePhase": "execution"
+    },
+    {
+      "id": "s3.1.1",
+      "label": "3.1.1 Cross-border Transfers",
+      "content": "Where cross-border transfers are required, parties shall implement valid transfer mechanisms, including standard contractual clauses where legally required.",
+      "type": "sub",
+      "parentId": "s3.1",
+      "timePhase": "execution"
+    },
+    {
+      "id": "s3.2",
+      "label": "3.2 Security Audits",
+      "content": "Provider maintains a risk-based security program including encryption, vulnerability management, access controls, logging, and annual external penetration tests.",
+      "type": "sub",
+      "parentId": "s3",
+      "timePhase": "execution"
+    },
+    {
+      "id": "s3.2.1",
+      "label": "3.2.1 Audit Rights",
+      "content": "Customer may request security attestations and summary audit artifacts no more than once annually, subject to confidentiality and third-party restrictions.",
+      "type": "sub",
+      "parentId": "s3.2",
+      "timePhase": "acceptance"
+    },
+    {
+      "id": "s3.3",
+      "label": "3.3 Incident Response",
+      "content": "Provider will notify Customer without undue delay and within seventy-two (72) hours after confirming a Security Incident impacting Customer Data.",
+      "type": "sub",
+      "parentId": "s3",
+      "timePhase": "acceptance"
+    },
+    {
+      "id": "s3.3.1",
+      "label": "3.3.1 Remediation Duties",
+      "content": "Provider will provide ongoing remediation updates, root cause analysis, and preventive action plans until closure, and cooperate with Customer's reasonable regulatory support requests.",
+      "type": "sub",
+      "parentId": "s3.3",
+      "timePhase": "acceptance"
+    },
+    {
+      "id": "s4",
+      "label": "4. IP Liability",
+      "content": "4. IP Liability",
+      "type": "main",
+      "parentId": "root",
+      "timePhase": "execution"
+    },
+    {
+      "id": "s4.1",
+      "label": "4.1 Output Ownership",
+      "content": "Provider retains ownership of platform IP; Customer retains ownership of Customer Data and customer-specific outputs generated under the Subscription Services.",
+      "type": "sub",
+      "parentId": "s4",
+      "timePhase": "effective"
+    },
+    {
+      "id": "s4.1.1",
+      "label": "4.1.1 Output Allocation",
+      "content": "As between parties, Customer owns deliverable outputs generated from Customer prompts and data, while Provider retains rights in underlying models, orchestration logic, and generic improvements.",
+      "type": "sub",
+      "parentId": "s4.1",
+      "timePhase": "execution"
+    },
+    {
+      "id": "s4.2",
+      "label": "4.2 Warranties Indemnity",
+      "content": "Each party gives authority warranties; Provider gives conformity warranty to documentation; implied warranties are disclaimed to the maximum extent permitted by law.",
+      "type": "sub",
+      "parentId": "s4",
+      "timePhase": "execution"
+    },
+    {
+      "id": "s4.2.1",
+      "label": "4.2.1 IP Remedies",
+      "content": "For covered infringement claims, Provider may modify services, procure rights, or terminate affected services with pro-rated refund of prepaid unused fees.",
+      "type": "sub",
+      "parentId": "s4.2",
+      "timePhase": "execution"
+    },
+    {
+      "id": "s4.3",
+      "label": "4.3 Liability Caps",
+      "content": "Except excluded liabilities, each party's aggregate liability is capped at fees paid in the twelve (12) months before the event giving rise to the claim.",
+      "type": "sub",
+      "parentId": "s4",
+      "timePhase": "execution"
+    },
+    {
+      "id": "s4.3.1",
+      "label": "4.3.1 Exclusions",
+      "content": "Liability caps do not apply to fraud, willful misconduct, confidentiality breach, data protection obligations, or unpaid fees by Customer.",
+      "type": "sub",
+      "parentId": "s4.3",
+      "timePhase": "execution"
+    },
+    {
+      "id": "s4.4",
+      "label": "4.4 Data Exit",
+      "content": "Agreement term follows active Order Forms. Either party may terminate for uncured material breach; Customer receives a post-termination export window.",
+      "type": "sub",
+      "parentId": "s4",
+      "timePhase": "termination"
+    },
+    {
+      "id": "s4.4.1",
+      "label": "4.4.1 Deletion Timeline",
+      "content": "Customer may export Customer Data for sixty (60) days after termination; Provider deletes Customer Data from active systems within ninety (90) days unless retention is legally required.",
+      "type": "sub",
+      "parentId": "s4.4",
+      "timePhase": "post_termination"
+    }
+  ]
+}

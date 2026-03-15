@@ -1,8 +1,8 @@
 {
   "meta": {
     "templateId": "test_new",
-    "stageA": "docs/test_new.stage_a.json",
-    "stageB": "docs/test_new.stage_b.json",
+    "stageA": "docs/templates/test_new.stage_a.json",
+    "stageB": "docs/templates/test_new.stage_b.json",
     "mergedAt": "2026-03-08T17:02:59.767106+00:00"
   },
   "nodes": [

@@ -9,7 +9,7 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "remote-study": "bash ./scripts/start_remote_study.sh",
-    "merge-stage-ab": "python3 python/merge_stage_ab.py docs/simple1.stage_a.json docs/simple1.stage_b.json --output docs/simple1.stage_ab_merged.json"
+    "merge-stage-ab": "python3 python/merge_stage_ab.py docs/templates/simple1.stage_a.json docs/templates/simple1.stage_b.json --output docs/templates/simple1.stage_ab_merged.json"
   },
   "dependencies": {
     "framer-motion": "^11.0.8",

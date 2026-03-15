@@ -2,9 +2,9 @@
 """Run Stage A contract structuring via xhub chat completions API.
 
 Usage:
-  python python/run_stage_a.py docs/simple1.txt
-  python python/run_stage_a.py docs/simple1.txt --output docs/simple1.stage_a.json
-  XHUB_API_KEY=... python python/run_stage_a.py docs/simple1.txt --model claude-3-5-sonnet-20241022
+  python python/run_stage_a.py docs/templates/simple1.txt
+  python python/run_stage_a.py docs/templates/simple1.txt --output docs/templates/simple1.stage_a.json
+  XHUB_API_KEY=... python python/run_stage_a.py docs/templates/simple1.txt --model claude-3-5-sonnet-20241022
 """
 
 from __future__ import annotations
